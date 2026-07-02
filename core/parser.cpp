@@ -6404,7 +6404,6 @@ Value Parser::resolveVariableValueWithScopes(const std::string& varName, const b
 }
 
 Value Parser::parseJSXElement(const std::string& jsxStr) {
-    std::cout << jsxStr << std::endl;
     return isolated("return " + jsxStr + " .", doExecute, currentToken().start, nullptr, "JSX parse", false);
 }
 
