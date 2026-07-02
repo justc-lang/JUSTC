@@ -2795,6 +2795,12 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
         advance();
         return parseJSXElement(jsxStr);
     }
+    else if (match("JUSTO")) {
+        return ParseJUSTO(currentToken().value);
+    }
+    else if (match("JUSTC")) {
+        return functionJUSTC2(currentToken().value, doExecute, currentToken().start);
+    }
 
     throw std::runtime_error("Invalid or unexpected token \"" + currentToken().value + "\" at " + Utility::position(currentToken().start, input) + ".");
 }
