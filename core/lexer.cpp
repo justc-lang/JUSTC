@@ -514,7 +514,7 @@ ParserToken Lexer::readJSXOpeningTag() {
         position++;
     }
     
-    std::string attrsStr = "o{";
+    std::string attrsStr = "o'o{";
     bool first = true;
     for (const auto& [key, value] : attributes) {
         if (!first) attrsStr += ";";
@@ -525,7 +525,7 @@ ParserToken Lexer::readJSXOpeningTag() {
             attrsStr += key + ": \"" + value + "\"";
         }
     }
-    attrsStr += "}";
+    attrsStr += "}'";
     
     std::string result = "{\"type\":\"" + tagName + "\",\"props\":" + attrsStr + ",\"children\":";
     
