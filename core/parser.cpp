@@ -2796,9 +2796,11 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
         return parseJSXElement(jsxStr);
     }
     else if (match("JUSTO")) {
+        advance();
         return ParseJUSTO(currentToken().value);
     }
     else if (match("JUSTC")) {
+        advance();
         return functionJUSTC2(currentToken().value, doExecute, currentToken().start);
     }
 
