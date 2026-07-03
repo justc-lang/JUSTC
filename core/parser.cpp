@@ -5183,8 +5183,9 @@ Value Parser::parseCondition(bool doExecute, bool wasIsolated) {
         } case 2: { // while
             std::string conditionStr = "return " + first.str() + " .";
             bool conditionResult = i2v(isolated(conditionStr, doExecute, startPos, &conditionContext, "'while' condition at " + Utility::position(currentToken().start, input))).toBoolean();
+            Value lastResult = Value::createNull();
             while (conditionResult) {
-                shared(conditionBody, doExecute, startPos, &conditionBodyContext, "'while' body at " + Utility::position(currentToken().start, input), !isIsolated);
+                lastResult = shared(conditionBody, doExecute, startPos, &conditionBodyContext, "'while' body at " + Utility::position(currentToken().start, input), !isIsolated);
                 for (const auto& [key, value] : this->variables) {
                     try {
                         conditionContext[key] = resolveVariableValue(key, false);
@@ -5195,7 +5196,7 @@ Value Parser::parseCondition(bool doExecute, bool wasIsolated) {
                 conditionResult = i2v(isolated(conditionStr, doExecute, startPos, &conditionContext, "'while' condition at " + Utility::position(currentToken().start, input))).toBoolean();
             }
             exitScope();
-            return Value::createNull();
+            return lastResult;
         } default:
             throw std::runtime_error(errMsg);
     }

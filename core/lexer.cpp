@@ -47,7 +47,7 @@ namespace {
     std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
 }
 
-Lexer::Lexer(const std::string& input, const bool& warn) : input(input), warn(warn), position(0), dollarBefore(false) {
+Lexer::Lexer(const std::string& input, const bool& warn, const bool& requireDot) : input(input), warn(warn), position(0), dollarBefore(false), requireDot(requireDot) {
     if (input.empty()) {
         throw std::invalid_argument("Invalid Input.");
     }
@@ -1052,7 +1052,7 @@ std::vector<ParserToken> Lexer::getTokens() const {
         if (lastToken.type != "." && lastToken.value != "." && !(
             (tokens[0].type == "{" && lastToken.type == "}") ||
             (tokens[0].type == "[" && lastToken.type == "]")
-        )) {
+        ) && requireDot) {
             throw std::runtime_error("Expected \".\", got EOF at " + Utility::position(lastToken.start, input));
         }
     }

@@ -51,6 +51,7 @@ private:
     bool warn;
     size_t position;
     std::vector<ParserToken> tokens;
+    bool requireDot;
 
     std::vector<std::string> keywords;
     std::unordered_map<std::string, std::string> smallkeywords;
@@ -94,7 +95,7 @@ private:
     void skipWhitespace();
 
 public:
-    Lexer(const std::string& input, const bool& warn);
+    Lexer(const std::string& input, const bool& warn, const bool& requireDot = false);
     std::vector<ParserToken> getTokens() const;
     static std::pair<std::string, std::vector<ParserToken>> parse(const std::string& input, const bool& warn = false);
 
