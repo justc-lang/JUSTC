@@ -1111,8 +1111,6 @@ public:
     Value registerClass(std::shared_ptr<ClassDef> classDef);
 };
 
-#endif
-
 struct FunctionInfo {
     std::string code;
     std::vector<std::string> paramNames;
@@ -1333,3 +1331,5 @@ struct Value {
         }
     }
 };
+
+#endif
