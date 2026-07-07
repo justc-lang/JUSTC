@@ -381,6 +381,7 @@ Value Value::createJustcObject(const std::shared_ptr<ObjectContext>& context) {
     result.type = DataType::JUSTC_OBJECT;
     result.object_context = context;
     result.object_type = DataType::JUSTC_OBJECT;
+    result.object_context->id = createObject(context);
     result.name = "[Object]";
     return result;
 }
@@ -1135,6 +1136,8 @@ ParseResult Parser::parse(bool doExecute) {
                     ASTNode output("CONDITION", "", currentToken().start);
                     output.value = result;
                     ast.push_back(output);
+                } else if (keyword == "new" || keyword == "super" || keyword == "this") {
+                    parseExpression(doExecute);
                 } else {
                     ast.push_back(parseStatement(doExecute));
                 }
@@ -1818,7 +1821,7 @@ ASTNode Parser::parseImportCommand() {
 ASTNode Parser::parseStatement(bool doExecute) {
     std::string keyword = currentToken().value;
 
-    if (keyword == "function" || keyword == "isolated") {
+    if (keyword == "function" || keyword == "isolated" || keyword == "class") {
         Value funcValue = parseFunctionDeclaration(doExecute);
 
         ASTNode node("VARIABLE_DECLARATION", funcValue.name, currentToken().start);
@@ -1880,7 +1883,7 @@ ASTNode Parser::parseStatement(bool doExecute) {
 }
 ASTNode Parser::parseGlobal(bool doExecute, bool constant) {
     ASTNode global("GLOBAL", currentToken().value, currentToken().start);
-    if (match("keyword", "function") || match("keyword", "isolated")) {
+    if (match("keyword", "function") || match("keyword", "isolated") || match("keyword", "class")) {
         Value funcValue = parseFunctionDeclaration(doExecute);
         global.value = funcValue;
         global.identifier = funcValue.name;
@@ -2122,7 +2125,7 @@ ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool loc
 }
 
 Value Parser::parseExpression(bool doExecute, bool identifierMode, bool doFunctionCall, bool ignoreColon) {
-    if (match("keyword", "function") || match("keyword", "isolated")) {
+    if (match("keyword", "function") || match("keyword", "isolated") || match("keyword", "class")) {
         std::string funcName = std::to_string(position);
         bool gotName = false;
         size_t offset = 1;
@@ -2681,7 +2684,9 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
         result.name = "null";
         return result;
     }
-    else if (match("keyword") || match("?") || match("!=") || match("=")) {
+    else if ((
+        match("keyword") && !match("keyword", "new") && !match("keyword", "super") && !match("keyword", "this")
+    ) || match("?") || match("!=") || match("=")) {
         return astNodeToValue(parseStatement(doExecute));
     }
     else if ((match(".") || match(",")) && position + 1 < tokens.size() && tokens[position + 1].type == "number") {
@@ -2802,6 +2807,87 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
     else if (match("JUSTC")) {
         advance();
         return functionJUSTC2(currentToken().value, doExecute, currentToken().start);
+    }
+    else if (match("keyword", "new")) {
+        advance();
+        
+        if (match("identifier")) {
+            std::string className = currentToken().value;
+            advance();
+            
+            std::vector<Value> args;
+            if (match("(")) {
+                args = parseArguments(doExecute);
+            }
+            
+            auto classInfo = getClassInScope(className);
+            if (!classInfo) {
+                auto varIt = variables.find(className);
+                if (varIt != variables.end() && varIt->second.type == DataType::CLASS) {
+                    uint64_t classId = static_cast<uint64_t>(varIt->second.number_value);
+                    if (static_cast<bool>(varIt->second.numeric_data)) {
+                        classId = static_cast<uint64_t>(varIt->second.numeric_data->data);
+                    }
+                    classInfo = getClass(classId);
+                }
+            }
+            
+            if (!classInfo) {
+                throw std::runtime_error("Class \"" + className + "\" not found at " + Utility::position(currentToken().start, input) + ".");
+            }
+            
+            if (classInfo->isAbstract) {
+                throw std::runtime_error("Cannot instantiate abstract class \"" + className + "\" [ " + Utility::stringifyClsIds(classInfo) + " ] at " + Utility::position(currentToken().start, input) + ".");
+            }
+            
+            return createInstance(classInfo->id, args);
+        }
+        
+        throw std::runtime_error("Expected class name after \"new\" at " + Utility::position(currentToken().start, input) + ".");
+    }
+    else if (match("keyword", "super")) {
+        advance();
+        
+        if (!match("(")) {
+            throw std::runtime_error("Expected \"(\" after \"super\" at " + Utility::position(currentToken().start, input) + ".");
+        }
+        
+        std::string currentClassName = getCurrentClassName();
+        if (currentClassName.empty()) {
+            throw std::runtime_error("\"super\" can only be used inside a class method at " + Utility::position(currentToken().start, input) + ".");
+        }
+        
+        auto classInfo = getClassInScope(currentClassName);
+        if (!classInfo) {
+            throw std::runtime_error("Class \"" + currentClassName + "\" not found at " + Utility::position(currentToken().start, input) + ".");
+        }
+        
+        auto parentClass = classInfo->getParent();
+        if (!parentClass) {
+            throw std::runtime_error("Class \"" + currentClassName + "\" [ " + Utility::stringifyClsIds(classInfo) + " ] has no parent class at " + Utility::position(currentToken().start, input) + ".");
+        }
+        
+        std::vector<Value> args = parseArguments(doExecute);
+        
+        if (!parentClass->constructors.empty()) {
+            Value result = parentClass->constructors[0](args);
+            return result;
+        }
+        
+        throw std::runtime_error("Parent class has no constructor. Attempt to construct \"" + parentClass->name + "\" [ " + Utility::stringifyClsIds(parentClass) + " ] at " + Utility::position(currentToken().start, input) + ".");
+    }
+    else if (match("keyword", "this")) {
+        advance();
+        
+        auto context = getCurrentObjectContext();
+        if (!context) {
+            throw std::runtime_error("\"this\" can only be used inside a class method. Attempt to use \"this\" at " + Utility::position(currentToken().start, input) + ".");
+        }
+        
+        Value result = wrapObject(context->id);
+        result.classInstanceId = context->classId;
+        result.isClassInstance = true;
+        return result;
     }
 
     throw std::runtime_error("Invalid or unexpected token \"" + currentToken().value + "\" at " + Utility::position(currentToken().start, input) + ".");
@@ -4830,6 +4916,7 @@ Value Parser::isolated(const std::string& code, bool doExecute, size_t startPos,
         objectContext->allowJavaScript = isolatedParser.allowJavaScript;
         objectContext->allowLuau = isolatedParser.allowLuau;
         isolatedObject.object_context = objectContext;
+        isolatedObject.object_context->id = createObject(objectContext);
 
         if (!silent) {
             for (const auto& log : result.logs) {
@@ -5202,21 +5289,563 @@ Value Parser::parseCondition(bool doExecute, bool wasIsolated) {
     }
 }
 
+Value Parser::parseClassDeclaration(bool isIsolated, std::string className, std::vector<Value> importedContext) {
+    auto classDef = std::make_shared<ClassDef>();
+    classDef->name = className;
+    classDef->startPos = currentToken().start;
+    classDef->isAbstract = false;
+    
+    if (match("keyword", "abstract")) {
+        classDef->isAbstract = true;
+        advance();
+    }
+    
+    if (match("keyword", "extends")) {
+        advance();
+        if (!match("identifier")) {
+            throw std::runtime_error("Expected parent class name at " + 
+                                    Utility::position(currentToken().start, input) + ".");
+        }
+        classDef->parentName = currentToken().value;
+        advance();
+    }
+    
+    if (match("keyword", "implements")) {
+        advance();
+        while (!isEnd() && !match("{")) {
+            if (match("identifier")) {
+                classDef->interfaces.push_back(currentToken().value);
+                advance();
+            }
+            if (match(",")) advance();
+        }
+    }
+    
+    if (!match("{")) {
+        throw std::runtime_error("Expected \"{\" for class body at " + Utility::position(currentToken().start, input) + ".");
+    }
+    advance();
+    
+    ClassPropertyDef::Access currentAccess = ClassPropertyDef::PUBLIC;
+    
+    while (!isEnd() && !match("}")) {
+        skipCommas();
+        
+        if (match("keyword", "public")) {
+            currentAccess = ClassPropertyDef::PUBLIC;
+            advance();
+            if (match(":")) advance();
+            continue;
+        } else if (match("keyword", "private")) {
+            currentAccess = ClassPropertyDef::PRIVATE;
+            advance();
+            if (match(":")) advance();
+            continue;
+        } else if (match("keyword", "protected")) {
+            currentAccess = ClassPropertyDef::PROTECTED;
+            advance();
+            if (match(":")) advance();
+            continue;
+        }
+        
+        bool isStatic = false;
+        if (match("keyword", "static")) {
+            isStatic = true;
+            advance();
+        }
+        
+        if (match("identifier", "constructor")) {
+            ClassDef::ConstructorDef constructor;
+            constructor.startPos = currentToken().start;
+            
+            if (!match("(")) {
+                throw std::runtime_error("Expected '(' for constructor parameters at " + Utility::position(currentToken().start, input) + ".");
+            }
+            advance();
+            
+            while (!match(")") && !isEnd()) {
+                if (match("identifier")) {
+                    std::string paramName = currentToken().value;
+                    advance();
+                    
+                    DataType paramType = DataType::UNKNOWN;
+                    if (match(":")) {
+                        advance();
+                        if (match("identifier")) {
+                            try {
+                                paramType = Utility::typeDeclaration2dataType(
+                                    currentToken().value,
+                                    Utility::position(currentToken().start, input)
+                                );
+                            } catch (...) {
+                                paramType = DataType::UNKNOWN;
+                            }
+                            advance();
+                        }
+                    }
+                    
+                    Value defaultValue;
+                    if (match("=") || match("keyword", "is")) {
+                        advance();
+                        defaultValue = parseExpression(doExecute);
+                    }
+                    
+                    constructor.params.push_back({paramName, paramType});
+                    constructor.defaultValues.push_back(defaultValue);
+                    
+                    if (match(",")) advance();
+                } else {
+                    break;
+                }
+            }
+            
+            if (!match(")")) {
+                throw std::runtime_error("Expected ')' after constructor parameters at " + Utility::position(currentToken().start, input) + ".");
+            }
+            advance();
+            
+            constructor.body = parseMethodBody();
+            classDef->constructors.push_back(constructor);
+            continue;
+        }
+        
+        if (match("identifier", "destructor") || match("identifier", "__gc")) {
+            advance();
+            if (!match("(")) {
+                throw std::runtime_error("Expected '(' for destructor at " + Utility::position(currentToken().start, input) + ".");
+            }
+            advance();
+            if (!match(")")) {
+                throw std::runtime_error("Expected ')' for destructor at " + Utility::position(currentToken().start, input) + ".");
+            }
+            advance();
+            std::string destructorBody = parseMethodBody();
+            ClassMethodDef destructor;
+            destructor.name = "__gc";
+            destructor.body = destructorBody;
+            destructor.startPos = currentToken().start;
+            destructor.isStatic = false;
+            destructor.access = ClassMethodDef::PUBLIC;
+            classDef->methods.push_back(destructor);
+            continue;
+        }
+        
+        if (match("identifier") && (peekToken().type == "(" || peekToken().type == ":")) {
+            ClassMethodDef method;
+            method.access = static_cast<ClassMethodDef::Access>(currentAccess);
+            method.isStatic = isStatic;
+            method.startPos = currentToken().start;
+            method.name = currentToken().value;
+            advance();
+            
+            if (!match("(")) {
+                throw std::runtime_error("Expected '(' for method parameters at " + Utility::position(currentToken().start, input) + ".");
+            }
+            advance();
+            
+            while (!match(")") && !isEnd()) {
+                if (match("identifier")) {
+                    std::string paramName = currentToken().value;
+                    advance();
+                    
+                    DataType paramType = DataType::UNKNOWN;
+                    if (match(":")) {
+                        advance();
+                        if (match("identifier")) {
+                            try {
+                                paramType = Utility::typeDeclaration2dataType(
+                                    currentToken().value,
+                                    Utility::position(currentToken().start, input)
+                                );
+                            } catch (...) {
+                                paramType = DataType::UNKNOWN;
+                            }
+                            advance();
+                        }
+                    }
+                    
+                    Value defaultValue;
+                    if (match("=") || match("keyword", "is")) {
+                        advance();
+                        defaultValue = parseExpression(doExecute);
+                    }
+                    
+                    method.params.push_back({paramName, paramType});
+                    method.defaultValues.push_back(defaultValue);
+                    
+                    if (match(",")) advance();
+                } else {
+                    break;
+                }
+            }
+            
+            if (!match(")")) {
+                throw std::runtime_error("Expected ')' after parameters at " + Utility::position(currentToken().start, input) + ".");
+            }
+            advance();
+            
+            if (match(":")) {
+                advance();
+                if (match("identifier")) {
+                    try {
+                        method.returnType = Utility::typeDeclaration2dataType(
+                            currentToken().value,
+                            Utility::position(currentToken().start, input)
+                        );
+                    } catch (...) {
+                        method.returnType = DataType::UNKNOWN;
+                    }
+                    advance();
+                }
+            }
+            
+            if (match(";") || match(",")) {
+                method.isAbstract = true;
+                method.body = "";
+                advance();
+            } else {
+                method.body = parseMethodBody();
+            }
+            
+            if (isStatic) {
+                classDef->staticMethods.push_back(method);
+            } else {
+                classDef->methods.push_back(method);
+            }
+            continue;
+        }
+        
+        if (match("identifier")) {
+            ClassPropertyDef prop;
+            prop.access = static_cast<ClassPropertyDef::Access>(currentAccess);
+            prop.isStatic = isStatic;
+            prop.startPos = currentToken().start;
+            prop.name = currentToken().value;
+            advance();
+            
+            if (match(":")) {
+                advance();
+                if (match("identifier")) {
+                    try {
+                        prop.type = Utility::typeDeclaration2dataType(
+                            currentToken().value,
+                            Utility::position(currentToken().start, input)
+                        );
+                    } catch (...) {
+                        prop.type = DataType::UNKNOWN;
+                    }
+                    advance();
+                }
+            }
+            
+            if (match("=") || match("keyword", "is")) {
+                advance();
+                prop.defaultValue = parseExpression(doExecute);
+            }
+            
+            if (match("keyword", "get")) {
+                prop.hasGetter = true;
+                advance();
+                if (!match("(")) {
+                    throw std::runtime_error("Expected '(' for getter at " + Utility::position(currentToken().start, input) + ".");
+                }
+                advance();
+                if (!match(")")) {
+                    throw std::runtime_error("Expected ')' for getter at " + Utility::position(currentToken().start, input) + ".");
+                }
+                advance();
+                prop.getterBody = parseMethodBody();
+            }
+            
+            if (match("keyword", "set")) {
+                prop.hasSetter = true;
+                advance();
+                if (!match("(")) {
+                    throw std::runtime_error("Expected '(' for setter at " + Utility::position(currentToken().start, input) + ".");
+                }
+                advance();
+                if (!match("identifier")) {
+                    throw std::runtime_error("Expected parameter name for setter at " + Utility::position(currentToken().start, input) + ".");
+                }
+                advance();
+                if (!match(")")) {
+                    throw std::runtime_error("Expected ')' for setter at " + Utility::position(currentToken().start, input) + ".");
+                }
+                advance();
+                prop.setterBody = parseMethodBody();
+            }
+            
+            if (match("keyword", "readonly") || match("keyword", "const")) {
+                prop.isReadOnly = true;
+                advance();
+            }
+            
+            classDef->properties.push_back(prop);
+            continue;
+        }
+        
+        throw std::runtime_error("Unexpected token in class body: \"" + currentToken().value + "\" at " + Utility::position(currentToken().start, input) + ".");
+    }
+    
+    if (!match("}")) {
+        throw std::runtime_error("Expected \"}\" to close class body at " + Utility::position(currentToken().start, input) + ".");
+    }
+    advance();
+    
+    classDef->endPos = currentToken().start;
+    
+    return registerClass(classDef);
+}
+
+ClassInfo::Constructor Parser::parseConstructorDeclaration() {
+    if (!match("identifier", "constructor")) {
+        throw std::runtime_error("Expected 'constructor' at " + Utility::position(currentToken().start, input) + ".");
+    }
+    advance();
+    
+    ClassInfo::Constructor constructor;
+    constructor.startPos = currentToken().start;
+    constructor.returnType = DataType::JUSTC_OBJECT;
+    
+    if (!match("(")) {
+        throw std::runtime_error("Expected '(' for constructor parameters at " + Utility::position(currentToken().start, input) + ".");
+    }
+    advance();
+    
+    while (!match(")") && !isEnd()) {
+        if (match("identifier")) {
+            std::string paramName = currentToken().value;
+            advance();
+            
+            DataType paramType = DataType::UNKNOWN;
+            if (match(":")) {
+                advance();
+                if (match("identifier")) {
+                    try {
+                        paramType = Utility::typeDeclaration2dataType(
+                            currentToken().value,
+                            Utility::position(currentToken().start, input)
+                        );
+                    } catch (...) {
+                        paramType = DataType::UNKNOWN;
+                    }
+                    advance();
+                }
+            }
+            
+            Value defaultValue;
+            if (match("=") || match("keyword", "is")) {
+                advance();
+                defaultValue = parseExpression(doExecute);
+            }
+            
+            constructor.params.push_back({paramName, paramType});
+            constructor.defaultValues.push_back(defaultValue);
+            
+            if (match(",")) advance();
+        } else {
+            break;
+        }
+    }
+    
+    if (!match(")")) {
+        throw std::runtime_error("Expected ')' after constructor parameters at " + Utility::position(currentToken().start, input) + ".");
+    }
+    advance();
+    
+    if (match(":")) {
+        advance();
+        if (match("identifier")) {
+            try {
+                constructor.returnType = Utility::typeDeclaration2dataType(
+                    currentToken().value,
+                    Utility::position(currentToken().start, input)
+                );
+            } catch (...) {
+                constructor.returnType = DataType::UNKNOWN;
+            }
+            advance();
+        }
+    }
+    
+    constructor.body = parseMethodBody();
+    return constructor;
+}
+
+ClassInfo::Method Parser::parseMethodDeclaration(ClassInfo::Property::Access defaultAccess, bool isStatic) {
+    ClassInfo::Method method;
+    method.access = defaultAccess;
+    method.isStatic = isStatic;
+    method.startPos = currentToken().start;
+    
+    if (!match("identifier")) {
+        throw std::runtime_error("Expected method name at " + Utility::position(currentToken().start, input) + ".");
+    }
+    method.name = currentToken().value;
+    advance();
+    
+    if (!match("(")) {
+        throw std::runtime_error("Expected '(' for method parameters at " + Utility::position(currentToken().start, input) + ".");
+    }
+    advance();
+    
+    while (!match(")") && !isEnd()) {
+        if (match("identifier")) {
+            std::string paramName = currentToken().value;
+            advance();
+            
+            DataType paramType = DataType::UNKNOWN;
+            if (match(":")) {
+                advance();
+                if (match("identifier")) {
+                    try {
+                        paramType = Utility::typeDeclaration2dataType(
+                            currentToken().value,
+                            Utility::position(currentToken().start, input)
+                        );
+                    } catch (...) {
+                        paramType = DataType::UNKNOWN;
+                    }
+                    advance();
+                }
+            }
+            
+            Value defaultValue;
+            if (match("=") || match("keyword", "is")) {
+                advance();
+                defaultValue = parseExpression(doExecute);
+            }
+            
+            method.params.push_back({paramName, paramType});
+            method.defaultValues.push_back(defaultValue);
+            
+            if (match(",")) advance();
+        } else {
+            break;
+        }
+    }
+    
+    if (!match(")")) {
+        throw std::runtime_error("Expected ')' after parameters at " + Utility::position(currentToken().start, input) + ".");
+    }
+    advance();
+    
+    if (match(":")) {
+        advance();
+        if (match("identifier")) {
+            try {
+                method.returnType = Utility::typeDeclaration2dataType(
+                    currentToken().value,
+                    Utility::position(currentToken().start, input)
+                );
+            } catch (...) {
+                method.returnType = DataType::UNKNOWN;
+            }
+            advance();
+        }
+    }
+    
+    if (match(";") || match(",")) {
+        method.isAbstract = true;
+        method.body = "";
+        advance();
+    } else {
+        method.body = parseMethodBody();
+    }
+    
+    return method;
+}
+
+ClassInfo::Property Parser::parsePropertyDeclaration(ClassInfo::Property::Access defaultAccess, bool isStatic) {
+    ClassInfo::Property prop;
+    prop.access = defaultAccess;
+    prop.isStatic = isStatic;
+    prop.startPos = currentToken().start;
+    
+    if (!match("identifier")) {
+        throw std::runtime_error("Expected property name at " + Utility::position(currentToken().start, input) + ".");
+    }
+    prop.name = currentToken().value;
+    advance();
+    
+    if (match(":")) {
+        advance();
+        if (match("identifier")) {
+            try {
+                prop.type = Utility::typeDeclaration2dataType(
+                    currentToken().value,
+                    Utility::position(currentToken().start, input)
+                );
+            } catch (...) {
+                prop.type = DataType::UNKNOWN;
+            }
+            advance();
+        }
+    }
+    
+    if (match("=") || match("keyword", "is")) {
+        advance();
+        prop.defaultValue = parseExpression(doExecute);
+    }
+    
+    if (match("keyword", "get")) {
+        prop.hasGetter = true;
+        advance();
+        if (!match("(")) {
+            throw std::runtime_error("Expected '(' for getter at " + Utility::position(currentToken().start, input) + ".");
+        }
+        advance();
+        if (!match(")")) {
+            throw std::runtime_error("Expected ')' for getter at " + Utility::position(currentToken().start, input) + ".");
+        }
+        advance();
+        prop.getterBody = parseMethodBody();
+    }
+    
+    if (match("keyword", "set")) {
+        prop.hasSetter = true;
+        advance();
+        if (!match("(")) {
+            throw std::runtime_error("Expected '(' for setter at " + Utility::position(currentToken().start, input) + ".");
+        }
+        advance();
+        if (!match("identifier")) {
+            throw std::runtime_error("Expected parameter name for setter at " + Utility::position(currentToken().start, input) + ".");
+        }
+        std::string paramName = currentToken().value;
+        advance();
+        if (!match(")")) {
+            throw std::runtime_error("Expected ')' for setter at " + Utility::position(currentToken().start, input) + ".");
+        }
+        advance();
+        prop.setterBody = parseMethodBody();
+    }
+    
+    if (match("keyword", "readonly") || match("keyword", "const")) {
+        prop.isReadOnly = true;
+        advance();
+    }
+    
+    return prop;
+}
+
 Value Parser::parseFunctionDeclaration(bool doExecute, std::string funcName, bool requireName) {
     bool isIsolated = false;
+    bool isClass = false;
 
     if (match("keyword", "isolated")) {
         isIsolated = true;
         advance();
     }
-    if (!match("keyword", "function")) {
-        throw std::runtime_error("Expected 'function' keyword at " + Utility::position(currentToken().start, input));
+    if (!match("keyword", "function") && !match("keyword", "class")) {
+        throw std::runtime_error("Expected \"function\" or \"class\" keyword at " + Utility::position(currentToken().start, input) + ".");
     }
+    isClass = match("keyword", "class");
     advance();
 
     if (requireName) {
         if (!match("identifier")) {
-            throw std::runtime_error("Expected function name at " + Utility::position(currentToken().start, input));
+            throw std::runtime_error("Expected " + (isClass ? "class" : "function") + " name at " + Utility::position(currentToken().start, input) + ".");
         }
         funcName = currentToken().value;
         advance();
@@ -5228,9 +5857,10 @@ Value Parser::parseFunctionDeclaration(bool doExecute, std::string funcName, boo
     }
 
     std::vector<Value> importedContext = parseLambda(doExecute, currentToken().start);
+    if (isClass) return parseClassDeclaration(isIsolated, funcName, importedContext);
 
     if (!match("(")) {
-        throw std::runtime_error("Expected '(' after function name at " + Utility::position(currentToken().start, input));
+        throw std::runtime_error("Expected \"(\" after function name at " + Utility::position(currentToken().start, input) + ".");
     }
     advance();
 
@@ -5274,17 +5904,17 @@ Value Parser::parseFunctionDeclaration(bool doExecute, std::string funcName, boo
                 advance();
             }
         } else {
-            throw std::runtime_error("Expected parameter name at " + Utility::position(currentToken().start, input));
+            throw std::runtime_error("Expected parameter name at " + Utility::position(currentToken().start, input) + ".");
         }
     }
 
     if (!match(")")) {
-        throw std::runtime_error("Expected ')' after parameters at " + Utility::position(currentToken().start, input));
+        throw std::runtime_error("Expected \")\" after parameters at " + Utility::position(currentToken().start, input) + ".");
     }
     advance();
 
     if (!match("{")) {
-        throw std::runtime_error("Expected '{' for function body at " + Utility::position(currentToken().start, input));
+        throw std::runtime_error("Expected \"{\" for function body at " + Utility::position(currentToken().start, input) + ".");
     }
     advance();
 
@@ -5374,7 +6004,7 @@ Value Parser::callFunction(const Value& function, const std::vector<Value>& args
         } else if (funcInfo.defaultValues[i].type != DataType::NULL_TYPE) {
             paramValue = funcInfo.defaultValues[i];
         } else {
-            throw std::runtime_error("Missing required argument '" + funcInfo.paramNames[i] + "' for function '" + function.name + "' at " + Utility::position(startPos, input));
+            throw std::runtime_error("Missing required argument \"" + funcInfo.paramNames[i] + "\" for function \"" + function.name + "\" at " + Utility::position(startPos, input));
         }
 
         functionContext[funcInfo.paramNames[i]] = paramValue;
@@ -5874,6 +6504,7 @@ Value Parser::parseJsonObject(bool doExecute) {
 
     Value result = Value::createJsonObject(properties);
     result.object_context = jsonContext;
+    result.object_context->id = createObject(jsonContext);
     result.name = "[Object]";
 
     return result;
@@ -5907,6 +6538,7 @@ Value Parser::parseJsonArray(bool doExecute) {
 
     Value result = Value::createJsonArray(elements);
     result.object_context = arrayContext;
+    result.object_context->id = createObject(arrayContext);
     result.name = "[Array]";
 
     return result;
@@ -6021,7 +6653,7 @@ Value Parser::accessProperty(const Value& obj, const std::string& propName) {
     if (obj.type == DataType::JUSTC_OBJECT) {
         if (obj.object_context && obj.object_context->parser) {
             if (obj.object_context->parser->outputMode == "disabled") {
-                throw std::runtime_error("Attempt to access \"" + propName + "\" of a closure (Object with output mode \"disabled\") at " + Utility::position(currentToken().start, input) + ".");
+                throw std::runtime_error("Attempt to access \"" + propName + "\" of a closure [ " + Utility::stringifyObjIds(obj.object_context) + " ] (Object with output mode \"disabled\") at " + Utility::position(currentToken().start, input) + ".");
             }
 
             auto it = obj.properties.find(propName);
@@ -6035,16 +6667,16 @@ Value Parser::accessProperty(const Value& obj, const std::string& propName) {
                 return varIt->second;
             }
 
-            throw std::runtime_error("Property '" + propName + "' not found in object at " + Utility::position(currentToken().start, input) + ".");
+            throw std::runtime_error("Property '" + propName + "' not found in object [ " + Utility::stringifyObjIds(obj.object_context) + " ] at " + Utility::position(currentToken().start, input) + ".");
         }
     } else if (obj.type == DataType::JSON_OBJECT) {
         auto it = obj.properties.find(propName);
         if (it != obj.properties.end()) {
             return it->second;
         }
-        throw std::runtime_error("Property '" + propName + "' not found in object at " + Utility::position(currentToken().start, input) + ".");
+        throw std::runtime_error("Property '" + propName + "' not found in object [ " + Utility::stringifyObjIds(obj.object_context) + " ] at " + Utility::position(currentToken().start, input) + ".");
     } else if (obj.type == DataType::JSON_ARRAY) {
-        throw std::runtime_error("Cannot access property '" + propName + "' on array at " + Utility::position(currentToken().start, input) + ".");
+        throw std::runtime_error("Cannot access property '" + propName + "' on array [ " + Utility::stringifyObjIds(obj.object_context) + " ] at " + Utility::position(currentToken().start, input) + ".");
     }
 
     throw std::runtime_error("Cannot access property '" + propName + "' on non-object at " + Utility::position(currentToken().start, input) + ".");
@@ -6509,6 +7141,377 @@ std::string Parser::renderJSX(const Value& jsxElement) {
     
     result += "</" + type + ">";
     return result;
+}
+
+uint64_t Parser::registerClassInScope(const std::string& name, std::shared_ptr<ClassInfo> classInfo) {
+    uint64_t scopeId = currentScope > 0 ? currentScope : 0;
+    return registerClass(name, classInfo, scopeId);
+}
+
+std::shared_ptr<ClassInfo> Parser::getClassInScope(const std::string& name) const {
+    uint64_t scopeId = currentScope > 0 ? currentScope : 0;
+    return getClassByName(name, scopeId);
+}
+
+Value Parser::createInstance(const std::string& className, const std::vector<Value>& args) {
+    auto classInfo = getClassInScope(className);
+    if (!classInfo) {
+        throw std::runtime_error("Class '" + className + "' not found in current scope");
+    }
+    return createInstance(classInfo->id, args);
+}
+
+Value Parser::createInstance(uint64_t classId, const std::vector<Value>& args) {
+    auto classInfo = getClass(classId);
+    if (!classInfo) {
+        throw std::runtime_error("Class with ID " + std::to_string(classId) + " not found");
+    }
+    
+    std::shared_ptr<ObjectContext> context;
+    Value result;
+    
+    if (!classInfo->constructors.empty()) {
+        auto& constructor = classInfo->constructors[0];
+        
+        auto execContext = std::make_shared<ObjectContext>();
+        execContext->classInfo = classInfo;
+        execContext->classId = classId;
+        execContext->allowJavaScript = this->allowJavaScript;
+        execContext->allowLuau = this->allowLuau;
+        execContext->isClassInstance = true;
+        
+        for (const auto& [propName, prop] : classInfo->properties) {
+            if (prop.access != ClassInfo::Property::PRIVATE) {
+                execContext->instanceData[propName] = prop.defaultValue;
+            }
+        }
+        
+        uint64_t objectId = createObject(execContext, classId);
+        Value self = wrapObject(objectId);
+        self.classInstanceId = classId;
+        self.isClassInstance = true;
+        
+        std::unordered_map<std::string, Value> contextMap;
+        contextMap["this"] = self;
+        
+        for (size_t i = 0; i < constructor.params.size(); i++) {
+            std::string paramName = constructor.params[i].first;
+            if (i < args.size()) {
+                contextMap[paramName] = args[i];
+            } else if (i < constructor.defaultValues.size()) {
+                contextMap[paramName] = constructor.defaultValues[i];
+            }
+        }
+        
+        Value constructorResult = isolated(constructor.body, doExecute, constructor.startPos, &contextMap);
+        
+        if (!constructorResult.properties.empty()) {
+            auto it = constructorResult.properties.find("return");
+            if (it != constructorResult.properties.end() && it->second.type != DataType::NULL_TYPE) {
+                result = it->second;
+                result.classInstanceId = classId;
+                result.isClassInstance = true;
+                if (result.type == DataType::JUSTC_OBJECT && result.object_context) {
+                    result.object_context->classId = classId;
+                    result.object_context->classInfo = classInfo;
+                    result.object_context->isClassInstance = true;
+                }
+                return result;
+            }
+        }
+        
+        context = execContext;
+        result = self;
+    } else {
+        context = std::make_shared<ObjectContext>();
+        context->classInfo = classInfo;
+        context->classId = classId;
+        context->allowJavaScript = this->allowJavaScript;
+        context->allowLuau = this->allowLuau;
+        context->isClassInstance = true;
+        
+        for (const auto& [propName, prop] : classInfo->properties) {
+            if (prop.access != ClassInfo::Property::PRIVATE) {
+                context->instanceData[propName] = prop.defaultValue;
+            }
+        }
+        
+        uint64_t objectId = createObject(context, classId);
+        result = wrapObject(objectId);
+        result.classInstanceId = classId;
+        result.isClassInstance = true;
+    }
+    
+    return result;
+}
+
+Value Parser::wrapObject(uint64_t objectId) const {
+    auto context = getObject(objectId);
+    if (!context) {
+        return Value::createNull();
+    }
+    return wrapObject(context);
+}
+
+Value Parser::wrapObject(std::shared_ptr<ObjectContext> context) const {
+    Value result;
+    result.type = DataType::JUSTC_OBJECT;
+    result.object_context = context;
+    result.object_type = DataType::JUSTC_OBJECT;
+    result.name = context->classInfo ? context->classInfo->name : "Object";
+    
+    if (context->id > 0) {
+        result.number_value = static_cast<double>(context->id);
+    }
+    
+    return result;
+}
+
+Value Parser::getObjectProperty(uint64_t objectId, const std::string& name) const {
+    auto context = getObject(objectId);
+    if (!context) {
+        return Value::createNull();
+    }
+    return context->getProperty(name);
+}
+
+void Parser::setObjectProperty(uint64_t objectId, const std::string& name, const Value& value) {
+    auto context = getObject(objectId);
+    if (!context) {
+        throw std::runtime_error("Object not found");
+    }
+    context->setProperty(name, value);
+}
+
+Value Parser::callObjectMethod(uint64_t objectId, const std::string& methodName, const std::vector<Value>& args) {
+    auto context = getObject(objectId);
+    if (!context) {
+        throw std::runtime_error("Object not found");
+    }
+    
+    auto classInfo = context->classInfo;
+    if (!classInfo) {
+        throw std::runtime_error("Object has no class info");
+    }
+    
+    auto method = classInfo->getMethod(methodName);
+    if (!method) {
+        throw std::runtime_error("Method '" + methodName + "' not found in class '" + classInfo->name + "'");
+    }
+    
+    Value self = wrapObject(objectId);
+    std::vector<Value> fullArgs = {self};
+    fullArgs.insert(fullArgs.end(), args.begin(), args.end());
+    
+    return method(fullArgs);
+}
+
+bool Parser::isInstanceOf(const Value& obj, uint64_t classId) const {
+    if (obj.isClassInstance) {
+        if (obj.classInstanceId == classId) return true;
+        
+        if (obj.type == DataType::JUSTC_OBJECT && obj.object_context) {
+            auto context = obj.object_context;
+            if (context->classId == classId) return true;
+            
+            auto classInfo = context->classInfo;
+            if (classInfo) {
+                auto parent = classInfo->getParent();
+                while (parent) {
+                    if (parent->id == classId) return true;
+                    parent = parent->getParent();
+                }
+            }
+        }
+    }
+    
+    if (obj.type == DataType::JUSTC_OBJECT && obj.object_context) {
+        return isInstanceOf_(obj.object_context->id, classId);
+    }
+    
+    return false;
+}
+
+bool Parser::isInstanceOf(const Value& obj, const std::string& className) const {
+    auto classInfo = getClassInScope(className);
+    if (!classInfo) return false;
+    return isInstanceOf(obj, classInfo->id);
+}
+
+std::shared_ptr<ClassInfo> Parser::getObjectClass(const Value& obj) const {
+    if (obj.type != DataType::JUSTC_OBJECT || !obj.object_context) {
+        return nullptr;
+    }
+    return obj.object_context->classInfo;
+}
+
+std::string Parser::getCurrentClassName() const {
+    for (auto it = scopeStack.rbegin(); it != scopeStack.rend(); ++it) {
+        auto scopeIt = localScopes.find(*it);
+        if (scopeIt != localScopes.end()) {
+            auto classIt = scopeIt->second.find("__class_name__");
+            if (classIt != scopeIt->second.end()) {
+                return classIt->second.toString();
+            }
+        }
+    }
+    return "";
+}
+
+std::shared_ptr<ObjectContext> Parser::getCurrentObjectContext() const {
+    for (auto it = scopeStack.rbegin(); it != scopeStack.rend(); ++it) {
+        auto scopeIt = localScopes.find(*it);
+        if (scopeIt != localScopes.end()) {
+            auto objIt = scopeIt->second.find("__this__");
+            if (objIt != scopeIt->second.end()) {
+                return objIt->second.object_context;
+            }
+        }
+    }
+    return nullptr;
+}
+
+Value Parser::executeMethodBody(const std::string& body, size_t startPos, const std::unordered_map<std::string, Value>* context, const std::string& className) {
+    if (body.empty()) {
+        Value result;
+        result.type = DataType::JUSTC_OBJECT;
+        result.properties["return"] = Value::createNull();
+        return result;
+    }
+    
+    std::unordered_map<std::string, Value> extendedContext;
+    if (context) {
+        extendedContext = *context;
+    }
+    
+    if (!className.empty()) {
+        extendedContext["__class_name__"] = Value::createString(className);
+        extendedContext["__this__"] = Value::createJsonObject(extendedContext);
+    }
+    
+    return isolated(body, doExecute, startPos, &extendedContext, "Method", false);
+}
+
+std::string Parser::parseMethodBody() {
+    if (!match("{")) {
+        throw std::runtime_error("Expected \"{\" for method body at " + Utility::position(currentToken().start, input) + ".");
+    }
+    advance();
+    
+    std::stringstream body;
+    int braceCount = 1;
+    
+    while (!isEnd() && braceCount > 0) {
+        if (match("{")) braceCount++;
+        else if (match("}")) braceCount--;
+        
+        if (braceCount > 0) {
+            body << t2i(currentToken());
+        }
+        advance();
+    }
+    
+    if (braceCount != 0) {
+        throw std::runtime_error("Unclosed method body at " + Utility::position(currentToken().start, input) + ".");
+    }
+    
+    return body.str();
+}
+
+Value Parser::registerClass(std::shared_ptr<ClassInfo> classInfo) {
+    if (!classInfo) {
+        throw std::runtime_error("Cannot register null class");
+    }
+    
+    uint64_t classId = registerClassInScope(classInfo->name, classInfo);
+    
+    Value classValue;
+    classValue.type = DataType::CLASS;
+    classValue.name = classInfo->name;
+    classValue.number_value = static_cast<double>(classId);
+    classValue.object_type = DataType::CLASS;
+    
+    classValue.numeric_data = std::make_shared<NumericValue>();
+    classValue.numeric_data->value = static_cast<double>(classId);
+    classValue.numeric_data->type = NumericType::UINT64;
+    classValue.numeric_data->data = malloc(sizeof(uint64_t));
+    if (classValue.numeric_data->data) {
+        *(uint64_t*)classValue.numeric_data->data = classId;
+    }
+    
+    return classValue;
+}
+
+Value Parser::registerClass(std::shared_ptr<ClassDef> classDef) {
+    if (!classDef) {
+        throw std::runtime_error("Cannot register null class definition");
+    }
+    
+    auto classInfo = std::make_shared<ClassInfo>();
+    classInfo->name = classDef->name;
+    classInfo->isAbstract = classDef->isAbstract;
+    classInfo->isIsolated = false;
+    
+    if (!classDef->parentName.empty()) {
+        auto parentClass = getClassInScope(classDef->parentName);
+        if (parentClass) {
+            classInfo->parentClassId = parentClass->id;
+        } else {
+            pendingParentClasses[classDef->name] = classDef->parentName;
+        }
+    }
+    
+    for (const auto& propDef : classDef->properties) {
+        ClassInfo::Property prop;
+        prop.name = propDef.name;
+        prop.type = propDef.type;
+        prop.defaultValue = propDef.defaultValue;
+        prop.isStatic = propDef.isStatic;
+        prop.isReadOnly = propDef.isReadOnly;
+        prop.access = static_cast<ClassInfo::Property::Access>(propDef.access);
+        prop.hasGetter = propDef.hasGetter;
+        prop.hasSetter = propDef.hasSetter;
+        prop.getterBody = propDef.getterBody;
+        prop.setterBody = propDef.setterBody;
+        prop.startPos = propDef.startPos;
+        
+        if (propDef.isStatic) {
+            classInfo->staticProperties[prop.name] = prop;
+        } else {
+            classInfo->properties[prop.name] = prop;
+        }
+    }
+    
+    for (const auto& methodDef : classDef->methods) {
+        ClassInfo::Method method;
+        method.name = methodDef.name;
+        method.params = methodDef.params;
+        method.defaultValues = methodDef.defaultValues;
+        method.returnType = methodDef.returnType;
+        method.isStatic = methodDef.isStatic;
+        method.isAbstract = methodDef.isAbstract;
+        method.access = static_cast<ClassInfo::Method::Access>(methodDef.access);
+        method.body = methodDef.body;
+        method.startPos = methodDef.startPos;
+        
+        if (methodDef.isStatic) {
+            classInfo->staticMethods[method.name] = method;
+        } else {
+            classInfo->methods[method.name] = method;
+        }
+    }
+    
+    for (const auto& constrDef : classDef->constructors) {
+        ClassInfo::Constructor constructor;
+        constructor.params = constrDef.params;
+        constructor.defaultValues = constrDef.defaultValues;
+        constructor.body = constrDef.body;
+        constructor.startPos = constrDef.startPos;
+        constructor.returnType = DataType::JUSTC_OBJECT;
+        classInfo->constructors.push_back(constructor);
+    }
+    
+    return registerClass(classInfo);
 }
 
 ParseResult Parser::parseTokens(const std::vector<ParserToken>& tokens, bool doExecute, bool runAsync, const std::string& input, const bool allowJavaScript, const bool canAllowJS, const std::string scriptName, const std::string scriptType, const bool allowLuau, const bool canAllowLuau) {

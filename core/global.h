@@ -32,13 +32,36 @@ SOFTWARE.
 #include <cstdint>
 #include "parser.h"
 
+struct ClassInfo;
+struct ObjectContext;
+
 #ifdef __EMSCRIPTEN__
     class GlobalContext {
     private:
+        // variables
         std::unordered_map<std::string, Value> m_variables;
         std::unordered_map<std::string, bool> m_constVars;
         std::unordered_map<std::string, bool> m_JUSTCVars;
         uint64_t m_rootCounter = 0;
+
+        // classes, objects
+        std::unordered_map<uint64_t, std::shared_ptr<ClassInfo>> m_classes;
+        std::unordered_map<uint64_t, std::shared_ptr<ObjectContext>> m_objects;
+        uint64_t m_nextClassId = 1;
+        uint64_t m_nextObjectId = 1;
+        std::unordered_map<uint64_t, uint64_t> m_objectToClass;
+        std::unordered_map<uint64_t, std::unordered_map<std::string, uint64_t>> m_scopeClassNames;
+        uint64_t m_currentScopeId = 0;
+        
+        bool isInstanceOfWithParent(uint64_t objectId, uint64_t targetClassId) const {
+            auto classInfo = getClass(getObjectClassId(objectId));
+            if (classInfo && classInfo->parentClass.lock()) {
+                auto parent = classInfo->parentClass.lock();
+                if (parent->id == targetClassId) return true;
+                return isInstanceOfWithParent(parent->id, targetClassId);
+            }
+            return false;
+        }
 
     public:
         static GlobalContext& getInstance() {
@@ -95,6 +118,131 @@ SOFTWARE.
 
         uint64_t incrementRootCounter() {
             return ++m_rootCounter;
+        }
+
+        uint64_t registerClass(const std::string& name, std::shared_ptr<ClassInfo> classInfo, uint64_t scopeId = 0) {
+            uint64_t classId = m_nextClassId++;
+            m_classes[classId] = classInfo;
+            classInfo->id = classId;
+            classInfo->name = name;
+            
+            if (scopeId > 0) {
+                m_scopeClassNames[scopeId][name] = classId;
+            }
+            m_scopeClassNames[0][name] = classId;
+            
+            return classId;
+        }
+        
+        std::shared_ptr<ClassInfo> getClass(uint64_t classId) const {
+            auto it = m_classes.find(classId);
+            if (it != m_classes.end()) {
+                return it->second;
+            }
+            return nullptr;
+        }
+        
+        std::shared_ptr<ClassInfo> getClassByName(const std::string& name, uint64_t scopeId = 0) const {
+            auto scopeIt = m_scopeClassNames.find(scopeId);
+            if (scopeIt != m_scopeClassNames.end()) {
+                auto nameIt = scopeIt->second.find(name);
+                if (nameIt != scopeIt->second.end()) {
+                    return getClass(nameIt->second);
+                }
+            }
+            auto globalIt = m_scopeClassNames.find(0);
+            if (globalIt != m_scopeClassNames.end()) {
+                auto nameIt = globalIt->second.find(name);
+                if (nameIt != globalIt->second.end()) {
+                    return getClass(nameIt->second);
+                }
+            }
+            return nullptr;
+        }
+        
+        bool hasClassInScope(const std::string& name, uint64_t scopeId) const {
+            auto scopeIt = m_scopeClassNames.find(scopeId);
+            if (scopeIt != m_scopeClassNames.end()) {
+                return scopeIt->second.find(name) != scopeIt->second.end();
+            }
+            return false;
+        }
+        
+        void removeClassFromScope(const std::string& name, uint64_t scopeId) {
+            auto scopeIt = m_scopeClassNames.find(scopeId);
+            if (scopeIt != m_scopeClassNames.end()) {
+                scopeIt->second.erase(name);
+            }
+        }
+        
+        uint64_t createObject(std::shared_ptr<ObjectContext> context, uint64_t classId = 0) {
+            uint64_t objectId = m_nextObjectId++;
+            m_objects[objectId] = context;
+            context->id = objectId;
+            if (classId > 0) {
+                m_objectToClass[objectId] = classId;
+                context->classId = classId;
+            }
+            return objectId;
+        }
+        
+        std::shared_ptr<ObjectContext> getObject(uint64_t objectId) const {
+            auto it = m_objects.find(objectId);
+            if (it != m_objects.end()) {
+                return it->second;
+            }
+            return nullptr;
+        }
+        
+        uint64_t getObjectClassId(uint64_t objectId) const {
+            auto it = m_objectToClass.find(objectId);
+            if (it != m_objectToClass.end()) {
+                return it->second;
+            }
+            return 0;
+        }
+        
+        std::shared_ptr<ClassInfo> getObjectClass(uint64_t objectId) const {
+            uint64_t classId = getObjectClassId(objectId);
+            if (classId > 0) {
+                return getClass(classId);
+            }
+            return nullptr;
+        }
+        
+        bool isInstanceOf(uint64_t objectId, uint64_t classId) const {
+            uint64_t objClassId = getObjectClassId(objectId);
+            if (objClassId == classId) return true;
+            
+            auto classInfo = getClass(objClassId);
+            if (classInfo && classInfo->parentClass.lock()) {
+                auto parent = classInfo->parentClass.lock();
+                if (parent->id == classId) return true;
+                return isInstanceOfWithParent(objClassId, classId);
+            }
+            return false;
+        }
+        
+        void destroyObject(uint64_t objectId) {
+            auto obj = getObject(objectId);
+            if (obj && obj->classInfo) {
+                if (obj->classInfo->destructor) {
+                    Value self;
+                    self.type = DataType::JUSTC_OBJECT;
+                    self.object_context = obj;
+                    obj->classInfo->destructor({self});
+                }
+            }
+            m_objects.erase(objectId);
+            m_objectToClass.erase(objectId);
+        }
+        
+        void setCurrentScope(uint64_t scopeId) {
+            m_currentScopeId = scopeId;
+        }
+        
+        uint64_t getCurrentScope() const {
+            return m_currentScopeId;
         }
     };
 #else
@@ -103,10 +251,21 @@ SOFTWARE.
     class GlobalContext {
     private:
         mutable std::shared_mutex m_mutex;
+
+        // variables
         std::unordered_map<std::string, Value> m_variables;
         std::unordered_map<std::string, bool> m_constVars;
         std::unordered_map<std::string, bool> m_JUSTCVars;
         uint64_t m_rootCounter = 0;
+
+        // classes, objects
+        std::unordered_map<uint64_t, std::shared_ptr<ClassInfo>> m_classes;
+        std::unordered_map<uint64_t, std::shared_ptr<ObjectContext>> m_objects;
+        uint64_t m_nextClassId = 1;
+        uint64_t m_nextObjectId = 1;
+        std::unordered_map<uint64_t, uint64_t> m_objectToClass;
+        std::unordered_map<uint64_t, std::unordered_map<std::string, uint64_t>> m_scopeClassNames;
+        uint64_t m_currentScopeId = 0;
 
     public:
         static GlobalContext& getInstance() {
@@ -173,6 +332,126 @@ SOFTWARE.
         uint64_t incrementRootCounter() {
             std::unique_lock<std::shared_mutex> lock(m_mutex);
             return ++m_rootCounter;
+        }
+
+        uint64_t registerClass(const std::string& name, std::shared_ptr<ClassInfo> classInfo, uint64_t scopeId = 0) {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            uint64_t classId = m_nextClassId++;
+            m_classes[classId] = classInfo;
+            classInfo->id = classId;
+            classInfo->name = name;
+            
+            if (scopeId > 0) {
+                m_scopeClassNames[scopeId][name] = classId;
+            }
+            m_scopeClassNames[0][name] = classId;
+            
+            return classId;
+        }
+        
+        std::shared_ptr<ClassInfo> getClass(uint64_t classId) const {
+            std::shared_lock<std::shared_mutex> lock(m_mutex);
+            auto it = m_classes.find(classId);
+            if (it != m_classes.end()) {
+                return it->second;
+            }
+            return nullptr;
+        }
+        
+        std::shared_ptr<ClassInfo> getClassByName(const std::string& name, uint64_t scopeId = 0) const {
+            std::shared_lock<std::shared_mutex> lock(m_mutex);
+            auto scopeIt = m_scopeClassNames.find(scopeId);
+            if (scopeIt != m_scopeClassNames.end()) {
+                auto nameIt = scopeIt->second.find(name);
+                if (nameIt != scopeIt->second.end()) {
+                    return getClass(nameIt->second);
+                }
+            }
+            auto globalIt = m_scopeClassNames.find(0);
+            if (globalIt != m_scopeClassNames.end()) {
+                auto nameIt = globalIt->second.find(name);
+                if (nameIt != globalIt->second.end()) {
+                    return getClass(nameIt->second);
+                }
+            }
+            return nullptr;
+        }
+        
+        uint64_t createObject(std::shared_ptr<ObjectContext> context, uint64_t classId = 0) {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            uint64_t objectId = m_nextObjectId++;
+            m_objects[objectId] = context;
+            context->id = objectId;
+            if (classId > 0) {
+                m_objectToClass[objectId] = classId;
+                context->classId = classId;
+            }
+            return objectId;
+        }
+        
+        std::shared_ptr<ObjectContext> getObject(uint64_t objectId) const {
+            std::shared_lock<std::shared_mutex> lock(m_mutex);
+            auto it = m_objects.find(objectId);
+            if (it != m_objects.end()) {
+                return it->second;
+            }
+            return nullptr;
+        }
+        
+        uint64_t getObjectClassId(uint64_t objectId) const {
+            std::shared_lock<std::shared_mutex> lock(m_mutex);
+            auto it = m_objectToClass.find(objectId);
+            if (it != m_objectToClass.end()) {
+                return it->second;
+            }
+            return 0;
+        }
+        
+        std::shared_ptr<ClassInfo> getObjectClass(uint64_t objectId) const {
+            uint64_t classId = getObjectClassId(objectId);
+            if (classId > 0) {
+                return getClass(classId);
+            }
+            return nullptr;
+        }
+        
+        bool isInstanceOf(uint64_t objectId, uint64_t classId, bool doLock = true) const {
+            if (doLock) std::shared_lock<std::shared_mutex> lock(m_mutex);
+            uint64_t objClassId = getObjectClassId(objectId);
+            if (objClassId == classId) return true;
+            
+            auto classInfo = getClass(objClassId);
+            if (classInfo && classInfo->parentClass.lock()) {
+                auto parent = classInfo->parentClass.lock();
+                if (parent->id == classId) return true;
+                return isInstanceOf(objClassId, classId, false);
+            }
+            return false;
+        }
+        
+        void destroyObject(uint64_t objectId) {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            auto obj = getObject(objectId);
+            if (obj && obj->classInfo) {
+                if (obj->classInfo->destructor) {
+                    Value self;
+                    self.type = DataType::JUSTC_OBJECT;
+                    self.object_context = obj;
+                    obj->classInfo->destructor({self});
+                }
+            }
+            m_objects.erase(objectId);
+            m_objectToClass.erase(objectId);
+        }
+        
+        void setCurrentScope(uint64_t scopeId) {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            m_currentScopeId = scopeId;
+        }
+        
+        uint64_t getCurrentScope() const {
+            std::shared_lock<std::shared_mutex> lock(m_mutex);
+            return m_currentScopeId;
         }
     };
 #endif
@@ -210,6 +489,42 @@ inline uint64_t getRootCounter() {
 
 inline uint64_t incrementRootCounter() {
     return GlobalContext::getInstance().incrementRootCounter();
+}
+
+inline uint64_t registerClass(const std::string& name, std::shared_ptr<ClassInfo> classInfo, uint64_t scopeId = 0) {
+    return GlobalContext::getInstance().registerClass(name, classInfo, scopeId);
+}
+
+inline std::shared_ptr<ClassInfo> getClass(uint64_t classId) {
+    return GlobalContext::getInstance().getClass(classId);
+}
+
+inline std::shared_ptr<ClassInfo> getClassByName(const std::string& name, uint64_t scopeId = 0) {
+    return GlobalContext::getInstance().getClassByName(name, scopeId);
+}
+
+inline uint64_t createObject(std::shared_ptr<ObjectContext> context, uint64_t classId = 0) {
+    return GlobalContext::getInstance().createObject(context, classId);
+}
+
+inline std::shared_ptr<ObjectContext> getObject(uint64_t objectId) {
+    return GlobalContext::getInstance().getObject(objectId);
+}
+
+inline uint64_t getObjectClassId(uint64_t objectId) {
+    return GlobalContext::getInstance().getObjectClassId(objectId);
+}
+
+inline std::shared_ptr<ClassInfo> getObjectClass(uint64_t objectId) {
+    return GlobalContext::getInstance().getObjectClass(objectId);
+}
+
+inline bool isInstanceOf_(uint64_t objectId, uint64_t classId) {
+    return GlobalContext::getInstance().isInstanceOf(objectId, classId);
+}
+
+inline void destroyObject(uint64_t objectId) {
+    GlobalContext::getInstance().destroyObject(objectId);
 }
 
 #endif

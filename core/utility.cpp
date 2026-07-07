@@ -666,3 +666,22 @@ bool Utility::compareValues(const Value& left, const Value& right) {
         default: return left.toBoolean() == right.toBoolean();
     }
 }
+
+std::string Utility::uint64ToHexString(uint64_t num) {
+    std::ostringstream oss;
+    
+    oss << "0x" << std::hex << std::setw(16) << std::setfill('0') << num;
+    
+    return oss.str();
+}
+
+std::string Utility::stringifyObjIds(ObjectContext objCtx) {
+    return uint64ToHexString(objCtx->id) + std::string(
+        objCtx->classId > 0 ? (" instance of " + uint64ToHexString(objCtx->classId)) : ""
+    );
+}
+std::string Utility::stringifyClsIds(ClassInfo clsInf) {
+    return uint64ToHexString(clsInf->id) + std::string(
+        clsInf->parentClassId > 0 ? (" extends " + uint64ToHexString(clsInf->parentClassId)) : ""
+    );
+}
