@@ -7145,7 +7145,7 @@ std::string Parser::renderJSX(const Value& jsxElement) {
 
 uint64_t Parser::registerClassInScope(const std::string& name, std::shared_ptr<ClassInfo> classInfo) {
     uint64_t scopeId = currentScope > 0 ? currentScope : 0;
-    return registerClass(name, classInfo, scopeId);
+    return ::registerClass(name, classInfo, scopeId);
 }
 
 std::shared_ptr<ClassInfo> Parser::getClassInScope(const std::string& name) const {
@@ -7162,7 +7162,7 @@ Value Parser::createInstance(const std::string& className, const std::vector<Val
 }
 
 Value Parser::createInstance(uint64_t classId, const std::vector<Value>& args) {
-    auto classInfo = getClass(classId);
+    auto classInfo = ::getClass(classId);
     if (!classInfo) {
         throw std::runtime_error("Class with ID " + std::to_string(classId) + " not found");
     }

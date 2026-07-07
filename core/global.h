@@ -415,16 +415,18 @@ struct ObjectContext;
             return nullptr;
         }
         
-        bool isInstanceOf(uint64_t objectId, uint64_t classId, bool doLock = true) const {
-            if (doLock) std::shared_lock<std::shared_mutex> lock(m_mutex);
+        bool isInstanceOf(uint64_t objectId, uint64_t classId) const {
+            std::shared_lock<std::shared_mutex> lock(m_mutex);
             uint64_t objClassId = getObjectClassId(objectId);
             if (objClassId == classId) return true;
             
             auto classInfo = getClass(objClassId);
-            if (classInfo && classInfo->parentClass.lock()) {
-                auto parent = classInfo->parentClass.lock();
-                if (parent->id == classId) return true;
-                return isInstanceOf(objClassId, classId, false);
+            if (classInfo) {
+                auto parent = classInfo->getParent();
+                while (parent) {
+                    if (parent->id == classId) return true;
+                    parent = parent->getParent();
+                }
             }
             return false;
         }
@@ -433,11 +435,10 @@ struct ObjectContext;
             std::unique_lock<std::shared_mutex> lock(m_mutex);
             auto obj = getObject(objectId);
             if (obj && obj->classInfo) {
-                if (obj->classInfo->destructor) {
+                if (!obj->classInfo->destructor.body.empty()) {
                     Value self;
                     self.type = DataType::JUSTC_OBJECT;
                     self.object_context = obj;
-                    obj->classInfo->destructor({self});
                 }
             }
             m_objects.erase(objectId);

@@ -234,6 +234,8 @@ public:
     static std::string uint64ToHexString(uint64_t num);
     static std::string stringifyObjIds(ObjectContext objCtx);
     static std::string stringifyClsIds(ClassInfo clsInf);
+    static std::string stringifyObjIds(const std::shared_ptr<ObjectContext>& objCtx);
+    static std::string stringifyClsIds(const std::shared_ptr<ClassInfo>& clsInf);
 };
 class UnicodeUtility {
 public:
