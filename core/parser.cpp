@@ -6914,15 +6914,21 @@ void Parser::registerGlobal(const std::string& name, const Value& value, bool is
         if (isJUSTC) throw std::runtime_error("Assignment to global constant variable \"" + name + "\" at " + Utility::position(currentToken().start, input) + ".");
         else throw std::runtime_error("Attempt to re-register global constant variable \"" + name + "\".");
     }
-    setGlobal(name, value, isConst, isJUSTC);
+    Value* valPtr = new Value(value);
+    setGlobal(name, valPtr, isConst, isJUSTC);
 }
 Value Parser::getGlobal(const std::string& name) {
-    Value var = getGlobal_(name);
-    var.isVariable = true;
-    var.variable = name;
-    var.varType = VariableType::GLOBAL;
-    var.isConst = isGlobalConst(name);
-    return var;
+    void* ptr = getGlobal_(name);
+    if (ptr) {
+        Value* valPtr = static_cast<Value*>(ptr);
+        Value var = *valPtr;
+        var.isVariable = true;
+        var.variable = name;
+        var.varType = VariableType::GLOBAL;
+        var.isConst = isGlobalConst(name);
+        return var;
+    }
+    return Value::createNull();
 }
 bool Parser::hasGlobal(const std::string& name) {
     return hasGlobal_(name);
@@ -7512,6 +7518,49 @@ Value Parser::registerClass(std::shared_ptr<ClassDef> classDef) {
     }
     
     return registerClass(classInfo);
+}
+
+Value ObjectContext::getProperty(const std::string& name) const {
+    auto getterIt = customGetters.find(name);
+    if (getterIt != customGetters.end()) {
+        return getterIt->second();
+    }
+    
+    auto dataIt = instanceData.find(name);
+    if (dataIt != instanceData.end()) {
+        return dataIt->second;
+    }
+    
+    auto varIt = variables.find(name);
+    if (varIt != variables.end()) {
+        return varIt->second;
+    }
+    
+    if (classInfo) {
+        auto prop = classInfo->getProperty(name);
+        if (prop.access != ClassInfo::Property::PRIVATE) {
+            return prop.defaultValue;
+        }
+    }
+    
+    return Value::createNull();
+}
+
+void ObjectContext::setProperty(const std::string& name, const Value& value) {
+    auto setterIt = customSetters.find(name);
+    if (setterIt != customSetters.end()) {
+        setterIt->second(value);
+        return;
+    }
+    
+    if (classInfo) {
+        auto prop = classInfo->getProperty(name);
+        if (prop.access == ClassInfo::Property::PRIVATE) {
+            throw std::runtime_error("Property '" + name + "' is private");
+        }
+    }
+    
+    instanceData[name] = value;
 }
 
 ParseResult Parser::parseTokens(const std::vector<ParserToken>& tokens, bool doExecute, bool runAsync, const std::string& input, const bool allowJavaScript, const bool canAllowJS, const std::string scriptName, const std::string scriptType, const bool allowLuau, const bool canAllowLuau) {

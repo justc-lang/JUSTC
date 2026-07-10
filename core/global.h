@@ -30,8 +30,10 @@ SOFTWARE.
 #include <unordered_map>
 #include <string>
 #include <cstdint>
-#include "parser.h"
+#include <memory>
+#include "global_fwd.h"
 
+struct Value;
 struct ClassInfo;
 struct ObjectContext;
 
@@ -39,7 +41,7 @@ struct ObjectContext;
     class GlobalContext {
     private:
         // variables
-        std::unordered_map<std::string, Value> m_variables;
+        std::unordered_map<std::string, void*> m_variables;
         std::unordered_map<std::string, bool> m_constVars;
         std::unordered_map<std::string, bool> m_JUSTCVars;
         uint64_t m_rootCounter = 0;
@@ -52,16 +54,6 @@ struct ObjectContext;
         std::unordered_map<uint64_t, uint64_t> m_objectToClass;
         std::unordered_map<uint64_t, std::unordered_map<std::string, uint64_t>> m_scopeClassNames;
         uint64_t m_currentScopeId = 0;
-        
-        bool isInstanceOfWithParent(uint64_t objectId, uint64_t targetClassId) const {
-            auto classInfo = getClass(getObjectClassId(objectId));
-            if (classInfo && classInfo->parentClass.lock()) {
-                auto parent = classInfo->parentClass.lock();
-                if (parent->id == targetClassId) return true;
-                return isInstanceOfWithParent(parent->id, targetClassId);
-            }
-            return false;
-        }
 
     public:
         static GlobalContext& getInstance() {
@@ -69,18 +61,18 @@ struct ObjectContext;
             return instance;
         }
 
-        void set(const std::string& name, const Value& value, bool isConst = false, bool isJUSTC = false) {
+        void set(const std::string& name, void* value, bool isConst = false, bool isJUSTC = false) {
             m_variables[name] = value;
             m_constVars[name] = isConst;
             m_JUSTCVars[name] = isJUSTC;
         }
 
-        Value get(const std::string& name) const {
+        void* get(const std::string& name) const {
             auto it = m_variables.find(name);
             if (it != m_variables.end()) {
                 return it->second;
             }
-            return Value::createNull();
+            return nullptr;
         }
 
         bool has(const std::string& name) const {
@@ -108,7 +100,7 @@ struct ObjectContext;
             m_JUSTCVars.clear();
         }
 
-        std::unordered_map<std::string, Value> getAll() const {
+        std::unordered_map<std::string, void*> getAll() const {
             return m_variables;
         }
 
@@ -215,24 +207,17 @@ struct ObjectContext;
             if (objClassId == classId) return true;
             
             auto classInfo = getClass(objClassId);
-            if (classInfo && classInfo->parentClass.lock()) {
-                auto parent = classInfo->parentClass.lock();
-                if (parent->id == classId) return true;
-                return isInstanceOfWithParent(objClassId, classId);
+            if (classInfo) {
+                auto parent = classInfo->getParent();
+                while (parent) {
+                    if (parent->id == classId) return true;
+                    parent = parent->getParent();
+                }
             }
             return false;
         }
         
         void destroyObject(uint64_t objectId) {
-            auto obj = getObject(objectId);
-            if (obj && obj->classInfo) {
-                if (obj->classInfo->destructor) {
-                    Value self;
-                    self.type = DataType::JUSTC_OBJECT;
-                    self.object_context = obj;
-                    obj->classInfo->destructor({self});
-                }
-            }
             m_objects.erase(objectId);
             m_objectToClass.erase(objectId);
         }
@@ -253,7 +238,7 @@ struct ObjectContext;
         mutable std::shared_mutex m_mutex;
 
         // variables
-        std::unordered_map<std::string, Value> m_variables;
+        std::unordered_map<std::string, void*> m_variables;
         std::unordered_map<std::string, bool> m_constVars;
         std::unordered_map<std::string, bool> m_JUSTCVars;
         uint64_t m_rootCounter = 0;
@@ -273,20 +258,20 @@ struct ObjectContext;
             return instance;
         }
 
-        void set(const std::string& name, const Value& value, bool isConst = false, bool isJUSTC = false) {
+        void set(const std::string& name, void* value, bool isConst = false, bool isJUSTC = false) {
             std::unique_lock<std::shared_mutex> lock(m_mutex);
             m_variables[name] = value;
             m_constVars[name] = isConst;
             m_JUSTCVars[name] = isJUSTC;
         }
 
-        Value get(const std::string& name) const {
+        void* get(const std::string& name) const {
             std::shared_lock<std::shared_mutex> lock(m_mutex);
             auto it = m_variables.find(name);
             if (it != m_variables.end()) {
                 return it->second;
             }
-            return Value::createNull();
+            return nullptr;
         }
 
         bool has(const std::string& name) const {
@@ -299,6 +284,7 @@ struct ObjectContext;
             auto it = m_constVars.find(name);
             return it != m_constVars.end() && it->second;
         }
+        
         bool isJUSTC(const std::string& name) const {
             std::shared_lock<std::shared_mutex> lock(m_mutex);
             auto it = m_JUSTCVars.find(name);
@@ -319,7 +305,7 @@ struct ObjectContext;
             m_JUSTCVars.clear();
         }
 
-        std::unordered_map<std::string, Value> getAll() const {
+        std::unordered_map<std::string, void*> getAll() const {
             std::shared_lock<std::shared_mutex> lock(m_mutex);
             return m_variables;
         }
@@ -433,14 +419,6 @@ struct ObjectContext;
         
         void destroyObject(uint64_t objectId) {
             std::unique_lock<std::shared_mutex> lock(m_mutex);
-            auto obj = getObject(objectId);
-            if (obj && obj->classInfo) {
-                if (!obj->classInfo->destructor.body.empty()) {
-                    Value self;
-                    self.type = DataType::JUSTC_OBJECT;
-                    self.object_context = obj;
-                }
-            }
             m_objects.erase(objectId);
             m_objectToClass.erase(objectId);
         }
@@ -457,11 +435,11 @@ struct ObjectContext;
     };
 #endif
 
-inline void setGlobal(const std::string& name, const Value& value, bool isConst = false, bool isJUSTC = false) {
+inline void setGlobal(const std::string& name, void* value, bool isConst = false, bool isJUSTC = false) {
     GlobalContext::getInstance().set(name, value, isConst, isJUSTC);
 }
 
-inline Value getGlobal_(const std::string& name) {
+inline void* getGlobal_(const std::string& name) {
     return GlobalContext::getInstance().get(name);
 }
 

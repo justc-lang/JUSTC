@@ -45,7 +45,7 @@ SOFTWARE.
 #include <cereal/types/string.hpp>
 #include <cereal/types/unordered_map.hpp>
 #include <cereal/types/memory.hpp>
-#include "global.h"
+#include "global_fwd.h"
 
 #ifdef _MSC_VER
     #define JUSTC_HAS_INT128 0
@@ -107,25 +107,6 @@ enum class DataType {
     BASE64       = 26,
     HTTP_ERROR   = 27,
     UNKNOWN      =-1
-};
-
-struct PropertyDescriptor {
-    enum class Access {
-        READ_ONLY,
-        WRITE_ONLY,
-        READ_WRITE,
-        PRIVATE
-    };
-    
-    Access access = Access::READ_WRITE;
-    bool hasGetter = false;
-    bool hasSetter = false;
-    JUSTCFunction getter;
-    JUSTCFunction setter;
-    Value* defaultValue;
-    
-    PropertyDescriptor() = default;
-    PropertyDescriptor(Value* val) : defaultValue(val), access(Access::READ_WRITE) {}
 };
 
 struct ClassInfo {
@@ -221,8 +202,6 @@ struct ClassInfo {
     }
 };
 
-using JUSTCFunction = std::pair<Parser, Value*>;
-
 struct ObjectContext {
     uint64_t id = 0;
     uint64_t classId = 0;
@@ -235,60 +214,18 @@ struct ObjectContext {
     std::unordered_map<std::string, Value> instanceData;
     std::unordered_map<std::string, Value> privateData;
     
-    std::unordered_map<std::string, JUSTCFunction> customGetters;
-    std::unordered_map<std::string, JUSTCFunction> customSetters;
+    std::unordered_map<std::string, std::function<Value()>> customGetters;
+    std::unordered_map<std::string, std::function<void(const Value&)>> customSetters;
     
-    bool allowJavaScript;
-    bool allowLuau;
+    bool allowJavaScript = true;
+    bool allowLuau = true;
     bool isClassInstance = false;
 
     std::shared_ptr<ObjectContext> parent;
     std::unordered_map<std::string, std::shared_ptr<ObjectContext>> childObjects;
     
-    ObjectContext() : allowJavaScript(true), allowLuau(true) {}
-    
-    Value getProperty(const std::string& name) const {
-        auto getterIt = customGetters.find(name);
-        if (getterIt != customGetters.end()) {
-            //return getterIt->second();
-        }
-        
-        auto dataIt = instanceData.find(name);
-        if (dataIt != instanceData.end()) {
-            return dataIt->second;
-        }
-        
-        auto varIt = variables.find(name);
-        if (varIt != variables.end()) {
-            return varIt->second;
-        }
-        
-        if (classInfo) {
-            auto prop = classInfo->getProperty(name);
-            if (prop.access != ClassInfo::Property::PRIVATE) {
-                return prop.defaultValue;
-            }
-        }
-        
-        return Value::createNull();
-    }
-    
-    void setProperty(const std::string& name, const Value& value) {
-        auto setterIt = customSetters.find(name);
-        if (setterIt != customSetters.end()) {
-            //setterIt->second(value);
-            return;
-        }
-        
-        if (classInfo) {
-            auto prop = classInfo->getProperty(name);
-            if (prop.access == ClassInfo::Property::PRIVATE) {
-                throw std::runtime_error("Property '" + name + "' is private");
-            }
-        }
-        
-        instanceData[name] = value;
-    }
+    Value getProperty(const std::string& name) const;
+    void setProperty(const std::string& name, const Value& value);
 };
 
 struct ClassPropertyDef {
@@ -609,12 +546,11 @@ struct PropertyDescriptor {
     Access access = Access::READ_WRITE;
     bool hasGetter = false;
     bool hasSetter = false;
-    JUSTCFunction getter;
-    JUSTCFunction setter;
-    Value defaultValue;
+    std::function<Value()> getter;
+    std::function<void(const Value&)> setter;
+    Value* defaultValue = nullptr;
     
     PropertyDescriptor() = default;
-    PropertyDescriptor(Value val) : defaultValue(val), access(Access::READ_WRITE) {}
 };
 
 struct ClassInfo {
@@ -708,18 +644,6 @@ struct ClassInfo {
         if (parent) return parent->getProperty(name);
         return Property{};
     }
-};
-
-struct ObjectInstance {
-    std::shared_ptr<ClassInfo> classInfo;
-    std::unordered_map<std::string, Value> instanceData;
-    std::unordered_map<std::string, Value> privateData;
-    std::unordered_map<std::string, JUSTCFunction> customGetters;
-    std::unordered_map<std::string, JUSTCFunction> customSetters;
-    std::weak_ptr<ObjectContext> context;
-    
-    JUSTCFunction getter;
-    JUSTCFunction setter;
 };
 
 struct ClassPropertyDef {
