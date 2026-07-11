@@ -45,7 +45,6 @@ SOFTWARE.
 #include <cereal/types/string.hpp>
 #include <cereal/types/unordered_map.hpp>
 #include <cereal/types/memory.hpp>
-#include "global.h"
 
 #ifdef _MSC_VER
     #define JUSTC_HAS_INT128 0
@@ -80,35 +79,6 @@ struct ClassInfo;
 struct ObjectContext;
 struct PropertyDescriptor;
 
-enum class DataType {
-    JUSTC_OBJECT =  0,
-    NUMBER       =  1,
-    STRING       =  2,
-    LINK         =  3,
-    BOOLEAN      =  4,
-    JSON_OBJECT  =  5,
-    JSON_ARRAY   =  6,
-    NULL_TYPE    =  7,
-    HEXADECIMAL  =  9,
-    BINARY       = 11,
-    PATH         = 12,
-    ERROR        = 13,
-    VARIABLE     = 14,
-    FUNCTION     = 15,
-    NOT_A_NUMBER = 17,
-    INFINITE     = 18,
-    SYNTAX_ERROR = 19,
-    OCTAL        = 20,
-    CLASS        = 21,
-    SPACE        = 22,
-    BINARY_DATA  = 23,
-    BIGNUM       = 24,
-    INTEGER      = 25,
-    BASE64       = 26,
-    HTTP_ERROR   = 27,
-    UNKNOWN      =-1
-};
-
 struct PropertyDescriptor {
     enum class Access {
         READ_ONLY,
@@ -120,12 +90,12 @@ struct PropertyDescriptor {
     Access access = Access::READ_WRITE;
     bool hasGetter = false;
     bool hasSetter = false;
-    JUSTCFunction getter;
-    JUSTCFunction setter;
-    Value* defaultValue;
+    std::function<Value()> getter;
+    std::function<void(const Value&)> setter;
+    Value defaultValue;
     
     PropertyDescriptor() = default;
-    PropertyDescriptor(Value* val) : defaultValue(val), access(Access::READ_WRITE) {}
+    PropertyDescriptor(Value val) : defaultValue(val), access(Access::READ_WRITE) {}
 };
 
 struct ClassInfo {
@@ -140,7 +110,7 @@ struct ClassInfo {
     struct Property {
         std::string name;
         DataType type = DataType::UNKNOWN;
-        Value* defaultValue;
+        Value defaultValue;
         bool isStatic = false;
         bool isReadOnly = false;
         enum Access { PUBLIC, PRIVATE } access = PUBLIC;
@@ -221,8 +191,6 @@ struct ClassInfo {
     }
 };
 
-using JUSTCFunction = std::pair<Parser, Value*>;
-
 struct ObjectContext {
     uint64_t id = 0;
     uint64_t classId = 0;
@@ -235,8 +203,8 @@ struct ObjectContext {
     std::unordered_map<std::string, Value> instanceData;
     std::unordered_map<std::string, Value> privateData;
     
-    std::unordered_map<std::string, JUSTCFunction> customGetters;
-    std::unordered_map<std::string, JUSTCFunction> customSetters;
+    std::unordered_map<std::string, std::function<Value()>> customGetters;
+    std::unordered_map<std::string, std::function<void(const Value&)>> customSetters;
     
     bool allowJavaScript;
     bool allowLuau;
@@ -250,7 +218,7 @@ struct ObjectContext {
     Value getProperty(const std::string& name) const {
         auto getterIt = customGetters.find(name);
         if (getterIt != customGetters.end()) {
-            //return getterIt->second();
+            return getterIt->second();
         }
         
         auto dataIt = instanceData.find(name);
@@ -276,7 +244,7 @@ struct ObjectContext {
     void setProperty(const std::string& name, const Value& value) {
         auto setterIt = customSetters.find(name);
         if (setterIt != customSetters.end()) {
-            //setterIt->second(value);
+            setterIt->second(value);
             return;
         }
         
@@ -336,6 +304,35 @@ struct ClassDef {
     std::vector<ConstructorDef> constructors;
     size_t startPos = 0;
     size_t endPos = 0;
+};
+
+enum class DataType {
+    JUSTC_OBJECT =  0,
+    NUMBER       =  1,
+    STRING       =  2,
+    LINK         =  3,
+    BOOLEAN      =  4,
+    JSON_OBJECT  =  5,
+    JSON_ARRAY   =  6,
+    NULL_TYPE    =  7,
+    HEXADECIMAL  =  9,
+    BINARY       = 11,
+    PATH         = 12,
+    ERROR        = 13,
+    VARIABLE     = 14,
+    FUNCTION     = 15,
+    NOT_A_NUMBER = 17,
+    INFINITE     = 18,
+    SYNTAX_ERROR = 19,
+    OCTAL        = 20,
+    CLASS        = 21,
+    SPACE        = 22,
+    BINARY_DATA  = 23,
+    BIGNUM       = 24,
+    INTEGER      = 25,
+    BASE64       = 26,
+    HTTP_ERROR   = 27,
+    UNKNOWN      =-1
 };
 
 inline std::string dataTypeToString(DataType type) {
@@ -609,8 +606,8 @@ struct PropertyDescriptor {
     Access access = Access::READ_WRITE;
     bool hasGetter = false;
     bool hasSetter = false;
-    JUSTCFunction getter;
-    JUSTCFunction setter;
+    std::function<Value()> getter;
+    std::function<void(const Value&)> setter;
     Value defaultValue;
     
     PropertyDescriptor() = default;
@@ -714,12 +711,12 @@ struct ObjectInstance {
     std::shared_ptr<ClassInfo> classInfo;
     std::unordered_map<std::string, Value> instanceData;
     std::unordered_map<std::string, Value> privateData;
-    std::unordered_map<std::string, JUSTCFunction> customGetters;
-    std::unordered_map<std::string, JUSTCFunction> customSetters;
+    std::unordered_map<std::string, std::function<Value()>> customGetters;
+    std::unordered_map<std::string, std::function<void(const Value&)>> customSetters;
     std::weak_ptr<ObjectContext> context;
     
-    JUSTCFunction getter;
-    JUSTCFunction setter;
+    std::function<Value(const std::string&)> getter;
+    std::function<void(const std::string&, const Value&)> setter;
 };
 
 struct ClassPropertyDef {
