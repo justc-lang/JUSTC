@@ -75,121 +75,6 @@ SOFTWARE.
 
 struct Value;
 class Parser;
-struct ClassInfo;
-struct ObjectContext;
-struct PropertyDescriptor;
-
-struct PropertyDescriptor {
-    enum class Access {
-        READ_ONLY,
-        WRITE_ONLY,
-        READ_WRITE,
-        PRIVATE
-    };
-    
-    Access access = Access::READ_WRITE;
-    bool hasGetter = false;
-    bool hasSetter = false;
-    std::function<Value()> getter;
-    std::function<void(const Value&)> setter;
-    Value defaultValue;
-    
-    PropertyDescriptor() = default;
-    PropertyDescriptor(Value val) : defaultValue(val), access(Access::READ_WRITE) {}
-};
-
-struct ClassInfo {
-    uint64_t id = 0;
-    std::string name;
-    bool isAbstract = false;
-    bool isIsolated = false;
-    uint64_t parentClassId = 0;
-    std::vector<uint64_t> interfaceIds;
-    std::vector<std::string> interfaceNames;
-    
-    struct Property {
-        std::string name;
-        DataType type = DataType::UNKNOWN;
-        Value defaultValue;
-        bool isStatic = false;
-        bool isReadOnly = false;
-        enum Access { PUBLIC, PRIVATE } access = PUBLIC;
-        
-        bool hasGetter = false;
-        bool hasSetter = false;
-        std::string getterBody;
-        std::string setterBody;
-        size_t startPos = 0;
-    };
-    std::unordered_map<std::string, Property> properties;
-    std::unordered_map<std::string, Property> staticProperties;
-    
-    struct Method {
-        std::string name;
-        std::vector<std::pair<std::string, DataType>> params;
-        std::vector<Value> defaultValues;
-        DataType returnType = DataType::UNKNOWN;
-        bool isStatic = false;
-        bool isAbstract = false;
-        enum Access { PUBLIC, PRIVATE } access = PUBLIC;
-        std::string body;
-        size_t startPos = 0;
-    };
-    std::unordered_map<std::string, Method> methods;
-    std::unordered_map<std::string, Method> staticMethods;
-    
-    struct Constructor {
-        std::vector<std::pair<std::string, DataType>> params;
-        std::vector<Value> defaultValues;
-        std::string body;
-        size_t startPos = 0;
-        DataType returnType = DataType::JUSTC_OBJECT;
-    };
-    std::vector<Constructor> constructors;
-    
-    struct Destructor {
-        std::string body;
-        size_t startPos = 0;
-    };
-    Destructor destructor;
-    
-    std::shared_ptr<ClassInfo> getParent() const {
-        if (parentClassId > 0) {
-            return ::getClass(parentClassId);
-        }
-        return nullptr;
-    }
-    
-    bool hasMethod(const std::string& name) const {
-        if (methods.find(name) != methods.end()) return true;
-        auto parent = getParent();
-        if (parent) return parent->hasMethod(name);
-        return false;
-    }
-    
-    Method getMethod(const std::string& name) const {
-        auto it = methods.find(name);
-        if (it != methods.end()) return it->second;
-        auto parent = getParent();
-        if (parent) return parent->getMethod(name);
-        return Method{};
-    }
-    
-    bool hasProperty(const std::string& name) const {
-        if (properties.find(name) != properties.end()) return true;
-        auto parent = getParent();
-        if (parent) return parent->hasProperty(name);
-        return false;
-    }
-    
-    Property getProperty(const std::string& name) const {
-        auto it = properties.find(name);
-        if (it != properties.end()) return it->second;
-        auto parent = getParent();
-        if (parent) return parent->getProperty(name);
-        return Property{};
-    }
-};
 
 struct ObjectContext {
     uint64_t id = 0;
@@ -257,53 +142,6 @@ struct ObjectContext {
         
         instanceData[name] = value;
     }
-};
-
-struct ClassPropertyDef {
-    std::string name;
-    DataType type = DataType::UNKNOWN;
-    Value defaultValue;
-    bool isStatic = false;
-    bool isReadOnly = false;
-    enum Access { PUBLIC, PRIVATE, PROTECTED } access = PUBLIC;
-    bool hasGetter = false;
-    bool hasSetter = false;
-    std::string getterBody;
-    std::string setterBody;
-    size_t startPos = 0;
-};
-
-struct ClassMethodDef {
-    std::string name;
-    std::vector<std::pair<std::string, DataType>> params;
-    std::vector<Value> defaultValues;
-    DataType returnType = DataType::UNKNOWN;
-    bool isStatic = false;
-    bool isAbstract = false;
-    bool isOverride = false;
-    enum Access { PUBLIC, PRIVATE, PROTECTED } access = PUBLIC;
-    std::string body;
-    size_t startPos = 0;
-};
-
-struct ClassDef {
-    std::string name;
-    std::string parentName;
-    uint64_t parentClassId = 0;
-    std::vector<std::string> interfaces;
-    bool isAbstract = false;
-    std::vector<ClassPropertyDef> properties;
-    std::vector<ClassMethodDef> methods;
-    std::vector<ClassMethodDef> staticMethods;
-    struct ConstructorDef {
-        std::vector<std::pair<std::string, DataType>> params;
-        std::vector<Value> defaultValues;
-        std::string body;
-        size_t startPos = 0;
-    };
-    std::vector<ConstructorDef> constructors;
-    size_t startPos = 0;
-    size_t endPos = 0;
 };
 
 enum class DataType {
@@ -520,6 +358,227 @@ struct NumericValue {
             case NumericType::UINT32: case NumericType::CUINT32: return sizeof(uint32_t);
             case NumericType::UINT64: case NumericType::CUINT64: return sizeof(uint64_t);
             default: return sizeof(double);
+        }
+    }
+};
+
+struct FunctionInfo {
+    std::string code;
+    std::vector<std::string> paramNames;
+    std::vector<DataType> paramTypes;
+    std::vector<struct Value> defaultValues;
+    bool hasVarArgs;
+    bool isIsolated;
+
+    FunctionInfo() : hasVarArgs(false), isIsolated(false) {}
+
+    template <class Archive>
+    void serialize(Archive& archive) {
+        std::vector<int> paramTypesInt;
+        if (Archive::is_loading::value) {
+            archive(paramTypesInt);
+            paramTypes.resize(paramTypesInt.size());
+            for (size_t i = 0; i < paramTypesInt.size(); ++i) {
+                paramTypes[i] = static_cast<DataType>(paramTypesInt[i]);
+            }
+        } else {
+            paramTypesInt.resize(paramTypes.size());
+            for (size_t i = 0; i < paramTypes.size(); ++i) {
+                paramTypesInt[i] = static_cast<int>(paramTypes[i]);
+            }
+            archive(paramTypesInt);
+        }
+        
+        archive(
+            code,
+            paramNames,
+            defaultValues,
+            hasVarArgs,
+            isIsolated
+        );
+    }
+};
+
+enum class VariableType : uint8_t {
+    VARIABLE = 0,
+    GLOBAL = 1,
+    LOCAL = 2
+};
+
+struct Value {
+    DataType type;
+
+    union {
+        double number_value;
+        bool boolean_value;
+    };
+    std::string string_value;
+    std::shared_ptr<void> complex_value;
+    std::string name;
+    std::unordered_map<std::string, Value> object_value;
+    std::vector<unsigned char> binary_data;
+
+    bool isVariable;
+    std::string variable;
+    VariableType varType;
+    bool isConst;
+
+    std::shared_ptr<ObjectContext> object_context;
+    std::unordered_map<std::string, Value> properties;
+    std::vector<Value> array_elements;
+    DataType object_type;
+
+    FunctionInfo function_info;
+    std::shared_ptr<ObjectContext> closure_context;
+
+    bool native;
+    
+    std::shared_ptr<NumericValue> numeric_data;
+
+    uint64_t classInstanceId = 0;
+    bool isClassInstance = false;
+
+    Value() : type(DataType::UNKNOWN), number_value(0), name("unknown"), object_type(DataType::UNKNOWN), native(false), isVariable(false), varType(VariableType::VARIABLE) {}
+    Value(DataType t) : type(t), number_value(0), name(dataTypeToString(t)), object_type(DataType::UNKNOWN), native(false), isVariable(false), varType(VariableType::VARIABLE) {}
+    Value(DataType t, std::string s) : type(t), string_value(s), name(dataTypeToString(t)), object_type(DataType::UNKNOWN), native(false), isVariable(false), varType(VariableType::VARIABLE) {}
+
+    std::string toString() const;
+    std::string toIdentifier() const;
+    double toNumber() const;
+    bool toBoolean() const;
+
+    std::wstring toWString() const {
+        try {
+            return std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(string_value);
+        } catch (...) {
+            return L"";
+        }
+    }
+
+    bool isObject() const {
+        return type == DataType::JUSTC_OBJECT ||
+               type == DataType::JSON_OBJECT ||
+               type == DataType::JSON_ARRAY;
+    }
+    Value* getProperty(const std::string& name) {
+        if (properties.find(name) != properties.end()) {
+            return &properties[name];
+        }
+        return nullptr;
+    }
+    Value* getArrayElement(size_t index) {
+        if (type == DataType::JSON_ARRAY && index < array_elements.size()) {
+            return &array_elements[index];
+        }
+        return nullptr;
+    }
+
+    Value getProperty(const std::string& name, Value placeholder) {
+        if (properties.find(name) != properties.end()) {
+            return properties[name];
+        }
+        return placeholder;
+    }
+    Value getProperty(const std::string& name, Value placeholder) const {
+        auto it = properties.find(name);
+        if (it != properties.end()) {
+            return it->second;
+        }
+        return placeholder;
+    }
+
+    static Value createNumber(double num);
+    static Value createString(const std::string& str);
+    static Value createBoolean(bool b);
+    static Value createNull();
+    static Value createLink(const std::string& link);
+    static Value createPath(const std::string& path);
+    static Value createVariable(const std::string& varName);
+    static Value createHexadecimal(double num);
+    static Value createBinary(double num);
+    static Value createOctal(double num);
+    static Value createBinaryData(const std::vector<unsigned char>& data);
+    static Value createJustcObject(const std::shared_ptr<ObjectContext>& context);
+    static Value createJsonObject(const std::unordered_map<std::string, Value>& obj);
+    static Value createJsonArray(const std::vector<Value>& arr);
+
+    static Value createString(const std::wstring& wstr) {
+        Value result;
+        result.type = DataType::STRING;
+        try {
+            result.string_value = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(wstr);
+            result.name = "\"" + result.string_value + "\"";
+        } catch (...) {
+            result.string_value = "";
+            result.name = "\"\"";
+        }
+        return result;
+    }
+
+    template<typename T>
+    static Value createNumberWithType(T num, NumericType numType);
+    
+    template<typename T>
+    T getNumericValue() const {
+        if (numeric_data) {
+            return numeric_data->get<T>();
+        }
+        return static_cast<T>(number_value);
+    }
+    
+    NumericType getNumericType() const {
+        if (numeric_data) {
+            return numeric_data->type;
+        }
+        return NumericType::FLOAT64;
+    }
+    
+    double toDouble() const {
+        if (numeric_data) {
+            return numeric_data->value;
+        }
+        return number_value;
+    }
+    
+    std::string toNumericString() const;
+
+    template <class Archive>
+    void serialize(Archive& archive) {
+        int typeInt = static_cast<int>(type);
+        archive(typeInt);
+        type = static_cast<DataType>(typeInt);
+
+        switch (type) {
+            case DataType::NUMBER:
+            case DataType::HEXADECIMAL:
+            case DataType::BINARY:
+            case DataType::OCTAL:
+                archive(number_value);
+                break;
+            case DataType::STRING:
+            case DataType::LINK:
+            case DataType::PATH:
+            case DataType::VARIABLE:
+                archive(string_value);
+                break;
+            case DataType::BOOLEAN:
+                archive(boolean_value);
+                break;
+            case DataType::JSON_OBJECT:
+            case DataType::JUSTC_OBJECT:
+                archive(properties);
+                break;
+            case DataType::JSON_ARRAY:
+                archive(array_elements);
+                break;
+            case DataType::FUNCTION:
+                archive(name, string_value, function_info);
+                break;
+            case DataType::BINARY_DATA:
+                archive(binary_data);
+                break;
+            default:
+                break;
         }
     }
 };
@@ -1112,224 +1171,3 @@ public:
 };
 
 #endif
-
-struct FunctionInfo {
-    std::string code;
-    std::vector<std::string> paramNames;
-    std::vector<DataType> paramTypes;
-    std::vector<struct Value> defaultValues;
-    bool hasVarArgs;
-    bool isIsolated;
-
-    FunctionInfo() : hasVarArgs(false), isIsolated(false) {}
-
-    template <class Archive>
-    void serialize(Archive& archive) {
-        std::vector<int> paramTypesInt;
-        if (Archive::is_loading::value) {
-            archive(paramTypesInt);
-            paramTypes.resize(paramTypesInt.size());
-            for (size_t i = 0; i < paramTypesInt.size(); ++i) {
-                paramTypes[i] = static_cast<DataType>(paramTypesInt[i]);
-            }
-        } else {
-            paramTypesInt.resize(paramTypes.size());
-            for (size_t i = 0; i < paramTypes.size(); ++i) {
-                paramTypesInt[i] = static_cast<int>(paramTypes[i]);
-            }
-            archive(paramTypesInt);
-        }
-        
-        archive(
-            code,
-            paramNames,
-            defaultValues,
-            hasVarArgs,
-            isIsolated
-        );
-    }
-};
-
-enum class VariableType : uint8_t {
-    VARIABLE = 0,
-    GLOBAL = 1,
-    LOCAL = 2
-};
-
-struct Value {
-    DataType type;
-
-    union {
-        double number_value;
-        bool boolean_value;
-    };
-    std::string string_value;
-    std::shared_ptr<void> complex_value;
-    std::string name;
-    std::unordered_map<std::string, Value> object_value;
-    std::vector<unsigned char> binary_data;
-
-    bool isVariable;
-    std::string variable;
-    VariableType varType;
-    bool isConst;
-
-    std::shared_ptr<ObjectContext> object_context;
-    std::unordered_map<std::string, Value> properties;
-    std::vector<Value> array_elements;
-    DataType object_type;
-
-    FunctionInfo function_info;
-    std::shared_ptr<ObjectContext> closure_context;
-
-    bool native;
-    
-    std::shared_ptr<NumericValue> numeric_data;
-
-    uint64_t classInstanceId = 0;
-    bool isClassInstance = false;
-
-    Value() : type(DataType::UNKNOWN), number_value(0), name("unknown"), object_type(DataType::UNKNOWN), native(false), isVariable(false), varType(VariableType::VARIABLE) {}
-    Value(DataType t) : type(t), number_value(0), name(dataTypeToString(t)), object_type(DataType::UNKNOWN), native(false), isVariable(false), varType(VariableType::VARIABLE) {}
-    Value(DataType t, std::string s) : type(t), string_value(s), name(dataTypeToString(t)), object_type(DataType::UNKNOWN), native(false), isVariable(false), varType(VariableType::VARIABLE) {}
-
-    std::string toString() const;
-    std::string toIdentifier() const;
-    double toNumber() const;
-    bool toBoolean() const;
-
-    std::wstring toWString() const {
-        try {
-            return std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(string_value);
-        } catch (...) {
-            return L"";
-        }
-    }
-
-    bool isObject() const {
-        return type == DataType::JUSTC_OBJECT ||
-               type == DataType::JSON_OBJECT ||
-               type == DataType::JSON_ARRAY;
-    }
-    Value* getProperty(const std::string& name) {
-        if (properties.find(name) != properties.end()) {
-            return &properties[name];
-        }
-        return nullptr;
-    }
-    Value* getArrayElement(size_t index) {
-        if (type == DataType::JSON_ARRAY && index < array_elements.size()) {
-            return &array_elements[index];
-        }
-        return nullptr;
-    }
-
-    Value getProperty(const std::string& name, Value placeholder) {
-        if (properties.find(name) != properties.end()) {
-            return properties[name];
-        }
-        return placeholder;
-    }
-    Value getProperty(const std::string& name, Value placeholder) const {
-        auto it = properties.find(name);
-        if (it != properties.end()) {
-            return it->second;
-        }
-        return placeholder;
-    }
-
-    static Value createNumber(double num);
-    static Value createString(const std::string& str);
-    static Value createBoolean(bool b);
-    static Value createNull();
-    static Value createLink(const std::string& link);
-    static Value createPath(const std::string& path);
-    static Value createVariable(const std::string& varName);
-    static Value createHexadecimal(double num);
-    static Value createBinary(double num);
-    static Value createOctal(double num);
-    static Value createBinaryData(const std::vector<unsigned char>& data);
-    static Value createJustcObject(const std::shared_ptr<ObjectContext>& context);
-    static Value createJsonObject(const std::unordered_map<std::string, Value>& obj);
-    static Value createJsonArray(const std::vector<Value>& arr);
-
-    static Value createString(const std::wstring& wstr) {
-        Value result;
-        result.type = DataType::STRING;
-        try {
-            result.string_value = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(wstr);
-            result.name = "\"" + result.string_value + "\"";
-        } catch (...) {
-            result.string_value = "";
-            result.name = "\"\"";
-        }
-        return result;
-    }
-
-    template<typename T>
-    static Value createNumberWithType(T num, NumericType numType);
-    
-    template<typename T>
-    T getNumericValue() const {
-        if (numeric_data) {
-            return numeric_data->get<T>();
-        }
-        return static_cast<T>(number_value);
-    }
-    
-    NumericType getNumericType() const {
-        if (numeric_data) {
-            return numeric_data->type;
-        }
-        return NumericType::FLOAT64;
-    }
-    
-    double toDouble() const {
-        if (numeric_data) {
-            return numeric_data->value;
-        }
-        return number_value;
-    }
-    
-    std::string toNumericString() const;
-
-    template <class Archive>
-    void serialize(Archive& archive) {
-        int typeInt = static_cast<int>(type);
-        archive(typeInt);
-        type = static_cast<DataType>(typeInt);
-
-        switch (type) {
-            case DataType::NUMBER:
-            case DataType::HEXADECIMAL:
-            case DataType::BINARY:
-            case DataType::OCTAL:
-                archive(number_value);
-                break;
-            case DataType::STRING:
-            case DataType::LINK:
-            case DataType::PATH:
-            case DataType::VARIABLE:
-                archive(string_value);
-                break;
-            case DataType::BOOLEAN:
-                archive(boolean_value);
-                break;
-            case DataType::JSON_OBJECT:
-            case DataType::JUSTC_OBJECT:
-                archive(properties);
-                break;
-            case DataType::JSON_ARRAY:
-                archive(array_elements);
-                break;
-            case DataType::FUNCTION:
-                archive(name, string_value, function_info);
-                break;
-            case DataType::BINARY_DATA:
-                archive(binary_data);
-                break;
-            default:
-                break;
-        }
-    }
-};

@@ -685,15 +685,3 @@ std::string Utility::stringifyClsIds(ClassInfo clsInf) {
         clsInf->parentClassId > 0 ? (" extends " + uint64ToHexString(clsInf->parentClassId)) : ""
     );
 }
-std::string Utility::stringifyObjIds(const std::shared_ptr<ObjectContext>& objCtx) {
-    if (!objCtx) return "null";
-    return uint64ToHexString(objCtx->id) + std::string(
-        objCtx->classId > 0 ? (" instance of " + uint64ToHexString(objCtx->classId)) : ""
-    );
-}
-std::string Utility::stringifyClsIds(const std::shared_ptr<ClassInfo>& clsInf) {
-    if (!clsInf) return "null";
-    return uint64ToHexString(clsInf->id) + std::string(
-        clsInf->parentClassId > 0 ? (" extends " + uint64ToHexString(clsInf->parentClassId)) : ""
-    );
-}
