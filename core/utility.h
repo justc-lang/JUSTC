@@ -231,9 +231,6 @@ public:
     static bool checkStrings(const Value& left, const Value& right);
     static std::string doubleToString(double value);
     static bool compareValues(const Value& left, const Value& right);
-    static std::string uint64ToHexString(uint64_t num);
-    static std::string stringifyObjIds(ObjectContext objCtx);
-    static std::string stringifyClsIds(ClassInfo clsInf);
 };
 class UnicodeUtility {
 public:

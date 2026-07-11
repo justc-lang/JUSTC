@@ -16,10 +16,6 @@ const monacoJUSTClang = {
             "echo", "log", "logfile", "space", "var",
             "new", "lgt", "goto", "isolated", "if",
             "for", "while", "lambda",
-            "protected", "delete", "destroy", "__gc",
-            "extends", "implements", "interface", 
-            "abstract", "override", "super", "this", 
-            "instanceof", "typeof",
 
             "is", "isn't", "isif", "then", "elseif", "else",
             "isifn't", "elseifn't", "then't", "elsen't",
@@ -57,17 +53,22 @@ const monacoJUSTClang = {
 
         numberBeforeShift: /[\d\w\)\]\}]\s*<<$/,
 
+        luauEmbeddingStart: /(?:^|[^\w\d\)\]\}\s])<<$/,
+
         tokenizer: {
             root: [
                 [/@numberBeforeShift/, { token: '@rematch', next: '@shiftOperator' }],
+                [/@luauEmbeddingStart/, { token: 'keyword.luau', next: '@luauEmbedded', nextEmbedded: 'lua' }],
 
                 [/--.*$/, 'comment'],
                 [/-\{/, { token: 'comment', next: '@multiLineComment' }],
 
-                [/(l|j|c|o|)"/, { token: 'string.quote', bracket: '@open', next: '@string' }],
-                [/(l|j|c|o|)'/, { token: 'string.quote', bracket: '@open', next: '@singleQuoteString' }],
+                [new RegExp(String.fromCharCode(34)), { token: 'string.quote', bracket: '@open', next: '@string' }],
+                [new RegExp(String.fromCharCode(39)), { token: 'string.quote', bracket: '@open', next: '@singleQuoteString' }],
 
                 [/<(?![<\s])/, { token: 'string.link', next: '@link' }],
+
+                [/\{\{/, { token: 'keyword.js', next: '@jsEmbedded', nextEmbedded: 'javascript' }],
 
                 [/0[xX][0-9a-fA-F_]+(B|b|)/, 'number.hex'],
                 [/0[bB][01_]+(B|b|)/, 'number.binary'],
@@ -132,6 +133,16 @@ const monacoJUSTClang = {
                 [/[^-{}]+/, 'comment'],
                 [/-\}/, { token: 'comment', next: '@pop' }],
                 [/[-{}]/, 'comment']
+            ],
+
+            jsEmbedded: [
+                [/\}\}/, { token: 'keyword.js', next: '@pop', nextEmbedded: '@pop' }],
+                [/./, '']
+            ],
+
+            luauEmbedded: [
+                [/>>/, { token: 'keyword.luau', next: '@pop', nextEmbedded: '@pop' }],
+                [/./, '']
             ],
 
             whitespace: [

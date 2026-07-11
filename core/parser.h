@@ -77,71 +77,15 @@ struct Value;
 class Parser;
 
 struct ObjectContext {
-    uint64_t id = 0;
-    uint64_t classId = 0;
-    std::shared_ptr<ClassInfo> classInfo;
     std::shared_ptr<Parser> parser;
-    
     std::string outputMode;
     std::vector<std::string> outputVariables;
     std::unordered_map<std::string, Value> variables;
-    std::unordered_map<std::string, Value> instanceData;
-    std::unordered_map<std::string, Value> privateData;
-    
-    std::unordered_map<std::string, std::function<Value()>> customGetters;
-    std::unordered_map<std::string, std::function<void(const Value&)>> customSetters;
-    
     bool allowJavaScript;
     bool allowLuau;
-    bool isClassInstance = false;
 
     std::shared_ptr<ObjectContext> parent;
     std::unordered_map<std::string, std::shared_ptr<ObjectContext>> childObjects;
-    
-    ObjectContext() : allowJavaScript(true), allowLuau(true) {}
-    
-    Value getProperty(const std::string& name) const {
-        auto getterIt = customGetters.find(name);
-        if (getterIt != customGetters.end()) {
-            return getterIt->second();
-        }
-        
-        auto dataIt = instanceData.find(name);
-        if (dataIt != instanceData.end()) {
-            return dataIt->second;
-        }
-        
-        auto varIt = variables.find(name);
-        if (varIt != variables.end()) {
-            return varIt->second;
-        }
-        
-        if (classInfo) {
-            auto prop = classInfo->getProperty(name);
-            if (prop.access != ClassInfo::Property::PRIVATE) {
-                return prop.defaultValue;
-            }
-        }
-        
-        return Value::createNull();
-    }
-    
-    void setProperty(const std::string& name, const Value& value) {
-        auto setterIt = customSetters.find(name);
-        if (setterIt != customSetters.end()) {
-            setterIt->second(value);
-            return;
-        }
-        
-        if (classInfo) {
-            auto prop = classInfo->getProperty(name);
-            if (prop.access == ClassInfo::Property::PRIVATE) {
-                throw std::runtime_error("Property '" + name + "' is private");
-            }
-        }
-        
-        instanceData[name] = value;
-    }
 };
 
 enum class DataType {
@@ -435,9 +379,6 @@ struct Value {
     
     std::shared_ptr<NumericValue> numeric_data;
 
-    uint64_t classInstanceId = 0;
-    bool isClassInstance = false;
-
     Value() : type(DataType::UNKNOWN), number_value(0), name("unknown"), object_type(DataType::UNKNOWN), native(false), isVariable(false), varType(VariableType::VARIABLE) {}
     Value(DataType t) : type(t), number_value(0), name(dataTypeToString(t)), object_type(DataType::UNKNOWN), native(false), isVariable(false), varType(VariableType::VARIABLE) {}
     Value(DataType t, std::string s) : type(t), string_value(s), name(dataTypeToString(t)), object_type(DataType::UNKNOWN), native(false), isVariable(false), varType(VariableType::VARIABLE) {}
@@ -653,175 +594,6 @@ struct Mutated {
 };
 
 using Function = std::function<Value(const std::vector<Value>&)>;
-
-struct PropertyDescriptor {
-    enum class Access {
-        READ_ONLY,
-        WRITE_ONLY,
-        READ_WRITE,
-        PRIVATE
-    };
-    
-    Access access = Access::READ_WRITE;
-    bool hasGetter = false;
-    bool hasSetter = false;
-    std::function<Value()> getter;
-    std::function<void(const Value&)> setter;
-    Value defaultValue;
-    
-    PropertyDescriptor() = default;
-    PropertyDescriptor(Value val) : defaultValue(val), access(Access::READ_WRITE) {}
-};
-
-struct ClassInfo {
-    uint64_t id = 0;
-    std::string name;
-    bool isAbstract = false;
-    bool isIsolated = false;
-    uint64_t parentClassId = 0;
-    std::vector<uint64_t> interfaceIds;
-    std::vector<std::string> interfaceNames;
-    
-    struct Property {
-        std::string name;
-        DataType type = DataType::UNKNOWN;
-        Value defaultValue;
-        bool isStatic = false;
-        bool isReadOnly = false;
-        enum Access { PUBLIC, PRIVATE } access = PUBLIC;
-        
-        bool hasGetter = false;
-        bool hasSetter = false;
-        std::string getterBody;
-        std::string setterBody;
-        size_t startPos;
-    };
-    std::unordered_map<std::string, Property> properties;
-    std::unordered_map<std::string, Property> staticProperties;
-    
-    struct Method {
-        std::string name;
-        std::vector<std::pair<std::string, DataType>> params;
-        std::vector<Value> defaultValues;
-        DataType returnType = DataType::UNKNOWN;
-        bool isStatic = false;
-        bool isAbstract = false;
-        enum Access { PUBLIC, PRIVATE } access = PUBLIC;
-        std::string body;
-        size_t startPos;
-    };
-    std::unordered_map<std::string, Method> methods;
-    std::unordered_map<std::string, Method> staticMethods;
-    
-    struct Constructor {
-        std::vector<std::pair<std::string, DataType>> params;
-        std::vector<Value> defaultValues;
-        std::string body;
-        size_t startPos;
-        DataType returnType = DataType::JUSTC_OBJECT;
-    };
-    std::vector<Constructor> constructors;
-    
-    struct Destructor {
-        std::string body;
-        size_t startPos;
-    };
-    Destructor destructor;
-    
-    std::shared_ptr<ClassInfo> getParent() const {
-        if (parentClassId > 0) {
-            return getClass(parentClassId);
-        }
-        return nullptr;
-    }
-    
-    bool hasMethod(const std::string& name) const {
-        if (methods.find(name) != methods.end()) return true;
-        auto parent = getParent();
-        if (parent) return parent->hasMethod(name);
-        return false;
-    }
-    
-    Method getMethod(const std::string& name) const {
-        auto it = methods.find(name);
-        if (it != methods.end()) return it->second;
-        auto parent = getParent();
-        if (parent) return parent->getMethod(name);
-        return Method{};
-    }
-    
-    bool hasProperty(const std::string& name) const {
-        if (properties.find(name) != properties.end()) return true;
-        auto parent = getParent();
-        if (parent) return parent->hasProperty(name);
-        return false;
-    }
-    
-    Property getProperty(const std::string& name) const {
-        auto it = properties.find(name);
-        if (it != properties.end()) return it->second;
-        auto parent = getParent();
-        if (parent) return parent->getProperty(name);
-        return Property{};
-    }
-};
-
-struct ObjectInstance {
-    std::shared_ptr<ClassInfo> classInfo;
-    std::unordered_map<std::string, Value> instanceData;
-    std::unordered_map<std::string, Value> privateData;
-    std::unordered_map<std::string, std::function<Value()>> customGetters;
-    std::unordered_map<std::string, std::function<void(const Value&)>> customSetters;
-    std::weak_ptr<ObjectContext> context;
-    
-    std::function<Value(const std::string&)> getter;
-    std::function<void(const std::string&, const Value&)> setter;
-};
-
-struct ClassPropertyDef {
-    std::string name;
-    DataType type = DataType::UNKNOWN;
-    Value defaultValue;
-    bool isStatic = false;
-    bool isReadOnly = false;
-    enum Access { PUBLIC, PRIVATE, PROTECTED } access = PUBLIC;
-    bool hasGetter = false;
-    bool hasSetter = false;
-    std::string getterBody;
-    std::string setterBody;
-    size_t startPos;
-};
-struct ClassMethodDef {
-    std::string name;
-    std::vector<std::pair<std::string, DataType>> params;
-    std::vector<Value> defaultValues;
-    DataType returnType = DataType::UNKNOWN;
-    bool isStatic = false;
-    bool isAbstract = false;
-    bool isOverride = false;
-    enum Access { PUBLIC, PRIVATE, PROTECTED } access = PUBLIC;
-    std::string body;
-    size_t startPos;
-};
-struct ClassDef {
-    std::string name;
-    std::string parentName;
-    uint64_t parentClassId = 0;
-    std::vector<std::string> interfaces;
-    bool isAbstract = false;
-    std::vector<ClassPropertyDef> properties;
-    std::vector<ClassMethodDef> methods;
-    std::vector<ClassMethodDef> staticMethods;
-    struct ConstructorDef {
-        std::vector<std::pair<std::string, DataType>> params;
-        std::vector<Value> defaultValues;
-        std::string body;
-        size_t startPos;
-    };
-    std::vector<ConstructorDef> constructors;
-    size_t startPos;
-    size_t endPos;
-};
 
 class Parser {
 private:
@@ -1117,25 +889,6 @@ private:
     Value parseJSXElement(const std::string& jsxStr);
     std::string renderJSX(const Value& jsxElement);
 
-    Value parseClassDeclaration(bool isIsolated, std::string className, std::vector<Value> importedContext);
-    Value createInstance(const std::string& className, const std::vector<Value>& args);
-    Value createInstance(uint64_t classId, const std::vector<Value>& args);
-    Value executeMethodBody(const std::string& body, size_t startPos, const std::unordered_map<std::string, Value>* context = nullptr, const std::string& className = "");
-    std::string parseMethodBody();
-    bool isInstanceOf(const Value& obj, uint64_t classId) const;
-    bool isInstanceOf(const Value& obj, const std::string& className) const;
-    std::shared_ptr<ClassInfo> getObjectClass(const Value& obj) const;
-    uint64_t getObjectClassId(const Value& obj) const;
-    std::string getCurrentClassName() const;
-    std::shared_ptr<ObjectContext> getCurrentObjectContext() const;
-    Value wrapObject(uint64_t objectId) const;
-    Value wrapObject(std::shared_ptr<ObjectContext> context) const;
-    Value getObjectProperty(uint64_t objectId, const std::string& name) const;
-    void setObjectProperty(uint64_t objectId, const std::string& name, const Value& value);
-    Value callObjectMethod(uint64_t objectId, const std::string& methodName, const std::vector<Value>& args);
-    uint64_t registerClassInScope(const std::string& name, std::shared_ptr<ClassInfo> classInfo);
-    std::shared_ptr<ClassInfo> getClassInScope(const std::string& name) const;
-
 public:
     static std::string getCurrentTimestamp();
     static Value stringToValue(const std::string& str);
@@ -1158,16 +911,6 @@ public:
     void clearGlobals();
 
     Value ParseJUSTO(const std::string& code);
-    
-    bool isInstanceOf(const Value& obj, uint64_t classId) const;
-    bool isInstanceOf(const Value& obj, const std::string& className) const;
-    std::shared_ptr<ClassInfo> getObjectClass(const Value& obj) const;
-    uint64_t getObjectClassId(const Value& obj) const;
-    Value asObject(const Value& value) const;
-    void deleteObject(const Value& obj);
-    
-    Value registerClass(std::shared_ptr<ClassInfo> classInfo);
-    Value registerClass(std::shared_ptr<ClassDef> classDef);
 };
 
 #endif
