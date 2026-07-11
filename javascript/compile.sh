@@ -213,7 +213,7 @@ core/serializer/xml.hpp core/serializer/yaml.hpp core/utility.h core/import.hpp 
 core/built-in/http/http.hpp core/utility.emscripten.h core/built-in/math/math.hpp core/built-in/binary/binary.hpp core/built-in/s.hpp core/lexer.emscripten.h \
 core/entry/lib.cpp core/entry/lib.hpp LICENSE README.md core/built-in/string/string.hpp core/unicode.hpp core/unicode.emscripten.h core/builtins.h core/global.h \
 core/justo.hpp core/entry/types.hpp core/entry/impl.hpp core/serializer/justo.hpp core/parser/justo.hpp core/cpptypes.h core/justb.hpp core/compiler/justb.hpp \
-core/loader/justb.hpp javascript/core.js javascript/core.d.ts core/just.config.js core/cli.js core/global_fwd.h"
+core/loader/justb.hpp javascript/core.js javascript/core.d.ts core/just.config.js core/cli.js"
 
 OUTPUT_URL="https://just.js.org/justc/$SAFE_DIR"
 
