@@ -379,6 +379,9 @@ std::string Utility::_stringifyValue(const Value& value, int indentLevel) {
             return "nil";
     }
 }
+std::string Utility::_stringifyValue(const Value::Property& value, int indentLevel) {
+    return _stringifyValue(value.value, indentLevel);
+}
 
 std::string Utility::stringifyValue(const Value& value) {
     return "return " + _stringifyValue(value, 0) + " .";

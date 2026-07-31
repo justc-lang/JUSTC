@@ -39,6 +39,7 @@ SOFTWARE.
 class Utility {
 private:
     static std::string _stringifyValue(const Value& value, int indentLevel = 0);
+    static std::string _stringifyValue(const Value::Property& value, int indentLevel = 0);
 public:
     template<typename Op>
     static inline std::string stringMath(
