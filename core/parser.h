@@ -487,36 +487,11 @@ struct Value {
                type == DataType::JSON_OBJECT ||
                type == DataType::JSON_ARRAY;
     }
-    Property* getProperty(const std::string& name) {
-        if (properties.find(name) != properties.end()) {
-            return &properties[name];
-        }
-        return nullptr;
-    }
-    Value* getArrayElement(size_t index) {
-        if (type == DataType::JSON_ARRAY && index < array_elements.size()) {
-            return &array_elements[index];
-        }
-        return nullptr;
-    }
+    Property* getProperty(const std::string& name);
+    Value* getArrayElement(size_t index);
 
-    Property getProperty(const std::string& name, Value placeholder) {
-        if (properties.find(name) != properties.end()) {
-            return properties[name];
-        }
-        Property prop;
-        prop.value = placeholder;
-        return prop;
-    }
-    Property getProperty(const std::string& name, Value placeholder) const {
-        auto it = properties.find(name);
-        if (it != properties.end()) {
-            return it->second;
-        }
-        Property prop;
-        prop.value = placeholder;
-        return prop;
-    }
+    Property getProperty(const std::string& name, Value placeholder);
+    Property getProperty(const std::string& name, Value placeholder) const;
 
     static Value createNumber(double num);
     static Value createString(const std::string& str);
@@ -639,6 +614,35 @@ struct Value::Property {
         archive(value);
     }
 };
+inline Value::Property* Value::getProperty(const std::string& name) {
+    if (properties.find(name) != properties.end()) {
+        return &properties[name];
+    }
+    return nullptr;
+}
+inline Value* Value::getArrayElement(size_t index) {
+    if (type == DataType::JSON_ARRAY && index < array_elements.size()) {
+        return &array_elements[index];
+    }
+    return nullptr;
+}
+inline Value::Property Value::getProperty(const std::string& name, Value placeholder) {
+    if (properties.find(name) != properties.end()) {
+        return properties[name];
+    }
+    Property prop;
+    prop.value = placeholder;
+    return prop;
+}
+inline Value::Property Value::getProperty(const std::string& name, Value placeholder) const {
+    auto it = properties.find(name);
+    if (it != properties.end()) {
+        return it->second;
+    }
+    Property prop;
+    prop.value = placeholder;
+    return prop;
+}
 
 struct LogEntry {
     std::string type;

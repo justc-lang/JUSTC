@@ -297,7 +297,7 @@ inline std::string valueToJUSTO(const Value& value) {
             for (const auto& [key, val] : value.properties) {
                 if (!first) result += ";";
                 first = false;
-                result += key + ":" + valueToJUSTO(val);
+                result += key + ":" + valueToJUSTO(val.value);
             }
             result += "}";
             return result;

@@ -389,7 +389,7 @@ Value Value::createJsonObject(const std::unordered_map<std::string, Value>& obj)
     Value result;
     result.type = DataType::JSON_OBJECT;
     result.object_type = DataType::JSON_OBJECT;
-    result.properties = obj;
+    result.properties = pmap(obj);
     result.name = "[Object]";
     return result;
 }
@@ -676,7 +676,7 @@ void Parser::builtinObject(const std::string& name, std::unordered_map<std::stri
     objCtx->outputVariables = outputVars;
     Value objVal = Value::createJustcObject(objCtx);
     objVal.name = name;
-    objVal.properties = props;
+    objVal.properties = pmap(props);
     objVal.type = DataType::JSON_OBJECT;
     variables[name] = objVal;
     constVars[name] = true;
@@ -1596,9 +1596,9 @@ ASTNode Parser::parseImportCommand() {
                 throw std::runtime_error("Expected object for import options at " + Utility::position(currentToken().start, input) + ".");
             }
 
-            bool optionsExecute     = v(optionsVal.getProperty("Execute",   booleanToValue(importExecute))).toBoolean();
-            bool optionsJavaScript  = v(optionsVal.getProperty("JavaScript",booleanToValue(importJavaScript))).toBoolean();
-            bool optionsLuau        = v(optionsVal.getProperty("Luau",      booleanToValue(importLuau))).toBoolean();
+            bool optionsExecute     = this->v(optionsVal.getProperty("Execute",   booleanToValue(importExecute))).toBoolean();
+            bool optionsJavaScript  = this->v(optionsVal.getProperty("JavaScript",booleanToValue(importJavaScript))).toBoolean();
+            bool optionsLuau        = this->v(optionsVal.getProperty("Luau",      booleanToValue(importLuau))).toBoolean();
 
             if (!importExecute && optionsExecute) {
                 throw std::runtime_error("Attempt to execute JUSTC at " + Utility::position(currentToken().start, input) + ".");
@@ -6422,9 +6422,9 @@ std::string Parser::renderJSX(const Value& jsxElement) {
         return jsxElement.toString();
     }
     
-    std::string type = v(jsxElement.getProperty("type", Value::createString(""))).toString();
-    Value props = v(jsxElement.getProperty("props", Value::createNull()));
-    Value children = v(jsxElement.getProperty("children", Value::createNull()));
+    std::string type = this->v(jsxElement.getProperty("type", Value::createString(""))).toString();
+    Value props = this->v(jsxElement.getProperty("props", Value::createNull()));
+    Value children = this->v(jsxElement.getProperty("children", Value::createNull()));
     
     if (type.empty()) return "";
     
@@ -6452,7 +6452,7 @@ std::string Parser::renderJSX(const Value& jsxElement) {
                                 i++;
                             }
                         }
-                        result += cssProp + ":" + val.toString();
+                        result += cssProp + ":" + v(val).toString();
                     }
                     result += "\"";
                 } else {
@@ -6494,6 +6494,7 @@ std::string Parser::renderJSX(const Value& jsxElement) {
     
     if (children.type == DataType::JSON_ARRAY) {
         for (const auto& child_ : children.array_elements) {
+            const Value& child = v(child_);
             switch (child.type) {
                 case DataType::STRING:
                     result += child.string_value;
@@ -6513,13 +6514,13 @@ std::string Parser::renderJSX(const Value& jsxElement) {
     return result;
 }
 
-Value Parser::p2v(const Value::Property& property, size_t startPos, bool doExecute) { // propertyToValue
+Value Parser::p2v(const Value::Property& property) { // propertyToValue
     switch (property.access) {
         case Access::READ_WRITE:
         case Access::READ_ONLY: {
             if (property.hasGetter && property.getter) {
                 Value getter = *property.getter;
-                if (getter.type == DataType::FUNCTION && doExecute) return callFunction(getter, {}, startPos, doExecute);
+                if (getter.type == DataType::FUNCTION && doExecute) return callFunction(getter, {}, position, doExecute);
                 else if (doExecute) throw std::runtime_error("Invalid getter type.");
             }
             return property.value;
@@ -6531,11 +6532,11 @@ Value::Property Parser::v2p(const Value& value, const Access& access, const Valu
     Value::Property prop(value, access);
     if (getter.type == DataType::FUNCTION) {
         prop.hasGetter = true;
-        prop.getterFunc = std::make_shared<Value>(getter);
+        prop.getter = std::make_shared<Value>(getter);
     }
     if (setter.type == DataType::FUNCTION) {
         prop.hasSetter = true;
-        prop.setterFunc = std::make_shared<Value>(setter);
+        prop.setter = std::make_shared<Value>(setter);
     }
     return prop;
 }
