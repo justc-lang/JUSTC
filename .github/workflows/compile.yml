@@ -86,7 +86,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: CMake
+      - name: Build
         run: bash linux/compile.sh "-DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install_root"
       - name: Upload CLI
         if: github.event_name != 'schedule'
