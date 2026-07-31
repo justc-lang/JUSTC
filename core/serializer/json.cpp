@@ -85,7 +85,7 @@ std::string JsonSerializer::valueToJson(const Value& value) {
                 if (!first) ss << ",";
                 first = false;
                 ss << "\"" << escapeJsonString(pair.first) << "\":"
-                   << valueToJson(pair.second);
+                   << valueToJson(pair.second.value);
             }
             ss << "}";
             return ss.str();
