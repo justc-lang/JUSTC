@@ -3983,9 +3983,9 @@ Value Parser::evaluateExpression(const Value& left, const std::string& op, const
         } else if (left.type == DataType::UNKNOWN && right.type == DataType::UNKNOWN) {
             result = booleanToValue(Unicode::EqualsIgnoreCase(left.name, right.name));
         } else {
-            result = Utility::compareValues(left, right);
+            result = booleanToValue(Utility::compareValues(left, right));
         }
-        if (op == "!~=") result = !result;
+        if (op == "!~=") result = booleanToValue(!result.toBoolean());
     }
     
     else if (op == "[" && doExecute) {
