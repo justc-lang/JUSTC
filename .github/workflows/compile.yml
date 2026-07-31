@@ -35,6 +35,8 @@ on:
         required: true
         default: 'development'
         type: string
+  schedule:
+    - cron: '0 0 * * 1,4' # keep cache alive (every mon and thu at 00:00 utc)
 
 env:
   DEFAULT_DIR: 'development'
@@ -80,12 +82,14 @@ jobs:
 
   compile-linux:
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ github.event_name == 'schedule' && 10 || 120 }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: CMake
         run: bash linux/compile.sh "-DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install_root"
       - name: Upload CLI
+        if: github.event_name != 'schedule'
         uses: actions/upload-artifact@v4
         with:
           name: justc-linux-cli
@@ -94,6 +98,7 @@ jobs:
 
   compile-windows:
     runs-on: windows-latest
+    timeout-minutes: ${{ github.event_name == 'schedule' && 10 || 120 }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -198,6 +203,7 @@ jobs:
           }
       
       - name: Build
+        if: github.event_name != 'schedule'
         shell: pwsh
         run: |
           $cores = (Get-CimInstance Win32_ComputerSystem).NumberOfLogicalProcessors
@@ -206,6 +212,7 @@ jobs:
           cmake --build build --config Release -j $jobs
       
       - name: Upload CLI
+        if: github.event_name != 'schedule'
         uses: actions/upload-artifact@v4
         with:
           name: justc-windows-cli
@@ -214,6 +221,7 @@ jobs:
 
   compile-macos:
     runs-on: macos-latest
+    timeout-minutes: ${{ github.event_name == 'schedule' && 10 || 120 }}
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
@@ -234,8 +242,10 @@ jobs:
       - name: Fix QuickJS version conflict
         run: rm -f build/_deps/quickjs-src/version
       - name: Build
+        if: github.event_name != 'schedule'
         run: cmake --build build --config Release
       - name: Upload CLI
+        if: github.event_name != 'schedule'
         uses: actions/upload-artifact@v4
         with:
           name: justc-macos-cli
@@ -245,6 +255,8 @@ jobs:
   test-linux:
     runs-on: ubuntu-latest
     needs: compile-linux
+    timeout-minutes: 3
+    if: github.event_name != 'schedule'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -263,6 +275,8 @@ jobs:
   test-windows:
     runs-on: windows-latest
     needs: compile-windows
+    timeout-minutes: 3
+    if: github.event_name != 'schedule'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -292,6 +306,8 @@ jobs:
   compile-wasm:
     runs-on: ubuntu-latest
     needs: [determine-dirpath, compile-linux, download-luau]
+    if: always() && (github.event_name == 'schedule' || (needs.determine-dirpath.result == 'success' && needs.compile-linux.result == 'success' && needs.download-luau.result == 'success'))
+    timeout-minutes: ${{ github.event_name == 'schedule' && 10 || 120 }}
     outputs:
       dirpath: ${{ steps.compile.outputs.dirpath }}
     steps:
@@ -320,31 +336,38 @@ jobs:
           version: '4.0.19'
           actions-cache-folder: 'emsdk-cache'
       - name: Download compiled files
+        if: github.event_name != 'schedule'
         uses: actions/download-artifact@v4
         with:
           name: justc-linux-cli
           path: ${{ github.workspace }}/downloaded_artifacts
       - name: Install JUSTC to /usr/bin
+        if: github.event_name != 'schedule'
         run: |
           sudo cp ${{ github.workspace }}/downloaded_artifacts/justc /usr/bin/
           sudo chmod +x /usr/bin/justc
       - name: Download compiled Luau
+        if: github.event_name != 'schedule'
         uses: actions/download-artifact@v4
         with:
           name: luau
           path: luau
       - name: Setup Node.js
+        if: github.event_name != 'schedule'
         uses: actions/setup-node@v3
         with:
           node-version: '24.x'
       - name: Compile C++ to WASM
+        if: github.event_name != 'schedule'
         env:
           OUTPUT_DIR: ${{ needs.determine-dirpath.outputs.dirpath }}
         run: bash javascript/compile.sh "${{ needs.determine-dirpath.outputs.dirpath }}"
         id: compile
       - name: Copy LICENSE and README.md
+        if: github.event_name != 'schedule'
         run: cp LICENSE javascript_output/${{ needs.compile-wasm.outputs.dirpath }}/LICENSE && cp README.md javascript_output/${{ needs.compile-wasm.outputs.dirpath }}/README.md
       - name: Upload compiled files
+        if: github.event_name != 'schedule'
         uses: actions/upload-artifact@v4
         with:
           name: justc-javascript-wasm
@@ -354,6 +377,8 @@ jobs:
   test-nodejs:
     runs-on: ubuntu-latest
     needs: compile-wasm
+    timeout-minutes: 3
+    if: github.event_name != 'schedule'
     steps:
       - name: Download compiled files
         uses: actions/download-artifact@v4
@@ -370,6 +395,7 @@ jobs:
   commit:
     runs-on: ubuntu-latest
     needs: compile-wasm
+    if: github.event_name != 'schedule'
     steps:
       - name: Download compiled files
         uses: actions/download-artifact@v4
