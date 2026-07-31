@@ -433,26 +433,6 @@ enum class Access : uint8_t {
     PRIVATE    = 3,
 };
 
-struct Property {
-    Access access = Access::READ_WRITE;
-    std::shared_ptr<Value> getter;
-    std::shared_ptr<Value> setter;
-    bool hasGetter = false;
-    bool hasSetter = false;
-    Value value;
-
-    Property() : value(Value::createNull()) {}
-    Property(const Value& val, const Access& acs): value(val), access(acs) {}
-
-    template <class Archive>
-    void serialize(Archive& archive) {
-        int accessInt = static_cast<int>(access);
-        archive(accessInt);
-        access = static_cast<Access>(accessInt);
-        archive(value);
-    }
-};
-
 struct Value {
     DataType type;
 
@@ -470,6 +450,8 @@ struct Value {
     std::string variable;
     VariableType varType;
     bool isConst;
+
+    struct Property;
 
     std::shared_ptr<ObjectContext> object_context;
     std::unordered_map<std::string, Property> properties;
@@ -638,6 +620,25 @@ struct Value {
         }
     }
 };
+struct Value::Property {
+    Access access = Access::READ_WRITE;
+    std::shared_ptr<Value> getter;
+    std::shared_ptr<Value> setter;
+    bool hasGetter = false;
+    bool hasSetter = false;
+    Value value;
+
+    Property() : value(Value::createNull()) {}
+    Property(const Value& val, const Access& acs): value(val), access(acs) {}
+
+    template <class Archive>
+    void serialize(Archive& archive) {
+        int accessInt = static_cast<int>(access);
+        archive(accessInt);
+        access = static_cast<Access>(accessInt);
+        archive(value);
+    }
+};
 
 struct LogEntry {
     std::string type;
@@ -666,7 +667,7 @@ struct ParseResult {
 };
 
 struct JSONObject {
-    std::unordered_map<std::string, Property> properties;
+    std::unordered_map<std::string, Value::Property> properties;
 };
 
 struct JSONArray {
@@ -1038,16 +1039,16 @@ public:
 
     Value ParseJUSTO(const std::string& code);
 
-    Value p2v(const Property& property);
-    Property v2p(const Value& value, const Access& access = Access::READ_WRITE, const Value& getter = Value::createNull(), const Value& setter = Value::createNull());
+    Value p2v(const Value::Property& property);
+    Value::Property v2p(const Value& value, const Access& access = Access::READ_WRITE, const Value& getter = Value::createNull(), const Value& setter = Value::createNull());
     Value v(const Value& value);
-    Value v(const Property& value);
-    Property p(const Value& value);
-    Property p(const Property& value);
+    Value v(const Value::Property& value);
+    Value::Property p(const Value& value);
+    Value::Property p(const Value::Property& value);
     std::unordered_map<std::string, Value> vmap(const std::unordered_map<std::string, Value>& props);
-    std::unordered_map<std::string, Value> vmap(const std::unordered_map<std::string, Property>& props);
-    std::unordered_map<std::string, Property> pmap(const std::unordered_map<std::string, Value>& values);
-    std::unordered_map<std::string, Property> pmap(const std::unordered_map<std::string, Property>& values);
+    std::unordered_map<std::string, Value> vmap(const std::unordered_map<std::string, Value::Property>& props);
+    std::unordered_map<std::string, Value::Property> pmap(const std::unordered_map<std::string, Value>& values);
+    std::unordered_map<std::string, Value::Property> pmap(const std::unordered_map<std::string, Value::Property>& values);
 };
 
 #endif

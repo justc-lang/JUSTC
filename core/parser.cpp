@@ -6513,7 +6513,7 @@ std::string Parser::renderJSX(const Value& jsxElement) {
     return result;
 }
 
-Value Parser::p2v(const Property& property, size_t startPos, bool doExecute) { // propertyToValue
+Value Parser::p2v(const Value::Property& property, size_t startPos, bool doExecute) { // propertyToValue
     switch (property.access) {
         case Access::READ_WRITE:
         case Access::READ_ONLY: {
@@ -6527,8 +6527,8 @@ Value Parser::p2v(const Property& property, size_t startPos, bool doExecute) { /
         default: throw std::runtime_error("Access denied.");
     }
 }
-Property Parser::v2p(const Value& value, const Access& access, const Value& getter, const Value& setter) { // valueToProperty
-    Property prop(value, access);
+Value::Property Parser::v2p(const Value& value, const Access& access, const Value& getter, const Value& setter) { // valueToProperty
+    Value::Property prop(value, access);
     if (getter.type == DataType::FUNCTION) {
         prop.hasGetter = true;
         prop.getterFunc = std::make_shared<Value>(getter);
@@ -6543,21 +6543,21 @@ Property Parser::v2p(const Value& value, const Access& access, const Value& gett
 Value Parser::v(const Value& value) { // value
     return value;
 }
-Value Parser::v(const Property& value) { // value
+Value Parser::v(const Value::Property& value) { // value
     return p2v(value);
 }
 
-Property Parser::p(const Value& value) { // property
+Value::Property Parser::p(const Value& value) { // property
     return v2p(value);
 }
-Property Parser::p(const Property& value) { // property
+Value::Property Parser::p(const Value::Property& value) { // property
     return value;
 }
 
 std::unordered_map<std::string, Value> Parser::vmap(const std::unordered_map<std::string, Value>& props) { // valueMap
     return props;
 }
-std::unordered_map<std::string, Value> Parser::vmap(const std::unordered_map<std::string, Property>& props) { // valueMap
+std::unordered_map<std::string, Value> Parser::vmap(const std::unordered_map<std::string, Value::Property>& props) { // valueMap
     std::unordered_map<std::string, Value> values;
     for (const auto& [key, value] : props) {
         values[key] = p2v(value);
@@ -6565,14 +6565,14 @@ std::unordered_map<std::string, Value> Parser::vmap(const std::unordered_map<std
     return values;
 }
 
-std::unordered_map<std::string, Property> Parser::pmap(const std::unordered_map<std::string, Value>& values) { // propertyMap
-    std::unordered_map<std::string, Property> props;
+std::unordered_map<std::string, Value::Property> Parser::pmap(const std::unordered_map<std::string, Value>& values) { // propertyMap
+    std::unordered_map<std::string, Value::Property> props;
     for (const auto& [key, value] : values) {
         props[key] = v2p(value);
     }
     return props;
 }
-std::unordered_map<std::string, Property> Parser::pmap(const std::unordered_map<std::string, Property>& values) { // propertyMap
+std::unordered_map<std::string, Value::Property> Parser::pmap(const std::unordered_map<std::string, Value::Property>& values) { // propertyMap
     return values;
 }
 
