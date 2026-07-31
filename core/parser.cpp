@@ -389,7 +389,9 @@ Value Value::createJsonObject(const std::unordered_map<std::string, Value>& obj)
     Value result;
     result.type = DataType::JSON_OBJECT;
     result.object_type = DataType::JSON_OBJECT;
-    result.properties = pmap(obj);
+    for (const auto& [key, value] : obj) {
+        result.properties[key] = Value::Property(value, Access::READ_WRITE);
+    }
     result.name = "[Object]";
     return result;
 }
