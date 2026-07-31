@@ -6513,38 +6513,51 @@ std::string Parser::renderJSX(const Value& jsxElement) {
     return result;
 }
 
-Value Parser::p2v(const Value::Property& property, size_t startPos, bool doExecute) { // propertyToValue
+Value Parser::p2v(const Property& property, size_t startPos, bool doExecute) { // propertyToValue
     switch (property.access) {
         case Access::READ_WRITE:
         case Access::READ_ONLY: {
-            if (property.getter.type == DataType::FUNCTION && doExecute) return callFunction(property.getter, {}, startPos, doExecute);
+            if (property.hasGetter && property.getter) {
+                Value getter = *property.getter;
+                if (getter.type == DataType::FUNCTION && doExecute) return callFunction(getter, {}, startPos, doExecute);
+                else if (doExecute) throw std::runtime_error("Invalid getter type.");
+            }
             return property.value;
         }
         default: throw std::runtime_error("Access denied.");
     }
 }
-Value::Property Parser::v2p(const Value& value, const Access& access, const Value& getter, const Value& setter) { // valueToProperty
-    return Value::Property(value, access, getter, setter);
+Property Parser::v2p(const Value& value, const Access& access, const Value& getter, const Value& setter) { // valueToProperty
+    Property prop(value, access);
+    if (getter.type == DataType::FUNCTION) {
+        prop.hasGetter = true;
+        prop.getterFunc = std::make_shared<Value>(getter);
+    }
+    if (setter.type == DataType::FUNCTION) {
+        prop.hasSetter = true;
+        prop.setterFunc = std::make_shared<Value>(setter);
+    }
+    return prop;
 }
 
 Value Parser::v(const Value& value) { // value
     return value;
 }
-Value Parser::v(const Value::Property& value) { // value
+Value Parser::v(const Property& value) { // value
     return p2v(value);
 }
 
-Value::Property Parser::p(const Value& value) { // property
+Property Parser::p(const Value& value) { // property
     return v2p(value);
 }
-Value::Property Parser::p(const Value::Property& value) { // property
+Property Parser::p(const Property& value) { // property
     return value;
 }
 
 std::unordered_map<std::string, Value> Parser::vmap(const std::unordered_map<std::string, Value>& props) { // valueMap
     return props;
 }
-std::unordered_map<std::string, Value> Parser::vmap(const std::unordered_map<std::string, Value::Property>& props) { // valueMap
+std::unordered_map<std::string, Value> Parser::vmap(const std::unordered_map<std::string, Property>& props) { // valueMap
     std::unordered_map<std::string, Value> values;
     for (const auto& [key, value] : props) {
         values[key] = p2v(value);
@@ -6552,14 +6565,14 @@ std::unordered_map<std::string, Value> Parser::vmap(const std::unordered_map<std
     return values;
 }
 
-std::unordered_map<std::string, Value::Property> Parser::pmap(const std::unordered_map<std::string, Value>& values) { // propertyMap
-    std::unordered_map<std::string, Value::Property> props;
+std::unordered_map<std::string, Property> Parser::pmap(const std::unordered_map<std::string, Value>& values) { // propertyMap
+    std::unordered_map<std::string, Property> props;
     for (const auto& [key, value] : values) {
         props[key] = v2p(value);
     }
     return props;
 }
-std::unordered_map<std::string, Value::Property> Parser::pmap(const std::unordered_map<std::string, Value::Property>& values) { // propertyMap
+std::unordered_map<std::string, Property> Parser::pmap(const std::unordered_map<std::string, Property>& values) { // propertyMap
     return values;
 }
 
