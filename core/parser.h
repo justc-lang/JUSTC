@@ -114,6 +114,7 @@ enum class DataType : int8_t {
     INTEGER      = 25,
     BASE64       = 26,
     HTTP_ERROR   = 27,
+    JSX_ELEMENT  = 28,
     UNKNOWN      =-1
 };
 
@@ -144,6 +145,7 @@ inline std::string dataTypeToString(DataType type) {
         case DataType::INTEGER:      return "Integer";
         case DataType::BASE64:       return "Base64 number";
         case DataType::HTTP_ERROR:   return "HTTP Error";
+        case DataType::JSX_ELEMENT:  return "Element";
         case DataType::UNKNOWN:      return "unknown";
         default:                     return "invalid";
     }
@@ -162,6 +164,7 @@ inline std::string dataTypeToTypeDecl(DataType type) {
         case DataType::OCTAL:        return "number";
         case DataType::BINARY_DATA:  return "data";
         case DataType::BIGNUM:       return "number";
+        case DataType::JSX_ELEMENT:  return "element";
         default:                     return "auto";
     }
 };

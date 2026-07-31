@@ -265,24 +265,18 @@ bool Value::toBoolean() const {
             return number_value != 0.0;
         case DataType::STRING: {
             if (string_value.empty()) return false;
-            auto toLower = [](const std::string& str) {
-                std::string result = str;
-                std::transform(result.begin(), result.end(), result.begin(),
-                              [](unsigned char c) { return std::tolower(c); });
-                return result;
-            };
-            std::string lower = toLower(string_value);
-            if (lower == "true" || lower == "yes" || lower == "y" ||
-                   lower == "+" ||  lower == "1"  || lower == "!0"
-            ) {
-                return true;
-            }
-            return false;
+            return true;
         }
         case DataType::LINK:
         case DataType::PATH:
         case DataType::VARIABLE:
         case DataType::INFINITE:
+        case DataType::JSON_ARRAY:
+        case DataType::JSON_OBJECT:
+        case DataType::JUSTC_OBJECT:
+        case DataType::CLASS:
+        case DataType::SPACE:
+        case DataType::JSX_ELEMENT:
             return true;
         default:
             return false;
@@ -3977,7 +3971,7 @@ Value Parser::evaluateExpression(const Value& left, const std::string& op, const
         }
     }
 
-    else if (op == "~=") {
+    else if (op == "~=" || op == "!~=") {
         if (Utility::checkNumbers(left, right)) {
             result = booleanToValue(Math::Round(left.toNumber()) == Math::Round(right.toNumber()));
         } else if (left.type == DataType::STRING && right.type == DataType::STRING) {
@@ -3989,28 +3983,54 @@ Value Parser::evaluateExpression(const Value& left, const std::string& op, const
         } else if (left.type == DataType::UNKNOWN && right.type == DataType::UNKNOWN) {
             result = booleanToValue(Unicode::EqualsIgnoreCase(left.name, right.name));
         } else {
-            result = booleanToValue(left.toBoolean() == right.toBoolean());
+            result = Utility::compareValues(left, right);
         }
+        if (op == "!~=") result = !result;
     }
     
     else if (op == "[" && doExecute) {
         if (!match("]")) throw std::runtime_error("Expected \"]\" to close index access at " + Utility::position(currentToken().start, input) + ".");
         advance();
 
-        size_t index = static_cast<size_t>(right.toNumber());
-        switch (left.type) {
-            case DataType::STRING:
-            case DataType::LINK:
-                result = executeFunction("String::Slice", {
-                    stringToValue(left.toString()), 
-                    numberToValue(static_cast<double>(index)), 
-                    numberToValue(static_cast<double>(index + 1))
-                }, currentToken().start);
-                break;
-            case DataType::JSON_ARRAY: 
-                result = index < left.array_elements.size() ? left.array_elements[index] : Value::createNull();
-                break;
-            default: break;
+        if (right.type == DataType::STRING) {
+            auto it = typeMethods.find(left.type);
+            std::string funcName = right.toString();
+            if (it != typeMethods.end()) {
+                auto itFunc = typeMethods[left.type].find(funcName);
+                if (itFunc != typeMethods[left.type].end()) {
+                    if (match("(")) {
+                        std::vector<Value> args = {left};
+                        std::vector<Value> additionalArgs = parseArguments(doExecute);
+                        args.insert(args.end(), additionalArgs.begin(), additionalArgs.end());
+                        result = executeFunction(typeMethods[left.type][funcName], args, currentToken().start);
+                    }
+                    else throw std::runtime_error("Expected \"(\" for function call at " + Utility::position(currentToken().start, input) + ".");
+                } else if (left.type == DataType::JSON_OBJECT || left.type == DataType::JUSTC_OBJECT) {
+                    result = accessProperty(left, funcName);
+                }
+            } else if (left.type == DataType::JSON_OBJECT || left.type == DataType::JUSTC_OBJECT) {
+                result = accessProperty(left, funcName);
+            }
+        } else {
+            size_t index = static_cast<size_t>(right.toNumber());
+            switch (left.type) {
+                case DataType::STRING:
+                case DataType::LINK:
+                    result = executeFunction("String::Slice", {
+                        stringToValue(left.toString()), 
+                        numberToValue(static_cast<double>(index)), 
+                        numberToValue(static_cast<double>(index + 1))
+                    }, currentToken().start);
+                    break;
+                case DataType::JSON_ARRAY: 
+                    result = index < left.array_elements.size() ? left.array_elements[index] : Value::createNull();
+                    break;
+                case DataType::JSON_OBJECT:
+                case DataType::JUSTC_OBJECT:
+                    result = accessProperty(left, right.toString());
+                    break;
+                default: break;
+            }
         }
     }
 
@@ -4027,9 +4047,13 @@ Value Parser::evaluateExpression(const Value& left, const std::string& op, const
                     result = executeFunction(typeMethods[left.type][funcName], args, currentToken().start);
                 }
                 else throw std::runtime_error("Expected \"(\" for function call at " + Utility::position(currentToken().start, input) + ".");
-            } 
+            } else if (left.type == DataType::JSON_OBJECT || left.type == DataType::JUSTC_OBJECT) {
+                result = accessProperty(left, right.toString());
+            }
             else throw std::runtime_error("<" + dataTypeToString(left.type) + ">" + op + funcName + " is not a function. Call attempt at " + Utility::position(currentToken().start, input) + ".");
-        } 
+        } else if (left.type == DataType::JSON_OBJECT || left.type == DataType::JUSTC_OBJECT) {
+            result = accessProperty(left, right.toString());
+        }
         else throw std::runtime_error(errmsg);
 
         if (op == ":" && left.isVariable) {

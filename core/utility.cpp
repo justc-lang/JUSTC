@@ -190,6 +190,7 @@ DataType Utility::typeDeclaration2dataType(const std::string& typeDeclaration, c
         { "nan",         DataType::NOT_A_NUMBER },
         { "infinity",    DataType::INFINITE     },     { "inf",  DataType::INFINITE     },
         { "data",        DataType::BINARY_DATA  },
+        { "element",     DataType::JSX_ELEMENT  },
         { "auto",        DataType::UNKNOWN      },
     };
 
