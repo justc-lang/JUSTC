@@ -77,12 +77,27 @@ SOFTWARE.
     #define JUSTC_UINT128_SUPPORT 0
 #endif
 
-#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
-    #define CPU_PAUSE() __asm__ volatile("pause" ::: "memory")
-#elif defined(__aarch64__) || defined(_M_ARM64)
-    #define CPU_PAUSE() __asm__ volatile("yield" ::: "memory")
-#elif defined(__arm__) || defined(_M_ARM)
-    #define CPU_PAUSE() __asm__ volatile("wfe" ::: "memory")
+#if defined(_MSC_VER)
+    #include <intrin.h>
+    #if defined(_M_AMD64) || defined(_M_IX86)
+        #define CPU_PAUSE() _mm_pause()
+    #elif defined(_M_ARM64)
+        #define CPU_PAUSE() __yield()
+    #elif defined(_M_ARM)
+        #define CPU_PAUSE() __wfe()
+    #else
+        #define CPU_PAUSE() (void)0
+    #endif
+#elif defined(__GNUC__) || defined(__clang__)
+    #if defined(__x86_64__) || defined(__i386__)
+        #define CPU_PAUSE() __asm__ volatile("pause" ::: "memory")
+    #elif defined(__aarch64__)
+        #define CPU_PAUSE() __asm__ volatile("yield" ::: "memory")
+    #elif defined(__arm__)
+        #define CPU_PAUSE() __asm__ volatile("wfe" ::: "memory")
+    #elif defined(__wasm__)
+        #define CPU_PAUSE() (void)0
+    #endif
 #else
     #define CPU_PAUSE() (void)0
 #endif
