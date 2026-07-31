@@ -53,6 +53,7 @@ SOFTWARE.
 #include "cpptypes.h"
 #include <iomanip>
 #include <functional>
+#include <thread>
 
 #ifdef __SIZEOF_FLOAT128__
     #if JUSTC_HAS_QUADMATH
@@ -74,6 +75,16 @@ SOFTWARE.
 #else
     #define JUSTC_INT128_SUPPORT 0
     #define JUSTC_UINT128_SUPPORT 0
+#endif
+
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+    #define CPU_PAUSE() __asm__ volatile("pause" ::: "memory")
+#elif defined(__aarch64__) || defined(_M_ARM64)
+    #define CPU_PAUSE() __asm__ volatile("yield" ::: "memory")
+#elif defined(__arm__) || defined(_M_ARM)
+    #define CPU_PAUSE() __asm__ volatile("wfe" ::: "memory")
+#else
+    #define CPU_PAUSE() (void)0
 #endif
 
 #ifdef __EMSCRIPTEN__
@@ -955,6 +966,12 @@ Parser::Parser(
     scriptProperties["uint128"] = booleanToValue(JUSTC_UINT128_SUPPORT);
     scriptProperties["float128"] = booleanToValue(JUSTC_FLOAT128_SUPPORT);
     builtinObject("Script", scriptProperties);
+
+    std::unordered_map<std::string, Value> taskProperties;
+    taskProperties["Sleep"] = builtinObjectFunction("Task.Sleep");
+    taskProperties["Wait"] = builtinObjectFunction("Task.Wait");
+    taskProperties["WaitUntil"] = builtinObjectFunction("Task.WaitUntil");
+    builtinObject("Task", taskProperties);
 
     Value chartypeValue;
     chartypeValue.type = DataType::STRING;
@@ -3572,6 +3589,173 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
         }
         if (funcName == "RenderJSX") {
             return Value::createString(renderJSX(args[0]));
+        }
+        if (funcName == "Task.Sleep") {
+            double value = args[0].toNumber();
+            std::string unit = "ms";
+            
+            if (args.size() > 1) {
+                unit = args[1].toString();
+            }
+            
+            if (unit == "ms" || unit == "milliseconds") {
+                auto duration = std::chrono::milliseconds(static_cast<long long>(value));
+                #ifdef __EMSCRIPTEN__
+                    emscripten_sleep(static_cast<int>(duration.count()));
+                #else
+                    std::this_thread::sleep_for(duration);
+                #endif
+            } else if (unit == "s" || unit == "seconds") {
+                auto duration = std::chrono::seconds(static_cast<long long>(value));
+                #ifdef __EMSCRIPTEN__
+                    emscripten_sleep(static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()));
+                #else
+                    std::this_thread::sleep_for(duration);
+                #endif
+            } else if (unit == "m" || unit == "minutes") {
+                auto duration = std::chrono::minutes(static_cast<long long>(value));
+                #ifdef __EMSCRIPTEN__
+                    emscripten_sleep(static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()));
+                #else
+                    std::this_thread::sleep_for(duration);
+                #endif
+            } else if (unit == "h" || unit == "hours") {
+                auto duration = std::chrono::hours(static_cast<long long>(value));
+                #ifdef __EMSCRIPTEN__
+                    emscripten_sleep(static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()));
+                #else
+                    std::this_thread::sleep_for(duration);
+                #endif
+            } else if (unit == "us" || unit == "microseconds") {
+                auto duration = std::chrono::microseconds(static_cast<long long>(value));
+                #ifdef __EMSCRIPTEN__
+                    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
+                    emscripten_sleep(static_cast<int>(ms.count()));
+                #else
+                    std::this_thread::sleep_for(duration);
+                #endif
+            } else if (unit == "ns" || unit == "nanoseconds") {
+                auto duration = std::chrono::nanoseconds(static_cast<long long>(value));
+                #ifdef __EMSCRIPTEN__
+                    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
+                    emscripten_sleep(static_cast<int>(ms.count()));
+                #else
+                    std::this_thread::sleep_for(duration);
+                #endif
+            } else {
+                throw std::runtime_error("Unknown time unit for Task.Sleep: " + unit);
+            }
+            
+            return Value::createNumber(value);
+        }
+        if (funcName == "Task.Wait") {            
+            double value = args[0].toNumber();
+            std::string unit = "ms";
+            
+            if (args.size() > 1) {
+                unit = args[1].toString();
+            }
+            
+            long long ms = 0;
+            if (unit == "ms" || unit == "milliseconds") {
+                ms = static_cast<long long>(value);
+            } else if (unit == "s" || unit == "seconds") {
+                ms = static_cast<long long>(value * 1000);
+            } else if (unit == "m" || unit == "minutes") {
+                ms = static_cast<long long>(value * 60 * 1000);
+            } else if (unit == "h" || unit == "hours") {
+                ms = static_cast<long long>(value * 60 * 60 * 1000);
+            } else {
+                throw std::runtime_error("Unknown time unit for Task.Wait: " + unit);
+            }
+            
+            if (ms < 0) ms = 0;
+            
+            auto start = std::chrono::steady_clock::now();
+            
+            if (ms < 100) {
+                while (true) {
+                    auto now = std::chrono::steady_clock::now();
+                    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - start).count();
+                    
+                    if (elapsed >= ms * 1000) {
+                        break;
+                    }
+                    
+                    CPU_PAUSE();
+                }
+            } else {
+                const long long CHECK_INTERVAL_MS = 1;
+                
+                while (true) {
+                    auto now = std::chrono::steady_clock::now();
+                    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+                    
+                    if (elapsed >= ms) {
+                        break;
+                    }
+                    
+                    #ifdef __EMSCRIPTEN__
+                        emscripten_sleep(0);
+                    #else
+                        std::this_thread::sleep_for(std::chrono::microseconds(100));
+                        CPU_PAUSE();
+                    #endif
+                }
+            }
+            
+            return Value::createNumber(value);
+        }
+        if (funcName == "Task.WaitUntil") {
+            double timeoutValue = args[1].toNumber();
+            std::string unit = "ms";
+            if (args.size() > 2) {
+                unit = args[2].toString();
+            }
+            
+            long long timeoutMs = 0;
+            if (unit == "ms" || unit == "milliseconds") {
+                timeoutMs = static_cast<long long>(timeoutValue);
+            } else if (unit == "s" || unit == "seconds") {
+                timeoutMs = static_cast<long long>(timeoutValue * 1000);
+            } else if (unit == "m" || unit == "minutes") {
+                timeoutMs = static_cast<long long>(timeoutValue * 60 * 1000);
+            } else if (unit == "h" || unit == "hours") {
+                timeoutMs = static_cast<long long>(timeoutValue * 60 * 60 * 1000);
+            } else {
+                throw std::runtime_error("Unknown time unit for Task.WaitUntil: " + unit);
+            }
+            
+            auto start = std::chrono::steady_clock::now();
+            const long long CHECK_INTERVAL_MS = 10;
+            
+            while (true) {
+                bool conditionMet;
+                if (args[0].type == DataType::FUNCTION) {
+                    Value result = callFunction(args[0], {}, currentToken().start, doExecute);
+                    conditionMet = result.toBoolean();
+                } else {
+                    conditionMet = args[0].toBoolean();
+                }
+                
+                if (conditionMet) {
+                    return Value::createBoolean(true);
+                }
+                
+                auto now = std::chrono::steady_clock::now();
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+                
+                if (elapsed >= timeoutMs) {
+                    return Value::createBoolean(false);
+                }
+                
+                #ifdef __EMSCRIPTEN__
+                    emscripten_sleep(CHECK_INTERVAL_MS);
+                #else
+                    std::this_thread::sleep_for(std::chrono::milliseconds(CHECK_INTERVAL_MS));
+                    CPU_PAUSE();
+                #endif
+            }
         }
     } catch (const std::exception& e) {
         throw std::runtime_error(std::string(e.what()) + " at " + Utility::position(startPos, input) + ".");
