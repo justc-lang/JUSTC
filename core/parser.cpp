@@ -1316,7 +1316,7 @@ ParseResult Parser::parse(bool doExecute) {
                     if (finalValue.type == DataType::JUSTC_OBJECT ||
                         finalValue.type == DataType::JSON_OBJECT) {
                         for (const auto& [key, val] : finalValue.properties) {
-                            result.returnValues[key] = convertToDecimal(val);
+                            result.returnValues[key] = convertToDecimal(v(val));
                         }
                     } else if (finalValue.type == DataType::JSON_ARRAY) {
                         for (size_t i = 0; i < finalValue.array_elements.size(); i++) {
@@ -1508,7 +1508,7 @@ ASTNode Parser::parseImportCommand() {
             case DataType::JUSTC_OBJECT: {
                 rename = true;
                 for (const auto& [key, value] : exprValue.properties) {
-                    imports.push_back(value.toString());
+                    imports.push_back(v(value).toString());
                     renames.push_back(key);
                 }
                 break;
@@ -1596,9 +1596,9 @@ ASTNode Parser::parseImportCommand() {
                 throw std::runtime_error("Expected object for import options at " + Utility::position(currentToken().start, input) + ".");
             }
 
-            bool optionsExecute     = optionsVal.getProperty("Execute",     booleanToValue(importExecute)).toBoolean();
-            bool optionsJavaScript  = optionsVal.getProperty("JavaScript",  booleanToValue(importJavaScript)).toBoolean();
-            bool optionsLuau        = optionsVal.getProperty("Luau",        booleanToValue(importLuau)).toBoolean();
+            bool optionsExecute     = v(optionsVal.getProperty("Execute",   booleanToValue(importExecute))).toBoolean();
+            bool optionsJavaScript  = v(optionsVal.getProperty("JavaScript",booleanToValue(importJavaScript))).toBoolean();
+            bool optionsLuau        = v(optionsVal.getProperty("Luau",      booleanToValue(importLuau))).toBoolean();
 
             if (!importExecute && optionsExecute) {
                 throw std::runtime_error("Attempt to execute JUSTC at " + Utility::position(currentToken().start, input) + ".");
@@ -1673,7 +1673,7 @@ ASTNode Parser::parseImportCommand() {
             objCtx->outputVariables = outputVars;
             Value objVal = Value::createJustcObject(objCtx);
             objVal.name = name;
-            objVal.properties = imported.first.returnValues;
+            objVal.properties = pmap(imported.first.returnValues);
             objVal.type = DataType::JSON_OBJECT;
 
             ASTNode node("VARIABLE_DECLARATION", name, position);
@@ -1755,7 +1755,7 @@ ASTNode Parser::parseImportCommand() {
                 throw std::runtime_error("Attempt to redefine built-in JUSTO pointer at " + Utility::position(currentToken().start, input) + ".");
             }
 
-            justoPointers = optionsVal.properties;
+            justoPointers = vmap(optionsVal.properties);
         }
 
         std::pair<Value, std::string> imported;
@@ -1779,8 +1779,9 @@ ASTNode Parser::parseImportCommand() {
             ast.push_back(node);
         } else {
             size_t i = 0;
-            for (const auto& [keyRaw, value] : imported.first.properties) {
+            for (const auto& [keyRaw, valueRaw] : imported.first.properties) {
                 std::string key = keyRaw;
+                const Value& value = v(valueRaw);
 
                 auto constIt = constVars.find(key);
                 if (constIt != constVars.end() && constIt->second) {
@@ -3612,10 +3613,10 @@ Value Parser::doubleDot(const Value& left, const Value& right) {
         std::unordered_map<std::string, Value> merged;
 
         for (const auto& [key, val] : left.properties) {
-            merged[key] = val;
+            merged[key] = v(val);
         }
         for (const auto& [key, val] : right.properties) {
-            merged[key] = val;
+            merged[key] = v(val);
         }
 
         Value result = Value::createJsonObject(merged);
@@ -4801,25 +4802,25 @@ Value Parser::isolated(const std::string& code, bool doExecute, size_t startPos,
         isolatedObject.name = "[Object]";
 
         if (isolatedParser.outputMode == "everything") {
-            isolatedObject.properties = result.returnValues;
+            isolatedObject.properties = pmap(result.returnValues);
         } else if (isolatedParser.outputMode == "specified") {
             for (size_t i = 0; i < isolatedParser.outputVariables.size(); i++) {
                 const auto& varName = isolatedParser.outputVariables[i];
                 std::string outputName = (i < isolatedParser.outputNames.size()) ? isolatedParser.outputNames[i] : varName;
                 if (result.returnValues.find(varName) != result.returnValues.end()) {
                     if (outputName != "_") {
-                        isolatedObject.properties[outputName] = result.returnValues.at(varName);
+                        isolatedObject.properties[outputName] = p(result.returnValues.at(varName));
                     } else {
-                        isolatedObject.properties[varName] = result.returnValues.at(varName);
+                        isolatedObject.properties[varName] = p(result.returnValues.at(varName));
                     }
                 }
             }
         } else if (isolatedParser.outputMode == "disabled" && isFunction && result.returnValues.empty()) {
-            isolatedObject.properties["return"] = Value::createNull();
+            isolatedObject.properties["return"] = p(Value::createNull());
         }
 
         if (isolatedObject.properties.empty() && !result.returnValues.empty()) {
-            isolatedObject.properties = result.returnValues;
+            isolatedObject.properties = pmap(result.returnValues);
         }
 
         auto objectContext = std::make_shared<ObjectContext>();
@@ -4995,7 +4996,7 @@ Value Parser::toJUSTO(const std::vector<Value>& args) {
 }
 
 Value Parser::i2v(Value fromIsolated) { // isolatedToValue
-    return fromIsolated.properties["return"];
+    return v(fromIsolated.properties["return"]);
 }
 std::string Parser::t2i(ParserToken toIsolated) { // tokenToIsolated
     std::string out;
@@ -5385,11 +5386,11 @@ Value Parser::callFunction(const Value& function, const std::vector<Value>& args
     if (!result.properties.empty()) {
         auto it = result.properties.find("return");
         if (it != result.properties.end()) {
-            return it->second;
+            return v(it->second);
         }
 
         if (result.properties.size() == 1) {
-            return result.properties.begin()->second;
+            return v(result.properties.begin()->second);
         }
 
         return result;
@@ -5809,7 +5810,7 @@ Value Parser::parseJustcObject(bool doExecute) {
     Value result = Value::createJustcObject(objectContext);
 
     if (objectParser->outputMode == "everything") {
-        result.properties = objectResult.returnValues;
+        result.properties = pmap(objectResult.returnValues);
     } else if (objectParser->outputMode == "specified") {
         for (size_t i = 0; i < objectParser->outputVariables.size(); i++) {
             const auto& varName = objectParser->outputVariables[i];
@@ -5818,9 +5819,9 @@ Value Parser::parseJustcObject(bool doExecute) {
 
             if (objectResult.returnValues.find(varName) != objectResult.returnValues.end()) {
                 if (outputName != "_") {
-                    result.properties[outputName] = objectResult.returnValues.at(varName);
+                    result.properties[outputName] = p(objectResult.returnValues.at(varName));
                 } else {
-                    result.properties[varName] = objectResult.returnValues.at(varName);
+                    result.properties[varName] = p(objectResult.returnValues.at(varName));
                 }
             }
         }
@@ -6026,7 +6027,7 @@ Value Parser::accessProperty(const Value& obj, const std::string& propName) {
 
             auto it = obj.properties.find(propName);
             if (it != obj.properties.end()) {
-                return it->second;
+                return v(it->second);
             }
 
             auto& parserVars = obj.object_context->variables;
@@ -6040,7 +6041,7 @@ Value Parser::accessProperty(const Value& obj, const std::string& propName) {
     } else if (obj.type == DataType::JSON_OBJECT) {
         auto it = obj.properties.find(propName);
         if (it != obj.properties.end()) {
-            return it->second;
+            return v(it->second);
         }
         throw std::runtime_error("Property '" + propName + "' not found in object at " + Utility::position(currentToken().start, input) + ".");
     } else if (obj.type == DataType::JSON_ARRAY) {
@@ -6251,7 +6252,7 @@ std::vector<Value> Parser::parseLambda(bool doExecute, size_t pos) {
             case DataType::JUSTC_OBJECT: {
                 for (const auto& [key, value] : obj.properties) {
                     names.push_back(key);
-                    vars.push_back(value);
+                    vars.push_back(v(value));
                 }
                 break;
             }
@@ -6421,16 +6422,17 @@ std::string Parser::renderJSX(const Value& jsxElement) {
         return jsxElement.toString();
     }
     
-    std::string type = jsxElement.getProperty("type", Value::createString("")).toString();
-    Value props = jsxElement.getProperty("props", Value::createNull());
-    Value children = jsxElement.getProperty("children", Value::createNull());
+    std::string type = v(jsxElement.getProperty("type", Value::createString(""))).toString();
+    Value props = v(jsxElement.getProperty("props", Value::createNull()));
+    Value children = v(jsxElement.getProperty("children", Value::createNull()));
     
     if (type.empty()) return "";
     
     std::string result = "<" + type;
     
     if (props.type == DataType::JSON_OBJECT) {
-        for (const auto& [key, value] : props.properties) {
+        for (const auto& [key, value_] : props.properties) {
+            const Value& value = v(value_);
             if (key == "className" || key == "class") {
                 result += " class=\"" + value.toString() + "\"";
             } else if (key == "id") {
@@ -6491,7 +6493,7 @@ std::string Parser::renderJSX(const Value& jsxElement) {
     result += ">";
     
     if (children.type == DataType::JSON_ARRAY) {
-        for (const auto& child : children.array_elements) {
+        for (const auto& child_ : children.array_elements) {
             switch (child.type) {
                 case DataType::STRING:
                     result += child.string_value;
@@ -6509,6 +6511,56 @@ std::string Parser::renderJSX(const Value& jsxElement) {
     
     result += "</" + type + ">";
     return result;
+}
+
+Value Parser::p2v(const Value::Property& property, size_t startPos, bool doExecute) { // propertyToValue
+    switch (property.access) {
+        case Access::READ_WRITE:
+        case Access::READ_ONLY: {
+            if (property.getter.type == DataType::FUNCTION && doExecute) return callFunction(property.getter, {}, startPos, doExecute);
+            return property.value;
+        }
+        default: throw std::runtime_error("Access denied.");
+    }
+}
+Value::Property Parser::v2p(const Value& value, const Access& access, const Value& getter, const Value& setter) { // valueToProperty
+    return Value::Property(value, access, getter, setter);
+}
+
+Value Parser::v(const Value& value) { // value
+    return value;
+}
+Value Parser::v(const Value::Property& value) { // value
+    return p2v(value);
+}
+
+Value::Property Parser::p(const Value& value) { // property
+    return v2p(value);
+}
+Value::Property Parser::p(const Value::Property& value) { // property
+    return value;
+}
+
+std::unordered_map<std::string, Value> Parser::vmap(const std::unordered_map<std::string, Value>& props) { // valueMap
+    return props;
+}
+std::unordered_map<std::string, Value> Parser::vmap(const std::unordered_map<std::string, Value::Property>& props) { // valueMap
+    std::unordered_map<std::string, Value> values;
+    for (const auto& [key, value] : props) {
+        values[key] = p2v(value);
+    }
+    return values;
+}
+
+std::unordered_map<std::string, Value::Property> Parser::pmap(const std::unordered_map<std::string, Value>& values) { // propertyMap
+    std::unordered_map<std::string, Value::Property> props;
+    for (const auto& [key, value] : values) {
+        props[key] = v2p(value);
+    }
+    return props;
+}
+std::unordered_map<std::string, Value::Property> Parser::pmap(const std::unordered_map<std::string, Value::Property>& values) { // propertyMap
+    return values;
 }
 
 ParseResult Parser::parseTokens(const std::vector<ParserToken>& tokens, bool doExecute, bool runAsync, const std::string& input, const bool allowJavaScript, const bool canAllowJS, const std::string scriptName, const std::string scriptType, const bool allowLuau, const bool canAllowLuau) {

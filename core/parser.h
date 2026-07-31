@@ -457,7 +457,8 @@ struct Value {
         Value setter;
         Value value;
 
-        Property() : value(Value::createNull()), getter(Value::createNull), setter(Value::createNull) {}
+        Property() : value(Value::createNull()), getter(Value::createNull()), setter(Value::createNull()) {}
+        Property(const Value& val, const Access& acs, const Value& gtr, const Value& str): value(val), access(acs), getter(gtr), setter(str) {}
 
         template <class Archive>
         void serialize(Archive& archive) {
@@ -519,14 +520,18 @@ struct Value {
         if (properties.find(name) != properties.end()) {
             return properties[name];
         }
-        return placeholder;
+        Property prop;
+        prop.value = placeholder;
+        return prop;
     }
     Property getProperty(const std::string& name, Value placeholder) const {
         auto it = properties.find(name);
         if (it != properties.end()) {
             return it->second;
         }
-        return placeholder;
+        Property prop;
+        prop.value = placeholder;
+        return prop;
     }
 
     static Value createNumber(double num);
@@ -1030,6 +1035,17 @@ public:
     void clearGlobals();
 
     Value ParseJUSTO(const std::string& code);
+
+    Value p2v(const Value::Property& property);
+    Value::Property v2p(const Value& value, const Access& access = Access::READ_WRITE, const Value& getter = Value::createNull(), const Value& setter = Value::createNull());
+    Value v(const Value& value);
+    Value v(const Value::Property& value);
+    Value::Property p(const Value& value);
+    Value::Property p(const Value::Property& value);
+    std::unordered_map<std::string, Value> vmap(const std::unordered_map<std::string, Value>& props);
+    std::unordered_map<std::string, Value> vmap(const std::unordered_map<std::string, Value::Property>& props);
+    std::unordered_map<std::string, Value::Property> pmap(const std::unordered_map<std::string, Value>& values);
+    std::unordered_map<std::string, Value::Property> pmap(const std::unordered_map<std::string, Value::Property>& values);
 };
 
 #endif
