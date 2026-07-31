@@ -64,7 +64,7 @@ Value API::convertFromCore(const ::Value& v) {
             Object obj;
 
             for (const auto& [k,val] : v.properties)
-                obj[k]=convertFromCore(val);
+                obj[k]=convertFromCore(val.value);
 
             return obj;
         }
