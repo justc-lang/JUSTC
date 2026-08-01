@@ -1910,7 +1910,7 @@ bool Parser::CanIgnoreNoAssigmentOperator() {
     return (match("string") || match("number") || match("null") || match("path") || match("link") ||
             match("hex") || match("binary") || match("boolean") || match("identifier") || match("|") ||
             match("JavaScript") || match("Luau") || match(endOfScript) || match(".") || match(",") ||
-            match("{") || match("["));
+            match("{") || match("[") || match(";"));
 }
 ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool local, bool global) {
     std::string cpptype = "default";
