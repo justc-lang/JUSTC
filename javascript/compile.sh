@@ -81,10 +81,6 @@ COMMON_FLAGS="-s EXPORTED_FUNCTIONS=[\"_malloc\",\"_free\",\"_registerFunction\"
 -s ALLOW_TABLE_GROWTH=1 \
 --bind \
 -s DEMANGLE_SUPPORT=0 \
--s USE_PTHREADS=1 \
--pthread \
--s PTHREAD_POOL_SIZE_STRICT=0 \
--s PTHREAD_POOL_SIZE=4 \
 -I./third-party \
 $LUAU_INCLUDE $CEREAL_INCLUDE"
 
