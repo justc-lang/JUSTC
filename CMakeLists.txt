@@ -258,8 +258,6 @@ if(MSVC)
     list(REMOVE_ITEM CORE_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/core/lang/js.cpp)
 endif()
 
-find_package(Threads REQUIRED)
-
 add_library(justc_core STATIC ${CORE_SOURCES})
 
 target_include_directories(justc_core PUBLIC
@@ -277,7 +275,6 @@ else()
 endif()
 target_include_directories(justc_core SYSTEM PRIVATE ${Boost_INCLUDE_DIRS})
 target_link_libraries(justc_core PRIVATE ICU::uc ICU::i18n)
-target_link_libraries(justc_core PRIVATE Threads::Threads)
 
 add_library(justc_lib SHARED core/entry/lib.cpp)
 target_compile_definitions(justc_lib PRIVATE JUSTC_BUILD)
