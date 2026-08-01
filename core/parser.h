@@ -892,7 +892,7 @@ private:
     void evaluateAllVariablesAsync();
     std::runtime_error typeDeclarationError(const DataType left, const DataType right, const ASTNode node);
     Value applyTypeDeclaration(const Value value, const ASTNode node);
-    Value applyCPPTypeDeclaration(const Value value, const std::string& cpptype, const DataType typeDecl, const bool canBeDefault = false);
+    Value applyCPPTypeDeclaration(const Value value, const std::string& cpptype, const DataType typeDecl, bool doExecute, const bool canBeDefault = false);
     Value evaluateASTNode(const ASTNode& node);
     void extractReferences(const Value& value, std::vector<std::string>& references);
 

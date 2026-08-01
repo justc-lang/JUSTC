@@ -6692,7 +6692,7 @@ Value Parser::parseStructDeclaration(bool doExecute, std::string structName, boo
 
 std::pair<bool, Value> Parser::isStruct(const std::string& name) {
     auto it = structures.find(name);
-    if (it != map.end()) {
+    if (it != structures.end()) {
         return {true, it->second};
     }
     return {false, Value::createNull()};
