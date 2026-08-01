@@ -235,6 +235,7 @@ public:
     static bool compareValues(const Value::Property& left, const Value& right);
     static bool compareValues(const Value& left, const Value::Property& right);
     static bool compareValues(const Value::Property& left, const Value::Property& right);
+    static bool checkElement(const Value& val);
 };
 class UnicodeUtility {
 public:

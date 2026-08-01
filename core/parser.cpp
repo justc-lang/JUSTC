@@ -204,6 +204,10 @@ std::string Value::toString() const {
                 array_elements.size() > 0 ? " [" + ae.str() + "] " : ""
             ) + "(" + args.str() + ") {" + string_value + "}";
         }
+        case DataType::STRUCT: 
+            return "[struct " + name + "]";
+        case DataType::JSX_ELEMENT:
+            return "[element " + name + "]";
         default:
             return "unknown";
     }
@@ -816,6 +820,20 @@ Parser::Parser(
         {"ToNumber", "Number"},
         {"ToInt", "ParseInt"},
         {"ToLink", "Link"},
+    };
+    typeMethods[DataType::STRUCT] = {
+        {"ToString", "String"},
+        {"ToNumber", "Number"},
+        {"ToInt", "ParseInt"},
+        {"ToLink", "Link"},
+    };
+    typeMethods[DataType::JSX_ELEMENT] = {
+        {"ToString", "String"},
+        {"ToNumber", "Number"},
+        {"ToInt", "ParseInt"},
+        {"ToLink", "Link"},
+
+        {"Render", "Element::Render"}
     };
 
     // built-in variables
@@ -3588,7 +3606,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             result.name = "[Array]";
             return result;
         }
-        if (funcName == "RenderJSX") {
+        if (funcName == "Element::Render") {
             return Value::createString(renderJSX(args[0]));
         }
     } catch (const std::exception& e) {
@@ -6474,11 +6492,13 @@ Value Parser::resolveVariableValueWithScopes(const std::string& varName, const b
 }
 
 Value Parser::parseJSXElement(const std::string& jsxStr) {
-    return isolated("return " + jsxStr + " .", doExecute, currentToken().start, nullptr, "JSX parse", false);
+    Value element = isolated("return " + jsxStr + " .", doExecute, currentToken().start, nullptr, "JSX parse", false);
+    element.type = DataType::JSX_ELEMENT;
+    return element;
 }
 
 std::string Parser::renderJSX(const Value& jsxElement) {
-    if (jsxElement.type != DataType::JSON_OBJECT) {
+    if (!Utility::checkElement(jsxElement)) {
         return jsxElement.toString();
     }
     
@@ -6561,6 +6581,7 @@ std::string Parser::renderJSX(const Value& jsxElement) {
                     break;
                 case DataType::JSON_OBJECT:
                 case DataType::JUSTC_OBJECT:
+                case DataType::JSX_ELEMENT:
                     result += renderJSX(child);
                     break;
                 default:

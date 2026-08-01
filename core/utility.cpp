@@ -682,3 +682,14 @@ bool Utility::compareValues(const Value::Property& left, const Value::Property& 
     if (left.hasGetter || right.hasGetter) return false;
     return compareValues(left.value, right.value);
 }
+
+bool Utility::checkElement(const Value& val) {
+    switch (val.type) {
+        case DataType::JSX_ELEMENT:
+        case DataType::JSON_OBJECT:
+        case DataType::JUSTC_OBJECT:
+            return true;
+        default:
+            return false;
+    }
+}
