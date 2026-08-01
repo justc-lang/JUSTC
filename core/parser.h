@@ -45,6 +45,7 @@ SOFTWARE.
 #include <cereal/types/string.hpp>
 #include <cereal/types/unordered_map.hpp>
 #include <cereal/types/memory.hpp>
+#include <optional>
 
 #ifdef _MSC_VER
     #define JUSTC_HAS_INT128 0
@@ -744,7 +745,7 @@ struct PropertyPathNode {
     bool isIndex = false;
     std::string name;
     size_t index = 0;
-    ASTNode typeNode;
+    std::optional<ASTNode> typeNode;
 };
 
 class Parser {

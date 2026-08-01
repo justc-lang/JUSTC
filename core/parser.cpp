@@ -6623,7 +6623,7 @@ Value Parser::p2v(const Value::Property& property, const Access& requestAccess) 
                 default: throw std::runtime_error("Access denied.");
             }
         }
-        case Accept::WRITE_ONLY: {
+        case Access::WRITE_ONLY: {
             switch (property.access) {
                 case Access::READ_WRITE:
                 case Access::WRITE_ONLY: {
@@ -6928,11 +6928,11 @@ Value Parser::updateObjectPropertyRecursive(const Value& obj, const std::vector<
             
             if (obj.type == DataType::JUSTC_OBJECT) {
                 result = Value::createJustcObject(obj.object_context);
-                result.properties = newProperties;
-                result.name = obj.name;
             } else {
-                result = Value::createJsonObject(vmap(newProperties));
+                result = Value::createJsonObject({});
             }
+            result.properties = newProperties;
+            result.name = obj.name;
         } else if (obj.type == DataType::JSON_ARRAY) {
             throw std::runtime_error("Cannot set property '" + node.name + "' on array");
         } else {
@@ -6962,7 +6962,7 @@ Value Parser::updateObjectPropertyRecursive(const Value& obj, const std::vector<
             result = Value::createJsonArray(newArray);
         } else if (obj.type == DataType::JSON_OBJECT || obj.type == DataType::JUSTC_OBJECT) {
             std::string indexStr = std::to_string(node.index);
-            std::unordered_map<std::string, Value> newProperties = obj.properties;
+            std::unordered_map<std::string, Value::Property> newProperties = obj.properties;
             
             if (depth == pathNodes.size() - 1) {
                 newProperties[indexStr] = newValue;
@@ -6994,7 +6994,7 @@ Value Parser::updateObjectPropertyRecursive(const Value& obj, const std::vector<
             if (obj.type == DataType::JUSTC_OBJECT) {
                 result = Value::createJustcObject(obj.object_context);
             } else {
-                result = Value::createJsonObject(vmap(newProperties));
+                result = Value::createJsonObject({});
             }
             result.properties = newProperties;
             result.name = obj.name;
