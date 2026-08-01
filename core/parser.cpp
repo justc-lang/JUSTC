@@ -6831,7 +6831,9 @@ Value Parser::updateObjectProperty(const std::vector<std::variant<std::string, s
         advance();
         
         newValue = parseExpression(doExecute);
-        newValue = applyTypeDeclaration(newValue, pathNodes.back().typeNode);
+        if (pathNodes.back().typeNode.has_value()) {
+            newValue = applyTypeDeclaration(newValue, pathNodes.back().typeNode.value());
+        }
     }
     else if (match("keyword", "isn't") || match("!=")) {
         assignOp = currentToken().value;
@@ -6850,7 +6852,12 @@ Value Parser::updateObjectProperty(const std::vector<std::variant<std::string, s
         std::string unaryOp = currentToken().value;
         advance();
         
-        Value currentVal = accessProperty(current, pathNodes.back().name, Access::READ_ONLY).first;
+        Value currentVal;
+        if (pathNodes.back().isProperty) {
+            currentVal = accessProperty(current, pathNodes.back().name, Access::READ_ONLY).first;
+        } else {
+            currentVal = accessIndex(current, pathNodes.back().index);
+        }
         
         if (unaryOp == "--" || unaryOp == "++") {
             newValue = Value::createNumber(currentVal.toNumber() + (unaryOp == "++" ? 1 : -1));
@@ -6879,6 +6886,10 @@ Value Parser::updateObjectProperty(const std::vector<std::variant<std::string, s
         }
     }
 
+    if (setter.type == DataType::FUNCTION && doExecute) {
+        newValue = callFunction(setter, {newValue}, currentToken().start, doExecute);
+    }
+
     Value updatedObject = updateObjectPropertyRecursive(root, pathNodes, 0, newValue);
     
     assign(root, updatedObject, " at " + Utility::position(currentToken().start, input) + ".");
@@ -6903,8 +6914,9 @@ Value Parser::updateObjectPropertyRecursive(const Value& obj, const std::vector<
                 newProperties[node.name] = p(newValue);
             } else {
                 if (newProperties.find(node.name) != newProperties.end()) {
+                    Value child = v(newProperties[node.name]);
                     Value updatedChild = updateObjectPropertyRecursive(
-                        v(newProperties[node.name]), 
+                        child, 
                         pathNodes, 
                         depth + 1, 
                         newValue
@@ -6912,7 +6924,7 @@ Value Parser::updateObjectPropertyRecursive(const Value& obj, const std::vector<
                     newProperties[node.name] = p(updatedChild);
                 } else {
                     Value newChild;
-                    if (pathNodes[depth + 1].isProperty) {
+                    if (depth + 1 < pathNodes.size() && pathNodes[depth + 1].isProperty) {
                         newChild = Value::createJsonObject({});
                     } else {
                         newChild = Value::createJsonArray({});
@@ -6933,13 +6945,10 @@ Value Parser::updateObjectPropertyRecursive(const Value& obj, const std::vector<
             }
             result.properties = newProperties;
             result.name = obj.name;
-        } else if (obj.type == DataType::JSON_ARRAY) {
-            throw std::runtime_error("Cannot set property '" + node.name + "' on array");
         } else {
             throw std::runtime_error("Cannot set property '" + node.name + "' on non-object");
         }
-    } 
-    else if (node.isIndex) {
+    } else if (node.isIndex) {
         if (obj.type == DataType::JSON_ARRAY) {
             std::vector<Value> newArray = obj.array_elements;
             
@@ -6965,29 +6974,30 @@ Value Parser::updateObjectPropertyRecursive(const Value& obj, const std::vector<
             std::unordered_map<std::string, Value::Property> newProperties = obj.properties;
             
             if (depth == pathNodes.size() - 1) {
-                newProperties[indexStr] = newValue;
+                newProperties[indexStr] = p(newValue);
             } else {
                 if (newProperties.find(indexStr) != newProperties.end()) {
+                    Value child = v(newProperties[indexStr]);
                     Value updatedChild = updateObjectPropertyRecursive(
-                        newProperties[indexStr], 
+                        child, 
                         pathNodes, 
                         depth + 1, 
                         newValue
                     );
-                    newProperties[indexStr] = updatedChild;
+                    newProperties[indexStr] = p(updatedChild);
                 } else {
                     Value newChild;
-                    if (pathNodes[depth + 1].isProperty) {
+                    if (depth + 1 < pathNodes.size() && pathNodes[depth + 1].isProperty) {
                         newChild = Value::createJsonObject({});
                     } else {
                         newChild = Value::createJsonArray({});
                     }
-                    newProperties[indexStr] = updateObjectPropertyRecursive(
+                    newProperties[indexStr] = p(updateObjectPropertyRecursive(
                         newChild, 
                         pathNodes, 
                         depth + 1, 
                         newValue
-                    );
+                    ));
                 }
             }
             
