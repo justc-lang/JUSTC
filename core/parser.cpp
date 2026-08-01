@@ -1901,6 +1901,13 @@ ASTNode Parser::parseStatement(bool doExecute) {
             isConst = true;
         }
         return parseVariableDeclaration(doExecute, isConst, true);
+    } else if (match("keyword", "set") && !isJSONArray) {
+        advance();
+        ASTNode set("SET", currentToken().value, currentToken().start);
+        Value newValue = parseObjectPropertyAccess(doExecute, true);
+        set.value = newValue;
+        set.identifier = newValue.name;
+        return set;
     } else {
         return parseCommand(doExecute);
     }
@@ -1925,7 +1932,7 @@ ASTNode Parser::parseGlobal(bool doExecute, bool constant) {
     return global;
 }
 
-bool Parser::CanIgnoreNoAssigmentOperator() {
+bool Parser::CanIgnoreNoAssignmentOperator() {
     return (match("string") || match("number") || match("null") || match("path") || match("link") ||
             match("hex") || match("binary") || match("boolean") || match("identifier") || match("|") ||
             match("JavaScript") || match("Luau") || match(endOfScript) || match(".") || match(",") ||
@@ -2106,7 +2113,7 @@ ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool loc
     else {
         if (isEnd()) {
             throw std::runtime_error("Expected assignment operator at " + Utility::position(currentToken().start, input) + ", got EOF.");
-        } else if (CanIgnoreNoAssigmentOperator()) {
+        } else if (CanIgnoreNoAssignmentOperator()) {
             Value exprValue = applyCPPTypeDeclaration(parseExpression(doExecute), cpptype, node.typeDeclaration, doExecute, true);
             node.value = exprValue;
             extractReferences(exprValue, node.references);
@@ -4042,10 +4049,10 @@ Value Parser::evaluateExpression(const Value& left, const std::string& op, const
                     }
                     else throw std::runtime_error("Expected \"(\" for function call at " + Utility::position(currentToken().start, input) + ".");
                 } else if (left.type == DataType::JSON_OBJECT || left.type == DataType::JUSTC_OBJECT) {
-                    result = accessProperty(left, funcName);
+                    result = accessProperty(left, funcName).first;
                 }
             } else if (left.type == DataType::JSON_OBJECT || left.type == DataType::JUSTC_OBJECT) {
-                result = accessProperty(left, funcName);
+                result = accessProperty(left, funcName).first;
             }
         } else {
             size_t index = static_cast<size_t>(right.toNumber());
@@ -4063,7 +4070,7 @@ Value Parser::evaluateExpression(const Value& left, const std::string& op, const
                     break;
                 case DataType::JSON_OBJECT:
                 case DataType::JUSTC_OBJECT:
-                    result = accessProperty(left, right.toString());
+                    result = accessProperty(left, right.toString()).first;
                     break;
                 default: break;
             }
@@ -4084,11 +4091,11 @@ Value Parser::evaluateExpression(const Value& left, const std::string& op, const
                 }
                 else throw std::runtime_error("Expected \"(\" for function call at " + Utility::position(currentToken().start, input) + ".");
             } else if (left.type == DataType::JSON_OBJECT || left.type == DataType::JUSTC_OBJECT) {
-                result = accessProperty(left, right.toString());
+                result = accessProperty(left, right.toString()).first;
             }
             else throw std::runtime_error("<" + dataTypeToString(left.type) + ">" + op + funcName + " is not a function. Call attempt at " + Utility::position(currentToken().start, input) + ".");
         } else if (left.type == DataType::JSON_OBJECT || left.type == DataType::JUSTC_OBJECT) {
-            result = accessProperty(left, right.toString());
+            result = accessProperty(left, right.toString()).first;
         }
         else throw std::runtime_error(errmsg);
 
@@ -5924,7 +5931,7 @@ Value Parser::parseJsonObject(bool doExecute) {
 
         if (match(":") || match("=") || match("-") || match("keyword", "is")) {
             advance();
-        } else if (!CanIgnoreNoAssigmentOperator()) {
+        } else if (!CanIgnoreNoAssignmentOperator()) {
             throw std::runtime_error("Expected \":\" after key in object at " + Utility::position(currentToken().start, input) + ".");
         }
 
@@ -5984,14 +5991,16 @@ Value Parser::parseJsonArray(bool doExecute) {
 
     return result;
 }
-Value Parser::parseObjectPropertyAccess(bool doExecute) {
+Value Parser::parseObjectPropertyAccess(bool doExecute, bool set) {
     std::vector<std::variant<std::string, size_t>> accessChain;
+    std::stringstream accessChainStr;
 
     std::string firstIdentifier = currentToken().value;
     accessChain.push_back(firstIdentifier);
     advance();
 
     while ((match(".") || match("[")) && position + 1 < tokens.size()) {
+        accessChainStr << t2i(currentToken());
         if (match(".")) {
             advance();
             if (!match("identifier") && !match("keyword") && !isEnd()) {
@@ -6016,6 +6025,8 @@ Value Parser::parseObjectPropertyAccess(bool doExecute) {
             advance();
         }
     }
+
+    if (set) return updateObjectProperty(accessChain, accessChainStr.str());
 
     std::string rootName = std::get<std::string>(accessChain[0]);
     Value currentValue = resolveVariableValue(rootName, false);
@@ -6058,7 +6069,7 @@ Value Parser::parseObjectPropertyAccess(bool doExecute) {
     for (size_t i = 1; i < accessChain.size() - 1; i++) {
         if (std::holds_alternative<std::string>(accessChain[i])) {
             std::string propName = std::get<std::string>(accessChain[i]);
-            currentValue = accessProperty(currentValue, propName);
+            currentValue = accessProperty(currentValue, propName).first;
         } else if (std::holds_alternative<size_t>(accessChain[i])) {
             size_t index = std::get<size_t>(accessChain[i]);
             currentValue = accessIndex(currentValue, index);
@@ -6075,7 +6086,7 @@ Value Parser::parseObjectPropertyAccess(bool doExecute) {
             funcName = std::get<std::string>(last);
         }
 
-        Value func = accessProperty(currentValue, funcName);
+        Value func = accessProperty(currentValue, funcName).first;
 
         if (func.type == DataType::FUNCTION) { // user funciton
             return callFunction(func, parseArguments(doExecute), currentToken().start, doExecute);
@@ -6084,13 +6095,13 @@ Value Parser::parseObjectPropertyAccess(bool doExecute) {
         }
     } else { // property/index
         if (std::holds_alternative<std::string>(last)) { // object
-            return accessProperty(currentValue, std::get<std::string>(last));
+            return accessProperty(currentValue, std::get<std::string>(last)).first;
         } else { // array
             return accessIndex(currentValue, std::get<size_t>(last));
         }
     }
 }
-Value Parser::accessProperty(const Value& obj, const std::string& propName) {
+std::pair<Value, Value::Property> Parser::accessProperty(const Value& obj, const std::string& propName, const Access& requestAccess) {
     if (obj.type == DataType::JUSTC_OBJECT) {
         if (obj.object_context && obj.object_context->parser) {
             if (obj.object_context->parser->outputMode == "disabled") {
@@ -6099,13 +6110,15 @@ Value Parser::accessProperty(const Value& obj, const std::string& propName) {
 
             auto it = obj.properties.find(propName);
             if (it != obj.properties.end()) {
-                return v(it->second);
+                return vp(it->second, requestAccess);
             }
 
             auto& parserVars = obj.object_context->variables;
             auto varIt = parserVars.find(propName);
             if (varIt != parserVars.end()) {
-                return varIt->second;
+                Value val = varIt->second;
+                Value::Property empty(val, Access::READ_WRITE);
+                return {val, empty};
             }
 
             throw std::runtime_error("Property '" + propName + "' not found in object at " + Utility::position(currentToken().start, input) + ".");
@@ -6113,7 +6126,7 @@ Value Parser::accessProperty(const Value& obj, const std::string& propName) {
     } else if (obj.type == DataType::JSON_OBJECT) {
         auto it = obj.properties.find(propName);
         if (it != obj.properties.end()) {
-            return v(it->second);
+            return vp(it->second, requestAccess);
         }
         throw std::runtime_error("Property '" + propName + "' not found in object at " + Utility::position(currentToken().start, input) + ".");
     } else if (obj.type == DataType::JSON_ARRAY) {
@@ -6595,18 +6608,50 @@ std::string Parser::renderJSX(const Value& jsxElement) {
     return result;
 }
 
-Value Parser::p2v(const Value::Property& property) { // propertyToValue
-    switch (property.access) {
-        case Access::READ_WRITE:
-        case Access::READ_ONLY: {
-            if (property.hasGetter && property.getter) {
-                Value getter = *property.getter;
-                if (getter.type == DataType::FUNCTION && doExecute) return callFunction(getter, {}, position, doExecute);
-                else if (doExecute) throw std::runtime_error("Invalid getter type.");
+Value Parser::p2v(const Value::Property& property, const Access& requestAccess) { // propertyToValue
+    switch (requestAccess) {
+        case Access::READ_WRITE: {
+            switch (property.access) {
+                case Access::READ_WRITE: {
+                    if (property.hasGetter && property.getter) {
+                        Value getter = *property.getter;
+                        if (getter.type == DataType::FUNCTION && doExecute) return callFunction(getter, {}, position, doExecute);
+                        else if (doExecute) throw std::runtime_error("Invalid getter type.");
+                    }
+                    return property.value;
+                }
+                default: throw std::runtime_error("Access denied.");
             }
-            return property.value;
         }
-        default: throw std::runtime_error("Access denied.");
+        case Accept::WRITE_ONLY: {
+            switch (property.access) {
+                case Access::READ_WRITE:
+                case Access::WRITE_ONLY: {
+                    if (property.hasGetter && property.getter && property.access == Access::READ_WRITE) {
+                        Value getter = *property.getter;
+                        if (getter.type == DataType::FUNCTION && doExecute) return callFunction(getter, {}, position, doExecute);
+                        else if (doExecute) throw std::runtime_error("Invalid getter type.");
+                    }
+                    return property.value;
+                }
+                default: throw std::runtime_error("Access denied.");
+            }
+        }
+        case Access::READ_ONLY: 
+        default: {
+            switch (property.access) {
+                case Access::READ_WRITE:
+                case Access::READ_ONLY: {
+                    if (property.hasGetter && property.getter) {
+                        Value getter = *property.getter;
+                        if (getter.type == DataType::FUNCTION && doExecute) return callFunction(getter, {}, position, doExecute);
+                        else if (doExecute) throw std::runtime_error("Invalid getter type.");
+                    }
+                    return property.value;
+                }
+                default: throw std::runtime_error("Access denied.");
+            }
+        }
     }
 }
 Value::Property Parser::v2p(const Value& value, const Access& access, const Value& getter, const Value& setter) { // valueToProperty
@@ -6622,11 +6667,19 @@ Value::Property Parser::v2p(const Value& value, const Access& access, const Valu
     return prop;
 }
 
-Value Parser::v(const Value& value) { // value
+Value Parser::v(const Value& value, const Access& requestAccess) { // value
     return value;
 }
-Value Parser::v(const Value::Property& value) { // value
-    return p2v(value);
+Value Parser::v(const Value::Property& value, const Access& requestAccess) { // value
+    return p2v(value, requestAccess);
+}
+
+std::pair<Value, Value::Property> Parser::vp(const Value& value, const Access& requestAccess) { // value & property
+    Value::property empty(value, Access::READ_WRITE);
+    return {value, empty};
+}
+std::pair<Value, Value::Property> Parser::vp(const Value::Property& value, const Access& requestAccess) { // value & property
+    return {p2v(value, requestAccess), value};
 }
 
 Value::Property Parser::p(const Value& value) { // property
@@ -6724,6 +6777,233 @@ std::pair<bool, Value> Parser::isStruct(const std::string& name) {
         return {true, it->second};
     }
     return {false, Value::createNull()};
+}
+
+Value Parser::updateObjectProperty(const std::vector<std::variant<std::string, size_t>>& accessChain, std::string accessChainStr) {
+    if (accessChain.empty()) {
+        throw std::runtime_error("Empty property path");
+    }
+    
+    std::string rootName = std::get<std::string>(accessChain[0]);
+    Value root = resolveVariableValue(rootName, false);
+    Value current = root;
+    Value setter = Value::createNull();
+
+    Access neededAccess = Access::WRITE_ONLY;
+    if (match("--") || match("++") || match("#") || match("!") || match("~")) neededAccess = Access::READ_WRITE;
+
+    std::vector<PropertyPathNode> pathNodes;
+    
+    for (size_t i = 1; i < accessChain.size(); i++) {
+        PropertyPathNode node;
+        if (std::holds_alternative<std::string>(accessChain[i])) {
+            node.isProperty = true;
+            node.name = std::get<std::string>(accessChain[i]);
+            
+            if (i < accessChain.size() - 1) {
+                auto result = accessProperty(current, node.name, neededAccess);
+                current = result.first;
+                if (result.second.hasSetter) {
+                    setter = *result.second.setter;
+                }
+            }
+            pathNodes.push_back(node);
+        } else if (std::holds_alternative<size_t>(accessChain[i])) {
+            node.isIndex = true;
+            node.index = std::get<size_t>(accessChain[i]);
+            
+            if (i < accessChain.size() - 1) {
+                current = accessIndex(current, node.index);
+            }
+            pathNodes.push_back(node);
+        }
+    }
+
+    if (pathNodes.empty()) {
+        throw std::runtime_error("No property/index to update");
+    }
+
+    Value newValue;
+    std::string assignOp;
+    
+    if (match("keyword", "to") || match("=")) {
+        assignOp = currentToken().value;
+        advance();
+        
+        newValue = parseExpression(doExecute);
+        newValue = applyTypeDeclaration(newValue, pathNodes.back().typeNode);
+    }
+    else if (match("keyword", "isn't") || match("!=")) {
+        assignOp = currentToken().value;
+        advance();
+        
+        newValue = parseExpression(doExecute);
+        newValue = handleInequality(newValue);
+    }
+    else if (match("keyword", "isif") || match("?")) {
+        assignOp = currentToken().value;
+        advance();
+        
+        newValue = parseConditional(doExecute);
+    }
+    else if (match("--") || match("++") || match("#") || match("!") || match("~")) {
+        std::string unaryOp = currentToken().value;
+        advance();
+        
+        Value currentVal = accessProperty(current, pathNodes.back().name, Access::READ_ONLY).first;
+        
+        if (unaryOp == "--" || unaryOp == "++") {
+            newValue = Value::createNumber(currentVal.toNumber() + (unaryOp == "++" ? 1 : -1));
+        } else if (unaryOp == "#") {
+            newValue = evaluateLengthOperator(currentVal);
+        } else if (unaryOp == "!") {
+            newValue = booleanToValue(!currentVal.toBoolean());
+        } else if (unaryOp == "~") {
+            if (Utility::checkNumber(currentVal)) {
+                int num = static_cast<int>(currentVal.toNumber());
+                newValue = numberToValue(~num);
+            } else if (currentVal.type == DataType::STRING) {
+                newValue = stringToValue(Utility::stringNot(currentVal.toString()));
+            } else {
+                throw std::runtime_error("Expected number or string for bitwise NOT operation");
+            }
+        }
+    }
+    else {
+        if (isEnd()) {
+            throw std::runtime_error("Expected assignment operator at " + Utility::position(currentToken().start, input) + ", got EOF.");
+        } else if (CanIgnoreNoAssignmentOperator()) {
+            newValue = parseExpression(doExecute);
+        } else {
+            throw std::runtime_error("Expected assignment operator at " + Utility::position(currentToken().start, input) + ", got \"" + currentToken().value +"\".");
+        }
+    }
+
+    Value updatedObject = updateObjectPropertyRecursive(root, pathNodes, 0, newValue);
+    
+    assign(root, updatedObject, " at " + Utility::position(currentToken().start, input) + ".");
+    
+    newValue.name = accessChainStr;
+    return newValue;
+}
+
+Value Parser::updateObjectPropertyRecursive(const Value& obj, const std::vector<PropertyPathNode>& pathNodes, size_t depth, const Value& newValue) {
+    if (depth >= pathNodes.size()) {
+        return newValue;
+    }
+    
+    const PropertyPathNode& node = pathNodes[depth];
+    Value result = obj;
+    
+    if (node.isProperty) {
+        if (obj.type == DataType::JSON_OBJECT || obj.type == DataType::JUSTC_OBJECT) {
+            std::unordered_map<std::string, Value> newProperties = obj.properties;
+            
+            if (depth == pathNodes.size() - 1) {
+                newProperties[node.name] = newValue;
+            } else {
+                if (newProperties.find(node.name) != newProperties.end()) {
+                    Value updatedChild = updateObjectPropertyRecursive(
+                        newProperties[node.name], 
+                        pathNodes, 
+                        depth + 1, 
+                        newValue
+                    );
+                    newProperties[node.name] = updatedChild;
+                } else {
+                    Value newChild;
+                    if (pathNodes[depth + 1].isProperty) {
+                        newChild = Value::createJsonObject({});
+                    } else {
+                        newChild = Value::createJsonArray({});
+                    }
+                    newProperties[node.name] = updateObjectPropertyRecursive(
+                        newChild, 
+                        pathNodes, 
+                        depth + 1, 
+                        newValue
+                    );
+                }
+            }
+            
+            if (obj.type == DataType::JUSTC_OBJECT) {
+                result = Value::createJustcObject(obj.object_context);
+                result.properties = newProperties;
+                result.name = obj.name;
+            } else {
+                result = Value::createJsonObject(newProperties);
+            }
+        } else if (obj.type == DataType::JSON_ARRAY) {
+            throw std::runtime_error("Cannot set property '" + node.name + "' on array");
+        } else {
+            throw std::runtime_error("Cannot set property '" + node.name + "' on non-object");
+        }
+    } 
+    else if (node.isIndex) {
+        if (obj.type == DataType::JSON_ARRAY) {
+            std::vector<Value> newArray = obj.array_elements;
+            
+            if (node.index >= newArray.size()) {
+                newArray.resize(node.index + 1, Value::createNull());
+            }
+            
+            if (depth == pathNodes.size() - 1) {
+                newArray[node.index] = newValue;
+            } else {
+                Value updatedChild = updateObjectPropertyRecursive(
+                    newArray[node.index], 
+                    pathNodes, 
+                    depth + 1, 
+                    newValue
+                );
+                newArray[node.index] = updatedChild;
+            }
+            
+            result = Value::createJsonArray(newArray);
+        } else if (obj.type == DataType::JSON_OBJECT || obj.type == DataType::JUSTC_OBJECT) {
+            std::string indexStr = std::to_string(node.index);
+            std::unordered_map<std::string, Value> newProperties = obj.properties;
+            
+            if (depth == pathNodes.size() - 1) {
+                newProperties[indexStr] = newValue;
+            } else {
+                if (newProperties.find(indexStr) != newProperties.end()) {
+                    Value updatedChild = updateObjectPropertyRecursive(
+                        newProperties[indexStr], 
+                        pathNodes, 
+                        depth + 1, 
+                        newValue
+                    );
+                    newProperties[indexStr] = updatedChild;
+                } else {
+                    Value newChild;
+                    if (pathNodes[depth + 1].isProperty) {
+                        newChild = Value::createJsonObject({});
+                    } else {
+                        newChild = Value::createJsonArray({});
+                    }
+                    newProperties[indexStr] = updateObjectPropertyRecursive(
+                        newChild, 
+                        pathNodes, 
+                        depth + 1, 
+                        newValue
+                    );
+                }
+            }
+            
+            if (obj.type == DataType::JUSTC_OBJECT) {
+                result = Value::createJustcObject(obj.object_context);
+                result.properties = newProperties;
+                result.name = obj.name;
+            } else {
+                result = Value::createJsonObject(newProperties);
+            }
+        } else {
+            throw std::runtime_error("Cannot access index on non-array/non-object");
+        }
+    }
+    
+    return result;
 }
 
 ParseResult Parser::parseTokens(const std::vector<ParserToken>& tokens, bool doExecute, bool runAsync, const std::string& input, const bool allowJavaScript, const bool canAllowJS, const std::string scriptName, const std::string scriptType, const bool allowLuau, const bool canAllowLuau) {
