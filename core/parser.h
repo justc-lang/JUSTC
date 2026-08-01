@@ -739,6 +739,14 @@ enum class ParserType : uint8_t {
     STRUCT = 1
 };
 
+struct PropertyPathNode {
+    bool isProperty = false;
+    bool isIndex = false;
+    std::string name;
+    size_t index = 0;
+    ASTNode typeNode;
+};
+
 class Parser {
 private:
     bool doExecute;
@@ -855,7 +863,7 @@ private:
     Value parseObjectPropertyAccess(bool doExecute, bool set = false);
     std::shared_ptr<ObjectContext> createObjectContext(bool inheritFromParent);
 
-    Value accessProperty(const Value& obj, const std::string& propName, const Access& requestAccess = Access::READ_ONLY);
+    std::pair<Value, Value::Property> accessProperty(const Value& obj, const std::string& propName, const Access& requestAccess = Access::READ_ONLY);
     Value accessIndex(const Value& arr, size_t index);
     std::vector<Value> parseArguments(bool doExecute);
 
