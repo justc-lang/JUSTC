@@ -115,6 +115,7 @@ enum class DataType : int8_t {
     BASE64       = 26,
     HTTP_ERROR   = 27,
     JSX_ELEMENT  = 28,
+    STRUCT       = 29,
     UNKNOWN      =-1
 };
 
@@ -146,6 +147,7 @@ inline std::string dataTypeToString(DataType type) {
         case DataType::BASE64:       return "Base64 number";
         case DataType::HTTP_ERROR:   return "HTTP Error";
         case DataType::JSX_ELEMENT:  return "Element";
+        case DataType::STRUCT:       return "Struct";
         case DataType::UNKNOWN:      return "unknown";
         default:                     return "invalid";
     }
@@ -588,6 +590,7 @@ struct Value {
                 archive(array_elements);
                 break;
             case DataType::FUNCTION:
+            case DataType::STRUCT:
                 archive(name, string_value, function_info);
                 break;
             case DataType::BINARY_DATA:
@@ -729,6 +732,11 @@ struct Class {
     Class(Value constructor, Value destructor) : constructor(constructor), destructor(destructor) {}
 };
 
+enum class ParserType : uint8_t {
+    SCRIPT = 0,
+    STRUCT = 1
+};
+
 class Parser {
 private:
     bool doExecute;
@@ -798,6 +806,10 @@ private:
     uint64_t rootIndex;
     
     std::unordered_map<DataType, std::unordered_map<std::string, std::string>> typeMethods;
+
+    ParserType parsertype;
+
+    std::unordered_map<std::string, Value> structures;
 
     // logs
     void addLog(const std::string& type, const std::string& message, size_t position = 0);
@@ -880,7 +892,7 @@ private:
     void evaluateAllVariablesAsync();
     std::runtime_error typeDeclarationError(const DataType left, const DataType right, const ASTNode node);
     Value applyTypeDeclaration(const Value value, const ASTNode node);
-    Value applyCPPTypeDeclaration(const Value value, const std::string& cpptype, const DataType typeDecl);
+    Value applyCPPTypeDeclaration(const Value value, const std::string& cpptype, const DataType typeDecl, const bool canBeDefault = false);
     Value evaluateASTNode(const ASTNode& node);
     void extractReferences(const Value& value, std::vector<std::string>& references);
 
@@ -922,8 +934,8 @@ private:
         }
     }
 
-    Value isolated(const std::string& code, bool doExecute, size_t startPos, const std::unordered_map<std::string, Value>* context = nullptr, const std::string name = "auto", bool merge = false, bool silent = false);
-    Value shared(const std::string& code, bool doExecute, size_t startPos, const std::unordered_map<std::string, Value>* context, const std::string name = "auto", bool merge = true, bool silent = false);
+    Value isolated(const std::string& code, bool doExecute, size_t startPos, const std::unordered_map<std::string, Value>* context = nullptr, const std::string name = "auto", bool merge = false, bool silent = false, const ParserType ptype = ParserType::SCRIPT);
+    Value shared(const std::string& code, bool doExecute, size_t startPos, const std::unordered_map<std::string, Value>* context, const std::string name = "auto", bool merge = true, bool silent = false, const ParserType ptype = ParserType::SCRIPT);
 
     Value parseFunctionDeclaration(bool doExecute, std::string funcName = "anonymous", bool requireName = true);
     Value emptyJUSTC();
@@ -1023,10 +1035,13 @@ private:
     Value parseJSXElement(const std::string& jsxStr);
     std::string renderJSX(const Value& jsxElement);
 
+    Value parseStructDeclaration(bool doExecute, std::string structName = "anonymous", bool requireName = true);
+    std::pair<bool, Value> isStruct(const std::string& name);
+
 public:
     static std::string getCurrentTimestamp();
     static Value stringToValue(const std::string& str);
-    Parser(const std::vector<ParserToken>& tokens, bool doExecute = true, bool runAsync = false, const std::string& input = "", const bool allowJavaScript = true, const bool canAllowJS = true, const std::string scriptName = "", const std::string scriptType = "script", const bool allowLuau = true, const bool canAllowLuau = true, const bool isFunction = false, const std::unordered_map<std::string, Value>* initialContext = nullptr, const CharType chartype = CharType::GRAPHEME);
+    Parser(const std::vector<ParserToken>& tokens, bool doExecute = true, bool runAsync = false, const std::string& input = "", const bool allowJavaScript = true, const bool canAllowJS = true, const std::string scriptName = "", const std::string scriptType = "script", const bool allowLuau = true, const bool canAllowLuau = true, const bool isFunction = false, const std::unordered_map<std::string, Value>* initialContext = nullptr, const CharType chartype = CharType::GRAPHEME, const ParserType parsertype = ParserType::SCRIPT);
     ParseResult parse(bool doExecute = true);
     static ParseResult parseTokens(const std::vector<ParserToken>& tokens, bool doExecute = true, bool runAsync = false, const std::string& input = "", const bool allowJavaScript = true, const bool canAllowJS = true, const std::string scriptName = "", const std::string scriptType = "script", const bool allowLuau = true, const bool canAllowLuau = true);
 

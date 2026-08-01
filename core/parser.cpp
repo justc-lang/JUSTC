@@ -690,12 +690,13 @@ Value Parser::builtinObjectFunction(const std::string& name) {
 Parser::Parser(
     const std::vector<ParserToken>& tokens, bool doExecute, bool runAsync, const std::string& input, const bool allowJavaScript,
     const bool canAllowJS, const std::string scriptName, const std::string scriptType, const bool allowLuau, const bool canAllowLuau,
-    const bool isFunction, const std::unordered_map<std::string, Value>* initialContext, const CharType chartype
+    const bool isFunction, const std::unordered_map<std::string, Value>* initialContext, const CharType chartype, const ParserType parsertype
 ) :
     tokens(tokens), input(input), position(0), outputMode("everything"), allowJavaScript(allowJavaScript), globalScope(false),
     strictMode(false), hasLogFile(false), allowLuau(allowLuau), canAllowLuau(canAllowLuau), doExecute(doExecute), runAsync(runAsync),
     canAllowJS(allowJavaScript ? true : canAllowJS), scriptName(scriptName), scriptType(scriptType), asJSON(false), isJSONArray(false),
-    endOfScript("."), returnValue(DataType::UNKNOWN), isFunction(isFunction), chartype(chartype), currentScope(0), rootIndex(0)
+    endOfScript("."), returnValue(DataType::UNKNOWN), isFunction(isFunction), chartype(chartype), currentScope(0), rootIndex(0),
+    parsertype(parsertype)
 {
     initializeCPPTypes();
     initializeBuiltIns();
@@ -1826,10 +1827,20 @@ ASTNode Parser::parseStatement(bool doExecute) {
         constVars[funcValue.name] = true;
 
         return node;
+    } else if (keyword == "struct") {
+        Value structVal = parseStructDeclaration(doExecute);
 
+        ASTNode node("VARIABLE_DECLARATION", structVal.name, currentToken().start);
+        node.value = structVal;
+        node.constant = true;
+
+        variables[structVal.name] = structVal;
+        constVars[structVal.name] = true;
+
+        return node;
     } else if (keyword == "echo" || keyword == "log" || keyword == "logfile") {
         return parseCommand(doExecute);
-    } else if ((match("identifier") || match("string") || isCPPType()) && !isJSONArray) {
+    } else if ((match("identifier") || match("string") || isCPPType() || isStruct(currentToken().value).first) && !isJSONArray) {
         return parseVariableDeclaration(doExecute);
     } else if (match("keyword", "const") && !isJSONArray) {
         advance();
@@ -1882,6 +1893,11 @@ ASTNode Parser::parseGlobal(bool doExecute, bool constant) {
         global.value = funcValue;
         global.identifier = funcValue.name;
         global.constant = constant;
+    } else if (match("keyword", "struct")) {
+        Value structVal = parseStructDeclaration(doExecute);
+        global.value = structVal;
+        global.identifier = structVal.name;
+        global.constant = constant;
     } else {
         global = parseVariableDeclaration(doExecute, constant, false, true);
     }
@@ -1898,7 +1914,7 @@ bool Parser::CanIgnoreNoAssigmentOperator() {
 }
 ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool local, bool global) {
     std::string cpptype = "default";
-    if (isCPPType()) {
+    if (isCPPType() || isStruct(currentToken().value).first) {
         cpptype = currentToken().value;
         advance();
     }
@@ -1968,7 +1984,7 @@ ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool loc
         typeDecl = currentToken().value;
         if (!match("identifier") && !match("string") && !match("link")) {
             // then `:` and `=` are the same
-            Value exprValue = applyCPPTypeDeclaration(parseExpression(doExecute), cpptype, DataType::UNKNOWN);
+            Value exprValue = applyCPPTypeDeclaration(parseExpression(doExecute), cpptype, DataType::UNKNOWN, doExecute);
             node.value = exprValue;
             extractReferences(exprValue, node.references);
 
@@ -1989,7 +2005,7 @@ ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool loc
             node.typeDeclaration = Utility::typeDeclaration2dataType(typeDecl, Utility::position(currentToken().start, input) + ".");
         } catch (...) {
             // then `:` and `=` are the same
-            Value exprValue = applyCPPTypeDeclaration(parseExpression(doExecute), cpptype, DataType::UNKNOWN);
+            Value exprValue = applyCPPTypeDeclaration(parseExpression(doExecute), cpptype, DataType::UNKNOWN, doExecute);
             node.value = exprValue;
             extractReferences(exprValue, node.references);
 
@@ -2013,7 +2029,7 @@ ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool loc
         assignOp = currentToken().value;
         advance();
 
-        Value exprValue = applyCPPTypeDeclaration(parseExpression(doExecute), cpptype, node.typeDeclaration);
+        Value exprValue = applyCPPTypeDeclaration(parseExpression(doExecute), cpptype, node.typeDeclaration, doExecute);
         node.value = exprValue;
         extractReferences(exprValue, node.references);
     }
@@ -2021,7 +2037,7 @@ ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool loc
         assignOp = currentToken().value;
         advance();
 
-        Value exprValue = applyCPPTypeDeclaration(parseExpression(doExecute), cpptype, node.typeDeclaration);
+        Value exprValue = applyCPPTypeDeclaration(parseExpression(doExecute), cpptype, node.typeDeclaration, doExecute);
         exprValue = handleInequality(exprValue);
         node.value = exprValue;
         extractReferences(exprValue, node.references);
@@ -2072,7 +2088,7 @@ ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool loc
         if (isEnd()) {
             throw std::runtime_error("Expected assignment operator at " + Utility::position(currentToken().start, input) + ", got EOF.");
         } else if (CanIgnoreNoAssigmentOperator()) {
-            Value exprValue = applyCPPTypeDeclaration(parseExpression(doExecute), cpptype, node.typeDeclaration);
+            Value exprValue = applyCPPTypeDeclaration(parseExpression(doExecute), cpptype, node.typeDeclaration, doExecute, true);
             node.value = exprValue;
             extractReferences(exprValue, node.references);
         } else throw std::runtime_error("Expected assignment operator at " + Utility::position(currentToken().start, input) + ", got \"" + currentToken().value +"\".");
@@ -2119,7 +2135,7 @@ ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool loc
 }
 
 Value Parser::parseExpression(bool doExecute, bool identifierMode, bool doFunctionCall, bool ignoreColon) {
-    if (match("keyword", "function") || match("keyword", "isolated")) {
+    if (match("keyword", "function") || match("keyword", "isolated") || match("keyword", "struct")) {
         std::string funcName = std::to_string(position);
         bool gotName = false;
         size_t offset = 1;
@@ -2133,6 +2149,7 @@ Value Parser::parseExpression(bool doExecute, bool identifierMode, bool doFuncti
             }
             ++offset;
         }
+        if (match("keyword", "struct")) return parseStructDeclaration(doExecute, funcName, false);
         return parseFunctionDeclaration(doExecute, funcName, false);
     }
     Value result = parseConditional(doExecute, identifierMode, doFunctionCall, ignoreColon);
@@ -4462,10 +4479,11 @@ __float128 Parser::parseToFloat128(const std::string& str) {
     return strtoflt128(cleaned.c_str(), nullptr);
 }
 #endif
-Value Parser::applyCPPTypeDeclaration(const Value value, const std::string& cpptype, const DataType typeDecl) {
+Value Parser::applyCPPTypeDeclaration(const Value value, const std::string& cpptype, const DataType typeDecl, bool doExecute, const bool canBeDefault) {
     if (cpptype == "default") return value;
 
     Value result = value;
+    const bool isDefault = canBeDefault && value.type == DataType::NULL_TYPE;
 
     if (isCPPNumber(cpptype)) {
         switch (typeDecl) {
@@ -4475,6 +4493,8 @@ Value Parser::applyCPPTypeDeclaration(const Value value, const std::string& cppt
             case DataType::BINARY:
             case DataType::OCTAL: {
                 std::string cleaned = stripUnderscores(value.name);
+                if (isDefault) cleaned = "0";
+
                 if (cpptype == "int8") {
                     result = Value::createNumberWithType(static_cast<int8_t>(std::stoi(cleaned)), NumericType::INT8);
                 } else if (cpptype == "int16") {
@@ -4574,6 +4594,10 @@ Value Parser::applyCPPTypeDeclaration(const Value value, const std::string& cppt
                 throw std::runtime_error("C++ type declaration error: Cannot convert " + dataTypeToString(typeDecl) + " to " + cpptype + " at " + Utility::position(currentToken().start, input) + ".");
                 break;
         }
+    } else if (isStruct(cpptype).first) {
+        Value constructor = isStruct(cpptype).second;
+        result = callFunction(constructor, {}, currentToken().start, doExecute);
+        if (!isDefault) throw std::runtime_error("");
     }
 
     return result;
@@ -4770,7 +4794,7 @@ Value Parser::merger(const std::vector<Value>& args) {
     variables[key] = value;
     return Value::createNull();
 }
-Value Parser::isolated(const std::string& code, bool doExecute, size_t startPos, const std::unordered_map<std::string, Value>* context, const std::string name, bool merge, bool silent) {
+Value Parser::isolated(const std::string& code, bool doExecute, size_t startPos, const std::unordered_map<std::string, Value>* context, const std::string name, bool merge, bool silent, ParserType ptype) {
     try {
         auto lexerResult = Lexer::parse(code);
 
@@ -4797,7 +4821,8 @@ Value Parser::isolated(const std::string& code, bool doExecute, size_t startPos,
             this->canAllowLuau,
             isFunction,
             context,
-            chartype
+            chartype,
+            ptype
         );
 
         ParseResult result;
@@ -4913,13 +4938,13 @@ Value Parser::isolated(const std::string& code, bool doExecute, size_t startPos,
         throw std::runtime_error(std::string(e.what()) + " (at \"" + this->scriptName + "\" " + Utility::position(startPos, input) + ")");
     }
 }
-Value Parser::shared(const std::string& code, bool doExecute, size_t startPos, const std::unordered_map<std::string, Value>* context, const std::string name, bool merge, bool silent) {
+Value Parser::shared(const std::string& code, bool doExecute, size_t startPos, const std::unordered_map<std::string, Value>* context, const std::string name, bool merge, bool silent, ParserType ptype) {
     std::unordered_map<std::string, Value> ctx;
     if (context) {
         ctx = *context;
     }
 
-    Value result = isolated(code, doExecute, startPos, &ctx, name, merge);
+    Value result = isolated(code, doExecute, startPos, &ctx, name, merge, silent, ptype);
 
     if (merge) {
         for (const auto& [key, value] : ctx) {
@@ -5355,7 +5380,7 @@ Value Parser::parseFunctionDeclaration(bool doExecute, std::string funcName, boo
 }
 
 Value Parser::callFunction(const Value& function, const std::vector<Value>& args, size_t startPos, bool doExecute) {
-    if (function.type != DataType::FUNCTION) {
+    if (function.type != DataType::FUNCTION && function.type != DataType::STRUCT) {
         throw std::runtime_error("Cannot call non-function value at " + Utility::position(startPos, input));
     } else if (!doExecute) {
         return onExecDisabled(startPos, function.name);
@@ -5407,7 +5432,9 @@ Value Parser::callFunction(const Value& function, const std::vector<Value>& args
         functionContext[funcInfo.paramNames[i]] = paramValue;
     }
 
-    Value result = isolated(function.string_value, true, startPos, &functionContext);
+    ParserType ptype = ParserType::SCRIPT;
+    if (function.type == DataType::STRUCT) ptype = ParserType::STRUCT;
+    Value result = isolated(function.string_value, true, startPos, &functionContext, "auto", false, false, ptype);
 
     if (!result.properties.empty()) {
         auto it = result.properties.find("return");
@@ -6601,6 +6628,74 @@ std::unordered_map<std::string, Value::Property> Parser::pmap(const std::unorder
 }
 std::unordered_map<std::string, Value::Property> Parser::pmap(const std::unordered_map<std::string, Value::Property>& values) { // propertyMap
     return values;
+}
+
+Value Parser::parseStructDeclaration(bool doExecute, std::string structName, bool requireName) {
+    if (!match("keyword", "struct")) {
+        throw std::runtime_error("Expected 'struct' keyword at " + Utility::position(currentToken().start, input));
+    }
+    advance();
+
+    if (requireName) {
+        if (!match("identifier")) {
+            throw std::runtime_error("Expected struct name at " + Utility::position(currentToken().start, input));
+        }
+        structName = currentToken().value;
+        advance();
+    } else {
+        if (match("identifier")) {
+            structName = currentToken().value;
+            advance();
+        }
+    }
+
+    if (!match("{")) {
+        throw std::runtime_error("Expected '{' for struct body at " + Utility::position(currentToken().start, input));
+    }
+    advance();
+
+    std::stringstream body;
+    int braceCount = 1;
+
+    while (!isEnd() && braceCount > 0) {
+        if (match("{")) braceCount++;
+        else if (match("}")) braceCount--;
+
+        if (braceCount > 0) {
+            body << t2i(currentToken());
+        }
+        advance();
+    }
+
+    if (braceCount != 0) {
+        throw std::runtime_error("Unclosed struct body at " + Utility::position(currentToken().start, input));
+    }
+
+    std::string structBody = body.str();
+
+    Value result;
+    result.type = DataType::STRUCT;
+    result.string_value = structBody;
+    result.name = structName;
+
+    auto closureContext = std::make_shared<ObjectContext>();
+    for (const auto& [key, value] : this->variables) {
+        closureContext->variables[key] = value;
+    }
+    closureContext->allowJavaScript = this->allowJavaScript;
+    closureContext->allowLuau = this->allowLuau;
+    result.closure_context = closureContext;
+
+    structures[structName] = result;
+    return result;
+}
+
+std::pair<bool, Value> Parser::isStruct(const std::string& name) {
+    auto it = structures.find(name);
+    if (it != map.end()) {
+        return {true, it->second};
+    }
+    return {false, Value::createNull()};
 }
 
 ParseResult Parser::parseTokens(const std::vector<ParserToken>& tokens, bool doExecute, bool runAsync, const std::string& input, const bool allowJavaScript, const bool canAllowJS, const std::string scriptName, const std::string scriptType, const bool allowLuau, const bool canAllowLuau) {
