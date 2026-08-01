@@ -716,6 +716,7 @@ Parser::Parser(
             variables[key] = value;
             constVars[key] = false;
             setLocal(rootIndex, key, value, false);
+            if (parsertype == ParserType::STRUCT) outputExcludeVariables.push_back(key);
         }
     }
 
@@ -1297,6 +1298,7 @@ ParseResult Parser::parse(bool doExecute) {
         evaluateAllVariables();
         removeBuiltinVariablesFromOutput();
         removeStructsFromOutput();
+        finalizeOutput();
 
         if (isJSONArray) {
             for (size_t i = 0; i < arrayItems.size(); i++) {
@@ -6193,6 +6195,12 @@ void Parser::removeBuiltinVariablesFromOutput() {
 }
 void Parser::removeStructsFromOutput() {
     for (const auto& [name, val] : structures) {
+        variables.erase(name);
+        constVars.erase(name);
+    }
+}
+void Parser::finalizeOutput() {
+    for (const std::string name : outputExcludeVariables) {
         variables.erase(name);
         constVars.erase(name);
     }

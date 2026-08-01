@@ -821,6 +821,8 @@ private:
     ParserType parsertype;
 
     std::unordered_map<std::string, Value> structures;
+    
+    std::vector<std::string> outputExcludeVariables;
 
     // logs
     void addLog(const std::string& type, const std::string& message, size_t position = 0);
@@ -1052,6 +1054,8 @@ private:
 
     Value updateObjectProperty(const std::vector<std::variant<std::string, size_t>>& accessChain, std::string accessChainStr);
     Value updateObjectPropertyRecursive(const Value& obj, const std::vector<PropertyPathNode>& pathNodes, size_t depth, const Value& newValue);
+
+    void finalizeOutput();
 
 public:
     static std::string getCurrentTimestamp();
