@@ -368,6 +368,90 @@ monacoScript.onload = function() {
             }
         });
 
+        monaco.languages.registerDocumentSemanticTokensProvider('justc', {
+            getLegend: function() {
+                return {
+                    tokenTypes: ['type'],
+                    tokenModifiers: []
+                };
+            },
+            provideDocumentSemanticTokens: function(model, lastResultId, token) {
+                const lines = model.getLinesContent();
+                const tokens = [];
+                let line = 0;
+                let char = 0;
+                let offset = 0;
+                const definedTypes = new Set();
+
+                for (let i = 0; i < lines.length; i++) {
+                    const lineContent = lines[i];
+                    const structMatch = lineContent.match(/^\s*struct\s+([a-zA-Z_][\w']*)/);
+                    if (structMatch) {
+                        definedTypes.add(structMatch[1]);
+                    }
+                }
+
+                for (let i = 0; i < lines.length; i++) {
+                    const lineContent = lines[i];
+                    
+                    let match;
+                    const structRegex = /^\s*struct\s+([a-zA-Z_][\w']*)/g;
+                    while ((match = structRegex.exec(lineContent)) !== null) {
+                        const startPos = match.index + match[0].indexOf(match[1]);
+                        tokens.push({
+                            startLine: i,
+                            startChar: startPos,
+                            length: match[1].length,
+                            tokenType: 0
+                        });
+                    }
+
+                    const declRegex = /\b(local|const|global|var)\s+([a-zA-Z_][\w']*)/g;
+                    while ((match = declRegex.exec(lineContent)) !== null) {
+                        const startPos = match.index + match[0].indexOf(match[2]);
+                        tokens.push({
+                            startLine: i,
+                            startChar: startPos,
+                            length: match[2].length,
+                            tokenType: 0
+                        });
+                    }
+                }
+
+                for (let i = 0; i < lines.length; i++) {
+                    const lineContent = lines[i];
+                    for (const type of definedTypes) {
+                        const regex = new RegExp(`\\b${type}\\b`, 'g');
+                        let match;
+                        while ((match = regex.exec(lineContent)) !== null) {
+                            const beforeMatch = lineContent.substring(0, match.index);
+                            if (!beforeMatch.match(/\b(struct|local|const|global|var)\s+$/)) {
+                                tokens.push({
+                                    startLine: i,
+                                    startChar: match.index,
+                                    length: type.length,
+                                    tokenType: 0
+                                });
+                            }
+                        }
+                    }
+                }
+
+                tokens.sort((a, b) => {
+                    if (a.startLine !== b.startLine) return a.startLine - b.startLine;
+                    return a.startChar - b.startChar;
+                });
+
+                return {
+                    tokens: tokens
+                };
+            },
+            releaseDocumentSemanticTokens: function(lastResultId) {}
+        }, {
+            documentSelector: [{ language: 'justc' }],
+            priority: 100
+        });
+
         var editor = monaco.editor.create(document.getElementById("editor"), {
             value: `-- Type JUSTC code here...`,
             language: "justc",
@@ -378,7 +462,8 @@ monacoScript.onload = function() {
             lineNumbers: "on",
             folding: true,
             lineDecorationsWidth: 10,
-            lineNumbersMinChars: 3
+            lineNumbersMinChars: 3,
+            "semanticHighlighting.enabled": true
         });
 
         const editorElement = document.getElementById("editor");
