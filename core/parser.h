@@ -1037,6 +1037,7 @@ private:
 
     Value parseStructDeclaration(bool doExecute, std::string structName = "anonymous", bool requireName = true);
     std::pair<bool, Value> isStruct(const std::string& name);
+    void removeStructsFromOutput();
 
 public:
     static std::string getCurrentTimestamp();

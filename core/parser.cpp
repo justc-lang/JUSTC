@@ -1278,6 +1278,7 @@ ParseResult Parser::parse(bool doExecute) {
 
         evaluateAllVariables();
         removeBuiltinVariablesFromOutput();
+        removeStructsFromOutput();
 
         if (isJSONArray) {
             for (size_t i = 0; i < arrayItems.size(); i++) {
@@ -6155,6 +6156,12 @@ void Parser::handleBuiltinVariableAssignment(const std::string& name, const Valu
 }
 void Parser::removeBuiltinVariablesFromOutput() {
     for (const auto& name : builtins) {
+        variables.erase(name);
+        constVars.erase(name);
+    }
+}
+void Parser::removeStructsFromOutput() {
+    for (const auto& [name, val] : structures) {
         variables.erase(name);
         constVars.erase(name);
     }
