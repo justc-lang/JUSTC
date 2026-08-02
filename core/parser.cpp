@@ -2511,8 +2511,11 @@ Value Parser::parsePower(bool doExecute, bool identifierMode, bool doFunctionCal
 }
 
 Value Parser::parseUnary(bool doExecute, bool identifierMode, bool doFunctionCall, bool ignoreColon) {
-    if ((match("minus") && !identifierMode) || match("+") || match("!") ||
-        (match("-") && !identifierMode) || match("#")) {
+    if (
+        (match("minus") && !identifierMode) || match("+") || match("!") ||
+        (match("-") && !identifierMode) || match("#") || match("->") || 
+        match("<-") || match("~>") || match("<~") || match("++") || match("--")
+    ) {
         std::string op = currentToken().value;
         advance();
 
@@ -2538,7 +2541,7 @@ Value Parser::parseUnary(bool doExecute, bool identifierMode, bool doFunctionCal
         return parseBitwiseOR(doExecute, identifierMode, doFunctionCall, ignoreColon);
     }
 
-    return parsePrimary(doExecute, doFunctionCall);
+    return unaryAssign(parsePrimary(doExecute, doFunctionCall));
 }
 
 Value Parser::evaluateLengthOperator(const Value& value) {
@@ -4111,6 +4114,15 @@ Value Parser::evaluateExpression(const Value& left, const std::string& op, const
         if (left.isVariable) {
             assign(left, right, " at " + Utility::position(currentToken().start, input) + ".");
         }
+    }
+
+    else if (op == "++") { // ++example
+        result = Value::createNumber(right.toNumber() + 1);
+        if (right.isVariable) assign(right, result, " at " + Utility::position(currentToken().start, input) + ".");
+    }
+    else if (op == "--") { // --example
+        result = Value::createNumber(right.toNumber() - 1);
+        if (right.isVariable) assign(right, result, " at " + Utility::position(currentToken().start, input) + ".");
     }
 
     else throw std::runtime_error(errmsg);
@@ -7022,6 +7034,15 @@ Value Parser::updateObjectPropertyRecursive(const Value& obj, const std::vector<
     }
     
     return result;
+}
+
+Value Parser::unaryAssign(const Value& value) {
+    if (match("++")) { // example++
+        if (value.isVariable) assign(value, Value::createNumber(value.toNumber() + 1), " at " + Utility::position(currentToken().start, input) + ".");
+    } else if (match("--")) { // example--
+        if (value.isVariable) assign(value, Value::createNumber(value.toNumber() - 1), " at " + Utility::position(currentToken().start, input) + ".");
+    }
+    return value;
 }
 
 ParseResult Parser::parseTokens(const std::vector<ParserToken>& tokens, bool doExecute, bool runAsync, const std::string& input, const bool allowJavaScript, const bool canAllowJS, const std::string scriptName, const std::string scriptType, const bool allowLuau, const bool canAllowLuau) {

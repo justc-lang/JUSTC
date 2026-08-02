@@ -1057,6 +1057,8 @@ private:
 
     void finalizeOutput();
 
+    Value unaryAssign(const Value& value);
+
 public:
     static std::string getCurrentTimestamp();
     static Value stringToValue(const std::string& str);
