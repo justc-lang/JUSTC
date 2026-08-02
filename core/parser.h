@@ -554,6 +554,9 @@ struct Value {
     }
     
     std::string toNumericString() const;
+    
+    template<typename T>
+    T toNum() const;
 
     template <class Archive>
     void serialize(Archive& archive) {
@@ -1057,6 +1060,8 @@ private:
 
     void finalizeOutput();
 
+    Value unaryAssign(const Value& value);
+
 public:
     static std::string getCurrentTimestamp();
     static Value stringToValue(const std::string& str);
@@ -1092,6 +1097,15 @@ public:
     std::unordered_map<std::string, Value::Property> pmap(const std::unordered_map<std::string, Value::Property>& values);
     std::pair<Value, Value::Property> vp(const Value& value, const Access& requestAccess);
     std::pair<Value, Value::Property> vp(const Value::Property& value, const Access& requestAccess);
+
+    uint64_t registerPointer(const Value& value);
+    Value getPointer(const uint64_t& pointer);
+    void freePointer(const uint64_t& pointer);
+    void clearPointers();
+
+    Value makePointer(const Value& value);
+    Value getPointer(const Value& pointer);
+    void freePointer(const Value& pointer);
 };
 
 #endif

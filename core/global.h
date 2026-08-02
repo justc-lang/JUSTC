@@ -30,7 +30,16 @@ SOFTWARE.
 #include <unordered_map>
 #include <string>
 #include <cstdint>
+#include <stdexcept>
+#include <sstream>
+#include <iomanip>
 #include "parser.h"
+
+inline std::string uint64ToHexString(uint64_t num) {
+    std::stringstream ss;
+    ss << "0x" << std::setfill('0') << std::setw(16) << std::hex << num;
+    return ss.str();
+}
 
 #ifdef __EMSCRIPTEN__
     class GlobalContext {
@@ -39,6 +48,9 @@ SOFTWARE.
         std::unordered_map<std::string, bool> m_constVars;
         std::unordered_map<std::string, bool> m_JUSTCVars;
         uint64_t m_rootCounter = 0;
+
+        std::unordered_map<uint64_t, Value> m_pointers;
+        uint64_t m_nextPtr = 0;
 
     public:
         static GlobalContext& getInstance() {
@@ -95,6 +107,25 @@ SOFTWARE.
 
         uint64_t incrementRootCounter() {
             return ++m_rootCounter;
+        }
+
+        uint64_t makePointer(const Value& value) {
+            uint64_t ptr = m_nextPtr++;
+            m_pointers[ptr] = value;
+            return ptr;
+        }
+        Value getPointer(const uint64_t& ptr) {
+            auto it = m_pointers.find(ptr);
+            if (it != m_pointers.end()) {
+                return it->second;
+            } else throw std::runtime_error("Cannot access unregistered pointer " + uint64ToHexString(ptr) + ".");
+        }
+        void freePointer(const uint64_t& ptr) {
+            m_pointers.erase(ptr);
+        }
+        void clearPointers() {
+            m_pointers.clear();
+            m_nextPtr = 0;
         }
     };
 #else
@@ -108,6 +139,9 @@ SOFTWARE.
         std::unordered_map<std::string, bool> m_JUSTCVars;
         uint64_t m_rootCounter = 0;
 
+        std::unordered_map<uint64_t, Value> m_pointers;
+        uint64_t m_nextPtr = 0;
+
     public:
         static GlobalContext& getInstance() {
             static GlobalContext instance;
@@ -173,6 +207,29 @@ SOFTWARE.
         uint64_t incrementRootCounter() {
             std::unique_lock<std::shared_mutex> lock(m_mutex);
             return ++m_rootCounter;
+        }
+
+        uint64_t makePointer(const Value& value) {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            uint64_t ptr = m_nextPtr++;
+            m_pointers[ptr] = value;
+            return ptr;
+        }
+        Value getPointer(const uint64_t& ptr) {
+            std::shared_lock<std::shared_mutex> lock(m_mutex);
+            auto it = m_pointers.find(ptr);
+            if (it != m_pointers.end()) {
+                return it->second;
+            } else throw std::runtime_error("Cannot access unregistered pointer " + uint64ToHexString(ptr) + ".");
+        }
+        void freePointer(const uint64_t& ptr) {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            m_pointers.erase(ptr);
+        }
+        void clearPointers() {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            m_pointers.clear();
+            m_nextPtr = 0;
         }
     };
 #endif
@@ -210,6 +267,19 @@ inline uint64_t getRootCounter() {
 
 inline uint64_t incrementRootCounter() {
     return GlobalContext::getInstance().incrementRootCounter();
+}
+
+inline uint64_t regPtr(const Value& value) {
+    return GlobalContext::getInstance().makePointer(value);
+}
+inline Value getPtr(const uint64_t& ptr) {
+    return GlobalContext::getInstance().getPointer(ptr);
+}
+inline void freePtr(const uint64_t& ptr) {
+    GlobalContext::getInstance().freePointer(ptr);
+}
+inline void clearPtrs() {
+    GlobalContext::getInstance().clearPointers();
 }
 
 #endif

@@ -593,6 +593,37 @@ std::string Value::toNumericString() const {
     return ss.str();
 }
 
+template<typename T>
+T Value::toNum() const {
+    if (!static_cast<bool>(numeric_data)) {
+        return static_cast<T>(number_value);
+    }
+
+    switch (numeric_data->type) {
+        case NumericType::UINT8:   return static_cast<T>(*(uint8_t*)numeric_data->data);
+        case NumericType::UINT16:  return static_cast<T>(*(uint16_t*)numeric_data->data);
+        case NumericType::UINT32:  return static_cast<T>(*(uint32_t*)numeric_data->data);
+        case NumericType::UINT64:  return static_cast<T>(*(uint64_t*)numeric_data->data);
+        case NumericType::INT8:    return static_cast<T>(*(int8_t*)numeric_data->data);
+        case NumericType::INT16:   return static_cast<T>(*(int16_t*)numeric_data->data);
+        case NumericType::INT32:   return static_cast<T>(*(int32_t*)numeric_data->data);
+        case NumericType::INT64:   return static_cast<T>(*(int64_t*)numeric_data->data);
+        #if JUSTC_INT128_SUPPORT
+            case NumericType::INT128:  return static_cast<T>(*(__int128*)numeric_data->data);
+        #endif
+        #if JUSTC_UINT128_SUPPORT
+            case NumericType::UINT128: return static_cast<T>(*(unsigned __int128*)numeric_data->data);
+        #endif
+        case NumericType::FLOAT32: return static_cast<T>(*(float*)numeric_data->data);
+        case NumericType::FLOAT64: return static_cast<T>(*(double*)numeric_data->data);
+        case NumericType::BIGNUM:  return static_cast<T>(*(long double*)numeric_data->data);
+        #if JUSTC_FLOAT128_SUPPORT
+            case NumericType::FLOAT128: return static_cast<T>(*(__float128*)numeric_data->data);
+        #endif
+        default: return static_cast<T>(number_value);
+    }
+}
+
 namespace {
 
 Value stringArray(const std::vector<std::string_view>& strings) {
@@ -2511,8 +2542,11 @@ Value Parser::parsePower(bool doExecute, bool identifierMode, bool doFunctionCal
 }
 
 Value Parser::parseUnary(bool doExecute, bool identifierMode, bool doFunctionCall, bool ignoreColon) {
-    if ((match("minus") && !identifierMode) || match("+") || match("!") ||
-        (match("-") && !identifierMode) || match("#")) {
+    if (
+        (match("minus") && !identifierMode) || match("+") || match("!") ||
+        (match("-") && !identifierMode) || match("#") || match("->") || 
+        match("<-") || match("~>") || match("<~") || match("++") || match("--")
+    ) {
         std::string op = currentToken().value;
         advance();
 
@@ -2538,7 +2572,7 @@ Value Parser::parseUnary(bool doExecute, bool identifierMode, bool doFunctionCal
         return parseBitwiseOR(doExecute, identifierMode, doFunctionCall, ignoreColon);
     }
 
-    return parsePrimary(doExecute, doFunctionCall);
+    return unaryAssign(parsePrimary(doExecute, doFunctionCall));
 }
 
 Value Parser::evaluateLengthOperator(const Value& value) {
@@ -4111,6 +4145,30 @@ Value Parser::evaluateExpression(const Value& left, const std::string& op, const
         if (left.isVariable) {
             assign(left, right, " at " + Utility::position(currentToken().start, input) + ".");
         }
+    }
+
+    else if (op == "++") { // ++example
+        result = Value::createNumber(right.toNumber() + 1);
+        if (right.isVariable) assign(right, result, " at " + Utility::position(currentToken().start, input) + ".");
+    }
+    else if (op == "--") { // --example
+        result = Value::createNumber(right.toNumber() - 1);
+        if (right.isVariable) assign(right, result, " at " + Utility::position(currentToken().start, input) + ".");
+    }
+
+    else if (op == "->") {
+        result = makePointer(right);
+    }
+    else if (op == "<-") {
+        result = getPointer(right);
+    }
+    else if (op == "~>") {
+        freePointer(right);
+        result = Value::createNull();
+    }
+    else if (op == "<~") {
+        result = getPointer(right);
+        freePointer(right);
     }
 
     else throw std::runtime_error(errmsg);
@@ -7022,6 +7080,40 @@ Value Parser::updateObjectPropertyRecursive(const Value& obj, const std::vector<
     }
     
     return result;
+}
+
+Value Parser::unaryAssign(const Value& value) {
+    if (match("++")) { // example++
+        if (value.isVariable) assign(value, Value::createNumber(value.toNumber() + 1), " at " + Utility::position(currentToken().start, input) + ".");
+    } else if (match("--")) { // example--
+        if (value.isVariable) assign(value, Value::createNumber(value.toNumber() - 1), " at " + Utility::position(currentToken().start, input) + ".");
+    }
+    return value;
+}
+
+uint64_t Parser::registerPointer(const Value& value) {
+    return regPtr(value);
+}
+Value Parser::getPointer(const uint64_t& pointer) {
+    return getPtr(pointer);
+}
+void Parser::freePointer(const uint64_t& pointer) {
+    freePtr(pointer);
+}
+void Parser::clearPointers() {
+    clearPtrs();
+}
+Value Parser::makePointer(const Value& value) {
+    uint64_t ptr = registerPointer(value);
+    Value pointer = Value::createNumberWithType(ptr, NumericType::UINT64);
+    pointer.name = uint64ToHexString(ptr);
+    return pointer;
+}
+Value Parser::getPointer(const Value& pointer) {
+    return getPointer(pointer.toNum<uint64_t>());
+}
+void Parser::freePointer(const Value& pointer) {
+    freePointer(pointer.toNum<uint64_t>());
 }
 
 ParseResult Parser::parseTokens(const std::vector<ParserToken>& tokens, bool doExecute, bool runAsync, const std::string& input, const bool allowJavaScript, const bool canAllowJS, const std::string scriptName, const std::string scriptType, const bool allowLuau, const bool canAllowLuau) {

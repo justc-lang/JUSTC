@@ -632,6 +632,12 @@ void Lexer::tokenize() {
             readMultiLineComment();
             continue;
         }
+        if (ch == '-' && peek() == '>') {
+            addDollarBefore();
+            tokens.push_back(ParserToken{"->", "->", position});
+            position += 2;
+            continue;
+        }
 
         if (ch == '/' && peek() == '/') {
             if ((isDigit(input[position - 1]) || isLetter(input[position - 1])) && (peek(2) == ',' || peek(2) == '.' || peek(2) == ')')) {
@@ -754,6 +760,19 @@ void Lexer::tokenize() {
         if (ch == '<' && peek() == '=') {
             addDollarBefore();
             tokens.push_back(ParserToken{"<=", "<=", position});
+            position += 2;
+            continue;
+        }
+
+        if (ch == '<' && peek() == '-' && !isDigit(input[position - 1]) && !isLetter(input[position - 1])) {
+            addDollarBefore();
+            tokens.push_back(ParserToken{"<-", "<-", position});
+            position += 2;
+            continue;
+        }
+        if (ch == '<' && peek() == '~' && !isDigit(input[position - 1]) && !isLetter(input[position - 1])) {
+            addDollarBefore();
+            tokens.push_back(ParserToken{"<~", "<~", position});
             position += 2;
             continue;
         }
@@ -1020,6 +1039,13 @@ void Lexer::tokenize() {
         if (ch == '~' && peek() == '=') {
             addDollarBefore();
             tokens.push_back(ParserToken{"~=", "~=", position});
+            position += 2;
+            continue;
+        }
+        
+        if (ch == '~' && peek() == '>') {
+            addDollarBefore();
+            tokens.push_back(ParserToken{"~>", "~>", position});
             position += 2;
             continue;
         }
