@@ -87,10 +87,12 @@ $LUAU_INCLUDE $CEREAL_INCLUDE"
 WEB_FLAGS="-s ENVIRONMENT=web,worker \
 -s ASYNCIFY_IMPORTS=['fetch','emscripten_fetch','emscripten_fetch_close','use_luau']"
 WEB_OUTPUT="javascript/$SAFE_DIR/justc.core.js"
+WEB_OUTPUT_EXCLUDE_LUAU="javascript/$SAFE_DIR/justc_noluau.core.js"
 
 NODE_FLAGS="-s ENVIRONMENT=node \
 -s ASYNCIFY_IMPORTS=['fetch','emscripten_fetch','emscripten_fetch_close']"
 NODE_OUTPUT="javascript_output/$SAFE_DIR/justc.node.js"
+NODE_OUTPUT_EXCLUDE_LUAU="javascript_output/$SAFE_DIR/justc_noluau.node.js"
 
 JSOUT_DIR="javascript_output/$SAFE_DIR"
 
@@ -108,6 +110,26 @@ web() {
         echo "Failed to compile."
         exit 1
     fi
+
+    echo "Compiled to justc.core.js"
+}
+web_exclude_luau() {
+    set +e
+    emcc $SOURCE_FILES \
+        -o $WEB_OUTPUT_EXCLUDE_LUAU \
+        $COMMON_FLAGS \
+        $WEB_FLAGS \
+        -D __JUSTC_WEB__ \
+        -D JUSTC_NOLUAU
+    COMPILE_EXIT_CODE=$?
+    set -e
+
+    if [ $COMPILE_EXIT_CODE -ne 0 ]; then
+        echo "Failed to compile."
+        exit 1
+    fi
+
+    echo "Compiled to justc_noluau.core.js"
 }
 
 nodejs() {
@@ -124,14 +146,39 @@ nodejs() {
         echo "Failed to compile."
         exit 1
     fi
+
+    echo "Compiled to justc.node.js"
+}
+nodejs_exclude_luau() {
+    mkdir -p $JSOUT_DIR
+    set +e
+    emcc $SOURCE_FILES \
+        -o $NODE_OUTPUT_EXCLUDE_LUAU \
+        $COMMON_FLAGS \
+        $NODE_FLAGS \
+        -D JUSTC_NOLUAU
+    COMPILE_EXIT_CODE=$?
+    set -e
+
+    if [ $COMPILE_EXIT_CODE -ne 0 ]; then
+        echo "Failed to compile."
+        exit 1
+    fi
+
+    echo "Compiled to justc_noluau.node.js"
 }
 
 web && \
-nodejs
+web_exclude_luau && \
+nodejs && \
+nodejs_exclude_luau
 
 mv javascript/$SAFE_DIR/justc.core.wasm $JSOUT_DIR/justc.wasm
+mv javascript/$SAFE_DIR/justc_noluau.core.wasm $JSOUT_DIR/justc_noluau.wasm
 sed -i 's/justc\.core\.wasm/justc.wasm/g' javascript/$SAFE_DIR/justc.core.js
+sed -i 's/justc_noluau\.core\.wasm/justc_noluau.wasm/g' javascript/$SAFE_DIR/justc_noluau.core.js
 mv javascript/$SAFE_DIR/justc.core.js $JSOUT_DIR/justc.core.js
+mv javascript/$SAFE_DIR/justc_noluau.core.js $JSOUT_DIR/justc_noluau.core.js
 mv javascript/core.js $JSOUT_DIR/justc.js
 mv javascript/test.js $JSOUT_DIR/test.js
 
@@ -182,10 +229,10 @@ JSONString() {
 }
 echo "console.log(\"$(JSONString "$JUSTC_HELP")\");" > javascript/help.js
 
-for file in $JSOUT_DIR/justc.core.js $JSOUT_DIR/justc.js $JSOUT_DIR/justc.node.js javascript/help.js; do
+for file in $JSOUT_DIR/justc.core.js $JSOUT_DIR/justc.js $JSOUT_DIR/justc.node.js javascript/help.js $JSOUT_DIR/justc_noluau.core.js $JSOUT_DIR/justc_noluau.node.js; do
     printf "/*\n\n%s\n\n*/\n\n/*\n\n$JUSTC_NAME v$OUTPUT_VERSION\n\n*/\n\n" "$(cat LICENSE)" | cat - "$file" > temp.js && mv temp.js "$file"
 done
-for file in justc justc.node; do
+for file in justc justc.node justc_noluau justc_noluau.node; do
     wasm2wat $JSOUT_DIR/$file.wasm > $JSOUT_DIR/$file.wat
     {
         head -n1 "$JSOUT_DIR/$file.wat"
@@ -198,6 +245,7 @@ for file in justc justc.node; do
     } > $JSOUT_DIR/$file.tmp
     wat2wasm $JSOUT_DIR/$file.tmp --enable-annotations -o $JSOUT_DIR/$file.wasm
     rm -f $JSOUT_DIR/$file.tmp $JSOUT_DIR/$file.wat
+    echo "Updated $file.wasm"
 done
 
 npm i strc

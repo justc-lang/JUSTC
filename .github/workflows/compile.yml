@@ -95,6 +95,16 @@ jobs:
           name: justc-linux-cli
           path: ${{ github.workspace }}/install_root/bin/justc
           retention-days: 1
+      - name: Build (exclude Luau)
+        if: github.event_name != 'schedule'
+        run: bash linux/compile.sh "-DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install_root -DJUSTC_NOLUAU"
+      - name: Upload CLI (without Luau)
+        if: github.event_name != 'schedule'
+        uses: actions/upload-artifact@v4
+        with:
+          name: justc-linux-cli-exclude-luau
+          path: ${{ github.workspace }}/install_root/bin/justc
+          retention-days: 1
 
   compile-windows:
     runs-on: windows-latest
@@ -218,6 +228,23 @@ jobs:
           name: justc-windows-cli
           path: ${{ github.workspace }}/build/justc.exe
           retention-days: 1
+      
+      - name: Build (exclude Luau)
+        if: github.event_name != 'schedule'
+        shell: pwsh
+        run: |
+          $cores = (Get-CimInstance Win32_ComputerSystem).NumberOfLogicalProcessors
+          $jobs = [Math]::Min($cores + 1, 8)
+          Write-Host "Building with -j $jobs"
+          cmake --build build --config Release -j $jobs -DJUSTC_NOLUAU
+      
+      - name: Upload CLI (without Luau)
+        if: github.event_name != 'schedule'
+        uses: actions/upload-artifact@v4
+        with:
+          name: justc-windows-cli-exclude-luau
+          path: ${{ github.workspace }}/build/justc.exe
+          retention-days: 1
 
   compile-macos:
     runs-on: macos-latest
@@ -251,6 +278,15 @@ jobs:
           name: justc-macos-cli
           path: build/justc
           retention-days: 1
+      - name: Build (exclude Luau)
+        if: github.event_name != 'schedule'
+        run: cmake --build build --config Release -DJUSTC_NOLUAU
+      - name: Upload CLI (without Luau)
+        if: github.event_name != 'schedule'
+        uses: actions/upload-artifact@v4
+        with:
+          name: justc-macos-cli-exclude-luau
+          path: build/justc
 
   test-linux:
     runs-on: ubuntu-latest

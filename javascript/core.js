@@ -111,6 +111,7 @@ SOFTWARE.
         fetchWasm: 'Failed to fetch JUSTC WebAssembly module:',
         redefineO: 'JUSTO cannot be redefined.',
         redefineB: 'JUSTB cannot be redefined.',
+        boolInput0: 'Argument 0 should be a boolean.',
     };
 
     if (isBrowser) {
@@ -302,7 +303,7 @@ SOFTWARE.
             return path;
         }
     };
-    JUSTC.Initialize = async function() {
+    JUSTC.Initialize = async function(excludeLuau) {
         if (isBrowser) {
             try {
                 const urlprefix = isDev ? SCRIPT.src.slice(0,-8) : JUSTC.UNPKG;
@@ -312,7 +313,7 @@ SOFTWARE.
                         JUSTC.Console("error", _error, typeof error === 'string' ? error : 'Failed to fetch.');
                     })).text();
                 };
-                const corewasmjs = await JUSTC.FetchSource('justc.core.js', JUSTC.Errors.fetchWasm);
+                const corewasmjs = await JUSTC.FetchSource(excludeLuau ? 'justc_noluau.core.js' : 'justc.core.js', JUSTC.Errors.fetchWasm);
                 for (const src of [corewasmjs].filter(src => !JUSTC.ScriptsAdded.includes(src))) {
                     const script = DOCUMENT.createElement('script');
                     script.textContent = src;
@@ -337,10 +338,10 @@ SOFTWARE.
             JUSTC.Initialized = false;
         }
     };
-    JUSTC.InitWASM = async function InitializeJUSTC(attempt = 0) {
+    JUSTC.InitWASM = async function InitializeJUSTC(excludeLuau, attempt = 0) {
         while (!JUSTC.WASM) {
             attempt++;
-            await JUSTC.Initialize();
+            await JUSTC.Initialize(excludeLuau);
             if (attempt > 10) {
                 JUSTC.Initialized = false;
                 throw new JUSTC.Error(JUSTC.Errors.wasmInitFailed);
@@ -908,7 +909,10 @@ SOFTWARE.
         } : async function(...code) {
             return await JUSTC.AsyncOutput(true, code)
         },
-        initialize: async function() {
+        initialize: isBrowser ? async function(excludeLuau = false) {
+            if (typeof excludeLuau != 'boolean') throw new JUSTC.Error(JUSTC.Errors.boolInput0);
+            await JUSTC.InitWASM(excludeLuau);
+        } : async function() {
             await JUSTC.InitWASM();
         },
         stringify: function(JavaScriptObjectNotation) {
@@ -1212,7 +1216,6 @@ SOFTWARE.
         if ("JUSTC" in globalThis_.window || "$JUSTC" in globalThis_.window || "JUSTO" in globalThis_.window) throw new JUSTC.Error(JUSTC.Errors.environment);
         OBJECT.defineProperty(globalThis_.window, 'JUSTC', {
             get: function() {
-                if (!JUSTC.Initialized) JUSTC.InitWASM();
                 return OBJECT.freeze(JUSTC.Public);
             },
             set: function(command) {

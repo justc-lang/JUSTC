@@ -870,7 +870,13 @@ Parser::Parser(
     std::unordered_map<std::string, Value> luauProperties;
     luauProperties["Execute"] = builtinObjectFunction("Luau.Execute");
     luauProperties["Compile"] = builtinObjectFunction("Luau.Compile");
-    luauProperties["Available"] = booleanToValue(doExecute);
+    luauProperties["Available"] = booleanToValue(
+        #ifdef JUSTC_NOLUAU
+            false
+        #else
+            doExecute
+        #endif
+    );
     luauProperties["IsAllowed"] = builtinObjectFunction("Luau.IsAllowed");
     luauProperties["CanAllow"] = booleanToValue(canAllowLuau);
     builtinObject("Luau", luauProperties);

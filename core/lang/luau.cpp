@@ -24,6 +24,8 @@ SOFTWARE.
 
 */
 
+#ifndef JUSTC_NOLUAU
+
 #include "luau.hpp"
 #include <iostream>
 #include <stdexcept>
@@ -401,3 +403,5 @@ bool RunLuau::compileScript(const std::string& code, std::string& error) {
     free(bytecode);
     return true;
 }
+
+#endif

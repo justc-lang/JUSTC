@@ -24,6 +24,7 @@ SOFTWARE.
 
 */
 
+#ifndef JUSTC_NOLUAU
 #ifndef RUN_LUAU_HPP
 #define RUN_LUAU_HPP
 
@@ -37,5 +38,23 @@ public:
     static std::pair<std::string, int> runScriptWithResult(const std::string& code);
     static bool compileScript(const std::string& code, std::string& error);
 };
+
+#endif
+
+#else
+#include <stdexcept>
+
+class RunLuau {
+public:
+    static inline void runScript(const std::string& code) {
+        throw std::runtime_error("To run Luau, use the standard JUSTC build. The current build excludes Luau.");
+    }
+    static inline std::pair<std::string, int> runScriptWithResult(const std::string& code) {
+        throw std::runtime_error("To run Luau, use the standard JUSTC build. The current build excludes Luau.");
+    }
+    static bool compileScript(const std::string& code, std::string& error) {
+        throw std::runtime_error("To run Luau, use the standard JUSTC build. The current build excludes Luau.");
+    }
+}
 
 #endif

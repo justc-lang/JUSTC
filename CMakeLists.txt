@@ -123,7 +123,7 @@ if(NOT MSVC)
 endif()
 
 message(STATUS "Installing Luau...")
-if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.14)
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.14 AND NOT JUSTC_NOLUAU)
     FetchContent_Declare(luau
         GIT_REPOSITORY https://github.com/Roblox/luau.git
         GIT_TAG 0.699
@@ -214,7 +214,7 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.14)
 
         message(STATUS "Luau built from source")
     endif()
-else()
+elseif(NOT JUSTC_NOLUAU)
     message(WARNING "Please use CMake 3.14+")
 endif()
 
@@ -266,7 +266,9 @@ target_include_directories(justc_core PUBLIC
 
 target_include_directories(justc_core SYSTEM PRIVATE ${CEREAL_INCLUDE_DIR})
 
-target_link_libraries(justc_core PRIVATE luau_lib)
+if(NOT JUSTC_NOLUAU)
+    target_link_libraries(justc_core PRIVATE luau_lib)
+endif()
 
 if(NOT MSVC)
     target_link_libraries(justc_core PRIVATE quickjs cpr)
