@@ -23,6 +23,7 @@
 cmake_minimum_required(VERSION 3.14)
 
 project(JUSTC)
+option(JUSTC_NOLUAU "Disable Luau support" OFF)
 
 if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
