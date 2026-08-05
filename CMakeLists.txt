@@ -259,6 +259,10 @@ if(MSVC)
     list(REMOVE_ITEM CORE_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/core/lang/js.cpp)
 endif()
 
+if(JUSTC_NOLUAU)
+    list(REMOVE_ITEM CORE_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/core/lang/luau.cpp)
+endif()
+
 add_library(justc_core STATIC ${CORE_SOURCES})
 
 target_include_directories(justc_core PUBLIC

@@ -44,7 +44,7 @@ git clone --depth 1 --branch v1.3.2 https://github.com/USCiLab/cereal.git _deps/
 CEREAL_INCLUDE="-I./_deps/cereal-src/include"
 
 SOURCE_FILES="core/entry/jsapi.cpp core/lexer.cpp core/parser.cpp core/parser/json.cpp core/serializer/json.cpp core/keywords.cpp \
-core/fetch.cpp core/serializer/xml.cpp core/serializer/yaml.cpp core/utility.cpp core/import.cpp core/lang/luau.cpp core/built-in/http/http.cpp \
+core/fetch.cpp core/serializer/xml.cpp core/serializer/yaml.cpp core/utility.cpp core/import.cpp core/built-in/http/http.cpp \
 core/built-in/math/math.cpp core/built-in/binary/binary.cpp core/built-in/string/string.cpp core/unicode.cpp core/builtins.cpp core/serializer/justo.cpp \
 core/parser/justo.cpp core/cpptypes.cpp core/justb.cpp core/compiler/justb.cpp core/loader/justb.cpp"
 
@@ -98,7 +98,7 @@ JSOUT_DIR="javascript_output/$SAFE_DIR"
 
 web() {
     set +e
-    emcc $SOURCE_FILES $LUAU_FILES \
+    emcc $SOURCE_FILES core/lang/luau.cpp $LUAU_FILES \
         -o $WEB_OUTPUT \
         $COMMON_FLAGS \
         $WEB_FLAGS \
@@ -135,7 +135,7 @@ web_exclude_luau() {
 nodejs() {
     mkdir -p $JSOUT_DIR
     set +e
-    emcc $SOURCE_FILES $LUAU_FILES \
+    emcc $SOURCE_FILES core/lang/luau.cpp $LUAU_FILES \
         -o $NODE_OUTPUT \
         $COMMON_FLAGS \
         $NODE_FLAGS
@@ -261,7 +261,7 @@ core/serializer/xml.hpp core/serializer/yaml.hpp core/utility.h core/import.hpp 
 core/built-in/http/http.hpp core/utility.emscripten.h core/built-in/math/math.hpp core/built-in/binary/binary.hpp core/built-in/s.hpp core/lexer.emscripten.h \
 core/entry/lib.cpp core/entry/lib.hpp LICENSE README.md core/built-in/string/string.hpp core/unicode.hpp core/unicode.emscripten.h core/builtins.h core/global.h \
 core/justo.hpp core/entry/types.hpp core/entry/impl.hpp core/serializer/justo.hpp core/parser/justo.hpp core/cpptypes.h core/justb.hpp core/compiler/justb.hpp \
-core/loader/justb.hpp javascript/core.js javascript/core.d.ts core/just.config.js core/cli.js"
+core/loader/justb.hpp javascript/core.js javascript/core.d.ts core/just.config.js core/cli.js core/lang/luau.cpp"
 
 OUTPUT_URL="https://just.js.org/justc/$SAFE_DIR"
 
