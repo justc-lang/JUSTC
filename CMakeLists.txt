@@ -56,6 +56,10 @@ if(UNIX AND NOT APPLE)
     set(CMAKE_INSTALL_PREFIX "/usr/local" CACHE PATH "Installation prefix")
 endif()
 
+if(JUSTC_NOLUAU)
+    add_compile_definitions(JUSTC_NOLUAU)
+endif()
+
 include(CheckIPOSupported)
 check_ipo_supported(RESULT ipo_supported)
 if(ipo_supported)

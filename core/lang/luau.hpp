@@ -55,6 +55,6 @@ public:
     static bool compileScript(const std::string& code, std::string& error) {
         throw std::runtime_error("To run Luau, use the standard JUSTC build. The current build excludes Luau.");
     }
-}
+};
 
 #endif
