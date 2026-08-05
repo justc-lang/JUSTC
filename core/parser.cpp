@@ -1261,15 +1261,19 @@ ParseResult Parser::parse(bool doExecute) {
                 ast.push_back(ASTNode("JAVASCRIPT"));
                 advance();
             } else if (match("Luau")) {
-                if (doExecute && allowLuau) {
-                    RunLuau::runScript(currentToken().value);
-                } else if (!allowLuau) {
-                    #ifdef __EMSCRIPTEN__
-                    warn_luau_disabled_by_justc(Utility::position(currentToken().start, input).c_str(), currentToken().value.c_str(), getCurrentTimestamp().c_str());
-                    #endif
-                }
-                ast.push_back(ASTNode("LUAU"));
-                advance();
+                #ifndef JUSTC_NOLUAU
+                    if (doExecute && allowLuau) {
+                        RunLuau::runScript(currentToken().value);
+                    } else if (!allowLuau) {
+                        #ifdef __EMSCRIPTEN__
+                        warn_luau_disabled_by_justc(Utility::position(currentToken().start, input).c_str(), currentToken().value.c_str(), getCurrentTimestamp().c_str());
+                        #endif
+                    }
+                    ast.push_back(ASTNode("LUAU"));
+                    advance();
+                #else
+                    throw std::runtime_error("To run Luau, use the standard JUSTC build. The current build excludes Luau.");
+                #endif
             } else if (isJSONArray) {
                 try {
                     Value itemVal = parseBitwiseOR(doExecute);
@@ -2800,36 +2804,40 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
         return Value::createNull();
     }
     else if (match("Luau") && doExecute && allowLuau) {
-        std::pair<std::string, int> luauresult = RunLuau::runScriptWithResult(currentToken().value);
-        Value result;
+        #ifndef JUSTC_NOLUAU
+            std::pair<std::string, int> luauresult = RunLuau::runScriptWithResult(currentToken().value);
+            Value result;
 
-        switch (luauresult.second) {
-            case 1: // number
-                result = Value::createNumber(parseNumber(luauresult.first));
-                result.type = DataType::NUMBER;
-                break;
-            case 2: // boolean
-                result = Value::createBoolean(luauresult.first == "true");
-                result.type = DataType::BOOLEAN;
-                break;
-            case 3: // null
-                result = Value::createNull();
-                result.type = DataType::NULL_TYPE;
-                break;
-            case 4: case 5: // object/array
-                result = isolated(luauresult.first, false, currentToken().start, nullptr, "Luau Table output to JUSTC converter");
-                result.type = luauresult.second == 4 ? DataType::JSON_OBJECT : DataType::JSON_ARRAY;
-                break;
-            default: // string/function/thread/userdata
-                result = stringToValue(luauresult.first);
-                result.type = DataType::STRING;
-                break;
-        }
+            switch (luauresult.second) {
+                case 1: // number
+                    result = Value::createNumber(parseNumber(luauresult.first));
+                    result.type = DataType::NUMBER;
+                    break;
+                case 2: // boolean
+                    result = Value::createBoolean(luauresult.first == "true");
+                    result.type = DataType::BOOLEAN;
+                    break;
+                case 3: // null
+                    result = Value::createNull();
+                    result.type = DataType::NULL_TYPE;
+                    break;
+                case 4: case 5: // object/array
+                    result = isolated(luauresult.first, false, currentToken().start, nullptr, "Luau Table output to JUSTC converter");
+                    result.type = luauresult.second == 4 ? DataType::JSON_OBJECT : DataType::JSON_ARRAY;
+                    break;
+                default: // string/function/thread/userdata
+                    result = stringToValue(luauresult.first);
+                    result.type = DataType::STRING;
+                    break;
+            }
 
-        addLog("LUAU", Utility::value2string(result), currentToken().start);
-        advance();
-        result.name = "<<" + currentToken().value + ">>";
-        return result;
+            addLog("LUAU", Utility::value2string(result), currentToken().start);
+            advance();
+            result.name = "<<" + currentToken().value + ">>";
+            return result;
+        #else
+            throw std::runtime_error("To run Luau, use the standard JUSTC build. The current build excludes Luau.");
+        #endif
     }
     else if (match("Luau")) {
         #ifdef __EMSCRIPTEN__
@@ -3495,39 +3503,43 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             }
         }
         if (funcName == "Luau" || funcName == "Luau.Execute") {
-            if (allowLuau) {
-                std::pair<std::string, int> luauresult = RunLuau::runScriptWithResult(args[0].toString());
-                Value result;
+            #ifndef JUSTC_NOLUAU
+                if (allowLuau) {
+                    std::pair<std::string, int> luauresult = RunLuau::runScriptWithResult(args[0].toString());
+                    Value result;
 
-                switch (luauresult.second) {
-                    case 1: // number
-                        result = Value::createNumber(parseNumber(luauresult.first));
-                        result.type = DataType::NUMBER;
-                        break;
-                    case 2: // boolean
-                        result = Value::createBoolean(luauresult.first == "true");
-                        result.type = DataType::BOOLEAN;
-                        break;
-                    case 3: // null
-                        result = Value::createNull();
-                        result.type = DataType::NULL_TYPE;
-                        break;
-                    case 4: case 5: // object/array
-                        result = isolated(luauresult.first, false, startPos, nullptr, "Luau Table output to JUSTC converter");
-                        result.type = luauresult.second == 4 ? DataType::JSON_OBJECT : DataType::JSON_ARRAY;
-                        break;
-                    default: // string/function/thread/userdata
-                        result = stringToValue(luauresult.first);
-                        result.type = DataType::STRING;
-                        break;
+                    switch (luauresult.second) {
+                        case 1: // number
+                            result = Value::createNumber(parseNumber(luauresult.first));
+                            result.type = DataType::NUMBER;
+                            break;
+                        case 2: // boolean
+                            result = Value::createBoolean(luauresult.first == "true");
+                            result.type = DataType::BOOLEAN;
+                            break;
+                        case 3: // null
+                            result = Value::createNull();
+                            result.type = DataType::NULL_TYPE;
+                            break;
+                        case 4: case 5: // object/array
+                            result = isolated(luauresult.first, false, startPos, nullptr, "Luau Table output to JUSTC converter");
+                            result.type = luauresult.second == 4 ? DataType::JSON_OBJECT : DataType::JSON_ARRAY;
+                            break;
+                        default: // string/function/thread/userdata
+                            result = stringToValue(luauresult.first);
+                            result.type = DataType::STRING;
+                            break;
+                    }
+
+                    addLog("LUAU", Utility::value2string(result), startPos);
+                    result.name = funcName + "(...)";
+                    return result;
+                } else {
+                    throw std::runtime_error("Luau disallowed - Cannot run Luau \"" + args[0].toString() + "\"");
                 }
-
-                addLog("LUAU", Utility::value2string(result), startPos);
-                result.name = funcName + "(...)";
-                return result;
-            } else {
-                throw std::runtime_error("Luau disallowed - Cannot run Luau \"" + args[0].toString() + "\"");
-            }
+            #else
+                throw std::runtime_error("To run Luau, use the standard JUSTC build. The current build excludes Luau.");
+            #endif
         }
         if (funcName == "JUSTO" || funcName == "JUSTO.Parse") {
             return functionJUSTO(args);
@@ -3541,12 +3553,16 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             return result;
         }
         if (funcName == "Luau.Compile") {
-            if (allowLuau) {
-                std::string error;
-                return booleanToValue(RunLuau::compileScript(args[0].toString(), error));
-            } else {
-                return booleanToValue(false);
-            }
+            #ifndef JUSTC_NOLUAU
+                if (allowLuau) {
+                    std::string error;
+                    return booleanToValue(RunLuau::compileScript(args[0].toString(), error));
+                } else {
+                    return booleanToValue(false);
+                }
+            #else
+                throw std::runtime_error("To run Luau, use the standard JUSTC build. The current build excludes Luau.");
+            #endif
         }
         if (funcName == "Array::Join") {
             std::stringstream ss;
