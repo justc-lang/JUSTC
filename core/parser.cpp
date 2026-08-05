@@ -717,6 +717,7 @@ Parser::Parser(
             constVars[key] = false;
             setLocal(rootIndex, key, value, false);
             if (parsertype == ParserType::STRUCT) outputExcludeVariables.push_back(key);
+            if (value.type == DataType::STRUCT) structures[key] = value;
         }
     }
 
@@ -4625,6 +4626,35 @@ Value Parser::applyCPPTypeDeclaration(const Value value, const std::string& cppt
     } else if (isStruct(cpptype).first) {
         Value constructor = isStruct(cpptype).second;
         result = callFunction(constructor, {}, currentToken().start, doExecute);
+        for (const Value extend : constructor.array_elements) {
+            switch (extend.type) {
+                case DataType::STRUCT: {
+                    Value parent = applyCPPTypeDeclaration(Value::createNull(), extend.isVariable ? extend.variable : extend.name, typeDecl, doExecute, canBeDefault);
+                    result = doubleDot(parent, result);
+                    break;
+                }
+                case DataType::JSON_OBJECT:
+                case DataType::JUSTC_OBJECT:
+                    result = doubleDot(extend, result);
+                    break;
+                case DataType::FUNCTION: {
+                    Value parent = callFunction(extend, {}, currentToken().start, doExecute);
+                    switch (parent.type) {
+                        case DataType::JSON_OBJECT:
+                        case DataType::JUSTC_OBJECT:
+                            result = doubleDot(parent, result);
+                            break;
+                        default:
+                            throw std::runtime_error("Constructor \"" + extend.isVariable ? extend.variable : extend.name + "\" returned a non-object value.");
+                    }
+                    break;
+                }
+                case DataType::NULL_TYPE:
+                    break;
+                default:
+                    throw std::runtime_error("Struct \"" + cpptype + "\" cannot extend <" + dataTypeToString(extend.type) + "> - it is not a constructor, object, or null.");
+            }
+        }
         if (!isDefault) throw std::runtime_error("");
     }
 
@@ -6721,7 +6751,7 @@ std::unordered_map<std::string, Value::Property> Parser::pmap(const std::unorder
 
 Value Parser::parseStructDeclaration(bool doExecute, std::string structName, bool requireName) {
     if (!match("keyword", "struct")) {
-        throw std::runtime_error("Expected 'struct' keyword at " + Utility::position(currentToken().start, input));
+        throw std::runtime_error("Expected \"struct\" keyword at " + Utility::position(currentToken().start, input));
     }
     advance();
 
@@ -6738,8 +6768,52 @@ Value Parser::parseStructDeclaration(bool doExecute, std::string structName, boo
         }
     }
 
+    Value result;
+    result.type = DataType::STRUCT;
+    result.name = structName;
+
+    if (match("keyword", "extends")) {
+        advance();
+        Value extends = parseExpression(doExecute, true);
+        switch (extends.type) {
+            case DataType::STRUCT:
+                result.array_elements.push_back(
+                    extends.isVariable && isStruct(extends.variable).first ? isStruct(extends.variable).second : extends
+                );
+                break;
+            case DataType::JSON_OBJECT:
+            case DataType::JUSTC_OBJECT:
+            case DataType::FUNCTION:
+                result.array_elements.push_back(extends);
+                break;
+            case DataType::JSON_ARRAY: {
+                for (const Value item : extends.array_elements) {
+                    switch (item.type) {
+                        case DataType::STRUCT:
+                            result.array_elements.push_back(
+                                item.isVariable && isStruct(item.variable).first ? isStruct(item.variable).second : item
+                            );
+                            break;
+                        case DataType::JSON_OBJECT:
+                        case DataType::JUSTC_OBJECT:
+                        case DataType::FUNCTION:
+                            result.array_elements.push_back(item);
+                            break;
+                        case DataType::NULL_TYPE: break;
+                        default:
+                            throw std::runtime_error("Struct \"" + structName + "\" cannot extend <" + dataTypeToString(item.type) + "> - it is not a constructor, object, or null.");
+                    }
+                }
+                break;
+            }
+            case DataType::NULL_TYPE: break;
+            default:
+                throw std::runtime_error("Struct \"" + structName + "\" cannot extend <" + dataTypeToString(extends.type) + "> - it is not a constructor, object, or null.");
+        }
+    }
+
     if (!match("{")) {
-        throw std::runtime_error("Expected '{' for struct body at " + Utility::position(currentToken().start, input));
+        throw std::runtime_error("Expected \"{\" for struct body at " + Utility::position(currentToken().start, input));
     }
     advance();
 
@@ -6760,12 +6834,7 @@ Value Parser::parseStructDeclaration(bool doExecute, std::string structName, boo
         throw std::runtime_error("Unclosed struct body at " + Utility::position(currentToken().start, input));
     }
 
-    std::string structBody = body.str();
-
-    Value result;
-    result.type = DataType::STRUCT;
-    result.string_value = structBody;
-    result.name = structName;
+    result.string_value = body.str();
 
     auto closureContext = std::make_shared<ObjectContext>();
     for (const auto& [key, value] : this->variables) {
@@ -6954,7 +7023,7 @@ Value Parser::updateObjectPropertyRecursive(const Value& obj, const std::vector<
             result.properties = newProperties;
             result.name = obj.name;
         } else {
-            throw std::runtime_error("Cannot set property '" + node.name + "' on non-object");
+            throw std::runtime_error("Cannot set property \"" + node.name + "\" on non-object");
         }
     } else if (node.isIndex) {
         if (obj.type == DataType::JSON_ARRAY) {
