@@ -700,7 +700,7 @@ Parser::Parser(
     strictMode(false), hasLogFile(false), allowLuau(allowLuau), canAllowLuau(canAllowLuau), doExecute(doExecute), runAsync(runAsync),
     canAllowJS(allowJavaScript ? true : canAllowJS), scriptName(scriptName), scriptType(scriptType), asJSON(false), isJSONArray(false),
     endOfScript("."), returnValue(DataType::UNKNOWN), isFunction(isFunction), chartype(chartype), currentScope(0), rootIndex(0),
-    parsertype(parsertype)
+    parsertype(parsertype), nextStructConstructor(0)
 {
     initializeCPPTypes();
     initializeBuiltIns();
@@ -4508,13 +4508,13 @@ __float128 Parser::parseToFloat128(const std::string& str) {
     return strtoflt128(cleaned.c_str(), nullptr);
 }
 #endif
-Value Parser::applyCPPTypeDeclaration(const Value value, const std::string& cpptype, const DataType typeDecl, bool doExecute, const bool canBeDefault) {
+Value Parser::applyCPPTypeDeclaration(const Value value, const std::string& cpptype, const DataType typeDecl, bool doExecute, const bool canBeDefault, const uint8_t isID) {
     if (cpptype == "default") return value;
 
     Value result = value;
     const bool isDefault = canBeDefault && value.type == DataType::NULL_TYPE;
 
-    if (isCPPNumber(cpptype)) {
+    if (isID == 0 && isCPPNumber(cpptype)) {
         switch (typeDecl) {
             case DataType::UNKNOWN:
             case DataType::NUMBER:
@@ -4623,13 +4623,16 @@ Value Parser::applyCPPTypeDeclaration(const Value value, const std::string& cppt
                 throw std::runtime_error("C++ type declaration error: Cannot convert " + dataTypeToString(typeDecl) + " to " + cpptype + " at " + Utility::position(currentToken().start, input) + ".");
                 break;
         }
-    } else if (isStruct(cpptype).first) {
-        Value constructor = isStruct(cpptype).second;
+    } else if ((isID == 0 && isStruct(cpptype).first) || isID == 1) {
+        Value constructor = isID == 0 ? isStruct(cpptype).second : getStructConstructor(cpptype);
         result = callFunction(constructor, {}, currentToken().start, doExecute);
         for (const Value extend : constructor.array_elements) {
             switch (extend.type) {
                 case DataType::STRUCT: {
-                    Value parent = applyCPPTypeDeclaration(Value::createNull(), extend.isVariable ? extend.variable : extend.name, typeDecl, doExecute, canBeDefault);
+                    std::string structID = Utility::uint64ToHexString(nextStructConstructor++);
+                    structConstructors[structID] = extend;
+                    Value parent = applyCPPTypeDeclaration(Value::createNull(), structID, typeDecl, doExecute, canBeDefault, 1);
+                    structConstructors.erase(structID);
                     result = doubleDot(parent, result);
                     break;
                 }
@@ -4640,6 +4643,14 @@ Value Parser::applyCPPTypeDeclaration(const Value value, const std::string& cppt
                 case DataType::FUNCTION: {
                     Value parent = callFunction(extend, {}, currentToken().start, doExecute);
                     switch (parent.type) {
+                        case DataType::STRUCT: {
+                            std::string structID = Utility::uint64ToHexString(nextStructConstructor++);
+                            structConstructors[structID] = parent;
+                            Value output = applyCPPTypeDeclaration(Value::createNull(), structID, typeDecl, doExecute, canBeDefault, 1);
+                            structConstructors.erase(structID);
+                            result = doubleDot(output, result);
+                            break;
+                        }
                         case DataType::JSON_OBJECT:
                         case DataType::JUSTC_OBJECT:
                             result = doubleDot(parent, result);
@@ -7091,6 +7102,12 @@ Value Parser::updateObjectPropertyRecursive(const Value& obj, const std::vector<
     }
     
     return result;
+}
+
+Value Parser::getStructConstructor(const std::string& structID) {
+    auto it = structConstructors.find(structID);
+    if (it == structures.end()) throw std::runtime_error("Failed to access struct " + structID + ".");
+    return it->second;
 }
 
 ParseResult Parser::parseTokens(const std::vector<ParserToken>& tokens, bool doExecute, bool runAsync, const std::string& input, const bool allowJavaScript, const bool canAllowJS, const std::string scriptName, const std::string scriptType, const bool allowLuau, const bool canAllowLuau) {

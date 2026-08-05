@@ -35,6 +35,8 @@ SOFTWARE.
 #include <algorithm>
 #include <cstdint>
 #include <cmath>
+#include <sstream>
+#include <iomanip>
 
 class Utility {
 private:
@@ -236,6 +238,12 @@ public:
     static bool compareValues(const Value& left, const Value::Property& right);
     static bool compareValues(const Value::Property& left, const Value::Property& right);
     static bool checkElement(const Value& val);
+
+    static inline std::string uint64ToHexString(uint64_t num) {
+        std::stringstream ss;
+        ss << "0x" << std::setfill('0') << std::setw(16) << std::hex << num;
+        return ss.str();
+    }
 };
 class UnicodeUtility {
 public:

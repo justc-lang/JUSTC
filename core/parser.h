@@ -821,6 +821,8 @@ private:
     ParserType parsertype;
 
     std::unordered_map<std::string, Value> structures;
+    std::unordered_map<std::string, Value> structConstructors;
+    uint64_t nextStructConstructor;
     
     std::vector<std::string> outputExcludeVariables;
 
@@ -905,7 +907,7 @@ private:
     void evaluateAllVariablesAsync();
     std::runtime_error typeDeclarationError(const DataType left, const DataType right, const ASTNode node);
     Value applyTypeDeclaration(const Value value, const ASTNode node);
-    Value applyCPPTypeDeclaration(const Value value, const std::string& cpptype, const DataType typeDecl, bool doExecute, const bool canBeDefault = false);
+    Value applyCPPTypeDeclaration(const Value value, const std::string& cpptype, const DataType typeDecl, bool doExecute, const bool canBeDefault = false, const uint8_t isID = 0);
     Value evaluateASTNode(const ASTNode& node);
     void extractReferences(const Value& value, std::vector<std::string>& references);
 
@@ -1051,6 +1053,7 @@ private:
     Value parseStructDeclaration(bool doExecute, std::string structName = "anonymous", bool requireName = true);
     std::pair<bool, Value> isStruct(const std::string& name);
     void removeStructsFromOutput();
+    Value getStructConstructor(const std::string& structID);
 
     Value updateObjectProperty(const std::vector<std::variant<std::string, size_t>>& accessChain, std::string accessChainStr);
     Value updateObjectPropertyRecursive(const Value& obj, const std::vector<PropertyPathNode>& pathNodes, size_t depth, const Value& newValue);
