@@ -1067,6 +1067,7 @@ private:
     Value createClass(const Class& value, bool hasName = false, std::string className = "");
     Value parseClassDeclaration(const Value& value, bool doExecute, std::string className);
     std::pair<bool, Value> isClass(const std::string& name);
+    void removeClassesFromOutput();
 
 public:
     static std::string getCurrentTimestamp();

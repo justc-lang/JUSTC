@@ -502,7 +502,7 @@ Value Parser::createClass(const Class& value, bool hasName, std::string classNam
     Value result = Value::createNumberWithType(classID, NumericType::UINT64);
     result.type = DataType::CLASS;
     result.name = hasName ? className : Utility::uint64ToHexString(classID);
-    if (hasName) classes[name] = result;
+    if (hasName) classes[className] = result;
     return result;
 }
 
@@ -1319,6 +1319,7 @@ ParseResult Parser::parse(bool doExecute) {
         evaluateAllVariables();
         removeBuiltinVariablesFromOutput();
         removeStructsFromOutput();
+        removeClassesFromOutput();
         finalizeOutput();
 
         if (isJSONArray) {
@@ -6884,7 +6885,7 @@ Value Parser::parseStructDeclaration(bool doExecute, std::string structName, boo
             case DataType::NULL_TYPE: break;
             case DataType::CLASS: {
                 if (!isStruct_) {
-                    result.array_elements.push_back(item);
+                    result.array_elements.push_back(extends);
                     break;
                 } else throw std::runtime_error("Struct cannot extend class.");
             }
@@ -6933,10 +6934,10 @@ Value Parser::parseStructDeclaration(bool doExecute, std::string structName, boo
 Value Parser::parseClassDeclaration(const Value& value, bool doExecute, std::string className) {
     Class cls;
     Value body = callFunction(value, {}, currentToken().start, doExecute);
-    cls.constructor = accessProperty(body, "constructor");
-    cls.destructor = accessProperty(body, "destructor");
-    cls.instanceObject = accessProperty(body, "instance");
-    cls.staticObject = accessProperty(body, "static");
+    cls.constructor = accessProperty(body, "constructor").first;
+    cls.destructor = accessProperty(body, "destructor").first;
+    cls.instanceObject = accessProperty(body, "instance").first;
+    cls.staticObject = accessProperty(body, "static").first;
     return createClass(cls, true, className);
 }
 
