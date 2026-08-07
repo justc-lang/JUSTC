@@ -30,6 +30,7 @@ SOFTWARE.
 #include <unordered_map>
 #include <string>
 #include <cstdint>
+#include <stdexcept>
 #include "parser.h"
 
 #ifdef __EMSCRIPTEN__
@@ -39,6 +40,9 @@ SOFTWARE.
         std::unordered_map<std::string, bool> m_constVars;
         std::unordered_map<std::string, bool> m_JUSTCVars;
         uint64_t m_rootCounter = 0;
+
+        std::unordered_map<uint64_t, Class> m_classes;
+        uint64_t m_nextClass = 0;
 
     public:
         static GlobalContext& getInstance() {
@@ -95,6 +99,24 @@ SOFTWARE.
 
         uint64_t incrementRootCounter() {
             return ++m_rootCounter;
+        }
+
+        uint64_t setClass(const Class& value) {
+            uint64_t classID = m_nextClass++;
+            m_classes[classID] = value;
+            return classID;
+        }
+        Class getClass(const uint64_t& classID, const std::string& className) const {
+            auto it = m_classes.find(classID);
+            if (it == m_classes.end()) throw std::runtime_error("Class registry has been corrupted. Failed to access class " + className + ".");
+            return it->second;
+        }
+        void removeClass(const uint64_t& classID) {
+            m_classes.erase(classID);
+        }
+        void clearClasses() {
+            m_classes.clear();
+            m_nextClass = 0;
         }
     };
 #else
@@ -108,6 +130,9 @@ SOFTWARE.
         std::unordered_map<std::string, bool> m_JUSTCVars;
         uint64_t m_rootCounter = 0;
 
+        std::unordered_map<uint64_t, Class> m_classes;
+        uint64_t m_nextClass = 0;
+
     public:
         static GlobalContext& getInstance() {
             static GlobalContext instance;
@@ -173,6 +198,28 @@ SOFTWARE.
         uint64_t incrementRootCounter() {
             std::unique_lock<std::shared_mutex> lock(m_mutex);
             return ++m_rootCounter;
+        }
+
+        uint64_t setClass(const Class& value) {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            uint64_t classID = m_nextClass++;
+            m_classes[classID] = value;
+            return classID;
+        }
+        Class getClass(const uint64_t& classID, const std::string& className) const {
+            std::shared_lock<std::shared_mutex> lock(m_mutex);
+            auto it = m_classes.find(classID);
+            if (it == m_classes.end()) throw std::runtime_error("Class registry has been corrupted. Failed to access class " + className + ".");
+            return it->second;
+        }
+        void removeClass(const uint64_t& classID) {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            m_classes.erase(classID);
+        }
+        void clearClasses() {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            m_classes.clear();
+            m_nextClass = 0;
         }
     };
 #endif
@@ -210,6 +257,22 @@ inline uint64_t getRootCounter() {
 
 inline uint64_t incrementRootCounter() {
     return GlobalContext::getInstance().incrementRootCounter();
+}
+
+inline uint64_t setClass(const Class& value) {
+    return GlobalContext::getInstance().setClass(value);
+}
+
+inline Class getClass_(const uint64_t& classID, const std::string& className = "(unknown)") {
+    return GlobalContext::getInstance().getClass(classID, className);
+}
+
+inline void removeClass(const uint64_t& classID) {
+    GlobalContext::getInstance().removeClass(classID);
+}
+
+inline void clearClasses_() {
+    GlobalContext::getInstance().clearClasses();
 }
 
 #endif

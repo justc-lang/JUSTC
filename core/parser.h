@@ -727,8 +727,8 @@ using Function = std::function<Value(const std::vector<Value>&)>;
 struct Class {
     Value constructor;
     Value destructor;
-    std::unordered_map<std::string, std::pair<Access, Value>> staticObject;
-    std::unordered_map<std::string, std::pair<Access, Value>> instanceObject;
+    std::unordered_map<std::string, Value::Property> staticObject;
+    std::unordered_map<std::string, Value::Property> instanceObject;
 
     Class() : constructor(Value::createNull()), destructor(Value::createNull()) {}
     Class(Value constructor) : constructor(constructor), destructor(Value::createNull()) {}
@@ -737,7 +737,8 @@ struct Class {
 
 enum class ParserType : uint8_t {
     SCRIPT = 0,
-    STRUCT = 1
+    STRUCT = 1,
+    CLASS = 2,
 };
 
 struct PropertyPathNode {
@@ -823,6 +824,9 @@ private:
     std::unordered_map<std::string, Value> structures;
     std::unordered_map<std::string, Value> structConstructors;
     uint64_t nextStructConstructor;
+
+    std::unordered_map<std::string, Value> classes;
+    std::unordered_map<std::string, Value> staticValues;
     
     std::vector<std::string> outputExcludeVariables;
 
@@ -1060,6 +1064,10 @@ private:
 
     void finalizeOutput();
 
+    Value createClass(const Class& value, bool hasName = false, std::string className = "");
+    Value parseClassDeclaration(const Value& value, bool doExecute, std::string className);
+    std::pair<bool, Value> isClass(const std::string& name);
+
 public:
     static std::string getCurrentTimestamp();
     static Value stringToValue(const std::string& str);
@@ -1095,6 +1103,11 @@ public:
     std::unordered_map<std::string, Value::Property> pmap(const std::unordered_map<std::string, Value::Property>& values);
     std::pair<Value, Value::Property> vp(const Value& value, const Access& requestAccess);
     std::pair<Value, Value::Property> vp(const Value::Property& value, const Access& requestAccess);
+
+    uint64_t registerClass(const Class& value);
+    Class getClass(const uint64_t& classID);
+    void unregisterClass(const uint64_t& classID);
+    void clearClasses();
 };
 
 #endif

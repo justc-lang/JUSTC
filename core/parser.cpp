@@ -497,6 +497,15 @@ template Value Value::createNumberWithType<long double>(long double, NumericType
 template Value Value::createNumberWithType<__float128>(__float128, NumericType);
 #endif
 
+Value Parser::createClass(const Class& value, bool hasName, std::string className) {
+    uint64_t classID = registerClass(value);
+    Value result = Value::createNumberWithType(classID, NumericType::UINT64);
+    result.type = DataType::CLASS;
+    result.name = hasName ? className : Utility::uint64ToHexString(classID);
+    if (hasName) classes[name] = result;
+    return result;
+}
+
 std::string Value::toNumericString() const {
     if (!static_cast<bool>(numeric_data)) {
         return Utility::doubleToString(number_value);
@@ -716,8 +725,9 @@ Parser::Parser(
             variables[key] = value;
             constVars[key] = false;
             setLocal(rootIndex, key, value, false);
-            if (parsertype == ParserType::STRUCT) outputExcludeVariables.push_back(key);
+            if (parsertype == ParserType::STRUCT || parsertype == ParserType::CLASS) outputExcludeVariables.push_back(key);
             if (value.type == DataType::STRUCT) structures[key] = value;
+            if (value.type == DataType::CLASS) classes[key] = value;
         }
     }
 
@@ -1384,6 +1394,15 @@ ParseResult Parser::parse(bool doExecute) {
         result.logFileContent = hasLogFile ? logFileContent : "";
         result.importLogs = importLogs;
 
+        if (parsertype == ParserType::CLASS) {
+            std::unordered_map<std::string, Value> oldReturnValues = result.returnValues;
+            std::unordered_map<std::string, Value> newReturnValues;
+            newReturnValues["constructor"] = resolveVariableValue("constructor", false);
+            newReturnValues["destructor"] = resolveVariableValue("destructor", true);
+            newReturnValues["static"] = Value::createJsonObject(staticValues);
+            newReturnValues["instance"] = Value::createJsonObject(oldReturnValues);
+            result.returnValues = newReturnValues;
+        }
     } catch (const std::exception& e) {
         std::pair<size_t, size_t> pos = Utility::pos(currentToken().start, input);
         std::string err = std::string(e.what()) + "\n    at " + scriptName + ":" + std::to_string(pos.first) + ":" + std::to_string(pos.second);
@@ -1859,7 +1878,7 @@ ASTNode Parser::parseStatement(bool doExecute) {
         constVars[funcValue.name] = true;
 
         return node;
-    } else if (keyword == "struct") {
+    } else if (keyword == "struct" || keyword == "class") {
         Value structVal = parseStructDeclaration(doExecute);
 
         ASTNode node("VARIABLE_DECLARATION", structVal.name, currentToken().start);
@@ -1932,7 +1951,7 @@ ASTNode Parser::parseGlobal(bool doExecute, bool constant) {
         global.value = funcValue;
         global.identifier = funcValue.name;
         global.constant = constant;
-    } else if (match("keyword", "struct")) {
+    } else if (match("keyword", "struct") || match("keyword", "class")) {
         Value structVal = parseStructDeclaration(doExecute);
         global.value = structVal;
         global.identifier = structVal.name;
@@ -2174,7 +2193,7 @@ ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool loc
 }
 
 Value Parser::parseExpression(bool doExecute, bool identifierMode, bool doFunctionCall, bool ignoreColon) {
-    if (match("keyword", "function") || match("keyword", "isolated") || match("keyword", "struct")) {
+    if (match("keyword", "function") || match("keyword", "isolated") || match("keyword", "struct") || match("keyword", "class")) {
         std::string funcName = std::to_string(position);
         bool gotName = false;
         size_t offset = 1;
@@ -2188,7 +2207,7 @@ Value Parser::parseExpression(bool doExecute, bool identifierMode, bool doFuncti
             }
             ++offset;
         }
-        if (match("keyword", "struct")) return parseStructDeclaration(doExecute, funcName, false);
+        if (match("keyword", "struct") || match("keyword", "class")) return parseStructDeclaration(doExecute, funcName, false);
         return parseFunctionDeclaration(doExecute, funcName, false);
     }
     Value result = parseConditional(doExecute, identifierMode, doFunctionCall, ignoreColon);
@@ -5471,7 +5490,7 @@ Value Parser::parseFunctionDeclaration(bool doExecute, std::string funcName, boo
 }
 
 Value Parser::callFunction(const Value& function, const std::vector<Value>& args, size_t startPos, bool doExecute) {
-    if (function.type != DataType::FUNCTION && function.type != DataType::STRUCT) {
+    if (function.type != DataType::FUNCTION && function.type != DataType::STRUCT && function.type != DataType::CLASS) {
         throw std::runtime_error("Cannot call non-function value at " + Utility::position(startPos, input));
     } else if (!doExecute) {
         return onExecDisabled(startPos, function.name);
@@ -5524,7 +5543,15 @@ Value Parser::callFunction(const Value& function, const std::vector<Value>& args
     }
 
     ParserType ptype = ParserType::SCRIPT;
-    if (function.type == DataType::STRUCT) ptype = ParserType::STRUCT;
+    switch (function.type) {
+        case DataType::STRUCT:
+            ptype = ParserType::STRUCT;
+            break;
+        case DataType::CLASS:
+            ptype = ParserType::CLASS;
+            break;
+        default: break;
+    }
     Value result = isolated(function.string_value, true, startPos, &functionContext, "auto", false, false, ptype);
 
     if (!result.properties.empty()) {
@@ -6262,6 +6289,12 @@ void Parser::removeStructsFromOutput() {
         constVars.erase(name);
     }
 }
+void Parser::removeClassesFromOutput() {
+    for (const auto& [name, val] : classes) {
+        variables.erase(name);
+        constVars.erase(name);
+    }
+}
 void Parser::finalizeOutput() {
     for (const std::string name : outputExcludeVariables) {
         variables.erase(name);
@@ -6783,14 +6816,17 @@ std::unordered_map<std::string, Value::Property> Parser::pmap(const std::unorder
 }
 
 Value Parser::parseStructDeclaration(bool doExecute, std::string structName, bool requireName) {
-    if (!match("keyword", "struct")) {
-        throw std::runtime_error("Expected \"struct\" keyword at " + Utility::position(currentToken().start, input));
+    if (!match("keyword", "struct") && !match("keyword", "class")) {
+        throw std::runtime_error("Expected \"struct\"/\"class\" keyword at " + Utility::position(currentToken().start, input));
     }
+    bool isStruct_ = match("keyword", "struct");
+    std::string typeStr = isStruct_ ? "Struct" : "Class";
+    std::string typeStrL= isStruct_ ? "struct" : "class";
     advance();
 
     if (requireName) {
         if (!match("identifier")) {
-            throw std::runtime_error("Expected struct name at " + Utility::position(currentToken().start, input));
+            throw std::runtime_error("Expected " + typeStrL + " name at " + Utility::position(currentToken().start, input));
         }
         structName = currentToken().value;
         advance();
@@ -6802,7 +6838,7 @@ Value Parser::parseStructDeclaration(bool doExecute, std::string structName, boo
     }
 
     Value result;
-    result.type = DataType::STRUCT;
+    result.type = isStruct_ ? DataType::STRUCT : DataType::CLASS;
     result.name = structName;
 
     if (match("keyword", "extends")) {
@@ -6833,20 +6869,32 @@ Value Parser::parseStructDeclaration(bool doExecute, std::string structName, boo
                             result.array_elements.push_back(item);
                             break;
                         case DataType::NULL_TYPE: break;
+                        case DataType::CLASS: {
+                            if (!isStruct_) {
+                                result.array_elements.push_back(item);
+                                break;
+                            } else throw std::runtime_error("Struct cannot extend class.");
+                        }
                         default:
-                            throw std::runtime_error("Struct \"" + structName + "\" cannot extend <" + dataTypeToString(item.type) + "> - it is not a constructor, object, or null.");
+                            throw std::runtime_error(typeStr + " \"" + structName + "\" cannot extend <" + dataTypeToString(item.type) + "> - it is not a constructor, object, or null.");
                     }
                 }
                 break;
             }
             case DataType::NULL_TYPE: break;
+            case DataType::CLASS: {
+                if (!isStruct_) {
+                    result.array_elements.push_back(item);
+                    break;
+                } else throw std::runtime_error("Struct cannot extend class.");
+            }
             default:
-                throw std::runtime_error("Struct \"" + structName + "\" cannot extend <" + dataTypeToString(extends.type) + "> - it is not a constructor, object, or null.");
+                throw std::runtime_error(typeStr + " \"" + structName + "\" cannot extend <" + dataTypeToString(extends.type) + "> - it is not a constructor, object, or null.");
         }
     }
 
     if (!match("{")) {
-        throw std::runtime_error("Expected \"{\" for struct body at " + Utility::position(currentToken().start, input));
+        throw std::runtime_error("Expected \"{\" for " + typeStrL + " body at " + Utility::position(currentToken().start, input));
     }
     advance();
 
@@ -6864,7 +6912,7 @@ Value Parser::parseStructDeclaration(bool doExecute, std::string structName, boo
     }
 
     if (braceCount != 0) {
-        throw std::runtime_error("Unclosed struct body at " + Utility::position(currentToken().start, input));
+        throw std::runtime_error("Unclosed " + typeStrL + " body at " + Utility::position(currentToken().start, input));
     }
 
     result.string_value = body.str();
@@ -6876,14 +6924,32 @@ Value Parser::parseStructDeclaration(bool doExecute, std::string structName, boo
     closureContext->allowJavaScript = this->allowJavaScript;
     closureContext->allowLuau = this->allowLuau;
     result.closure_context = closureContext;
+    
+    if (!isStruct_) return parseClassDeclaration(result, doExecute, structName);
 
     structures[structName] = result;
     return result;
+}
+Value Parser::parseClassDeclaration(const Value& value, bool doExecute, std::string className) {
+    Class cls;
+    Value body = callFunction(value, {}, currentToken().start, doExecute);
+    cls.constructor = accessProperty(body, "constructor");
+    cls.destructor = accessProperty(body, "destructor");
+    cls.instanceObject = accessProperty(body, "instance");
+    cls.staticObject = accessProperty(body, "static");
+    return createClass(cls, true, className);
 }
 
 std::pair<bool, Value> Parser::isStruct(const std::string& name) {
     auto it = structures.find(name);
     if (it != structures.end()) {
+        return {true, it->second};
+    }
+    return {false, Value::createNull()};
+}
+std::pair<bool, Value> Parser::isClass(const std::string& name) {
+    auto it = classes.find(name);
+    if (it != classes.end()) {
         return {true, it->second};
     }
     return {false, Value::createNull()};
@@ -7128,8 +7194,21 @@ Value Parser::updateObjectPropertyRecursive(const Value& obj, const std::vector<
 
 Value Parser::getStructConstructor(const std::string& structID) {
     auto it = structConstructors.find(structID);
-    if (it == structures.end()) throw std::runtime_error("Failed to access struct " + structID + ".");
+    if (it == structures.end()) throw std::runtime_error("Struct registry has been corrupted. Failed to access struct " + structID + ".");
     return it->second;
+}
+
+uint64_t Parser::registerClass(const Class& value) {
+    return setClass(value);
+}
+Class Parser::getClass(const uint64_t& classID) {
+    return getClass_(classID, Utility::uint64ToHexString(classID));
+}
+void Parser::unregisterClass(const uint64_t& classID) {
+    removeClass(classID);
+}
+void Parser::clearClasses() {
+    clearClasses_();
 }
 
 ParseResult Parser::parseTokens(const std::vector<ParserToken>& tokens, bool doExecute, bool runAsync, const std::string& input, const bool allowJavaScript, const bool canAllowJS, const std::string scriptName, const std::string scriptType, const bool allowLuau, const bool canAllowLuau) {
