@@ -1021,6 +1021,24 @@ SOFTWARE.
                 },
             },
         },
+        classes: {
+            unregister: function(id) {
+                JUSTC.CheckWASM();
+                if (typeof id !== 'number' && typeof id !== 'bigint' && typeof id !== 'string') throw new JUSTC.Error('ClassID must be a BigInt, a number, or a string');
+                if (typeof id == 'string' && !/^\d{1,20}$/.test(id) && !/^0x[0-9a-fA-F]{1,16}$/.test(id)) throw new JUSTC.Error('Invalid ClassID');
+                if (!(BigInt(id) <= 18446744073709551615n) || id < 0) throw new JUSTC.Error('ClassID must be within UInt64 range');
+                return JUSTC.WASM.ccall(
+                    'unregisterClass',
+                    'number',
+                    ['string'],
+                    [String(id)]
+                ) === 1;
+            },
+            clear: function() {
+                JUSTC.CheckWASM();
+                JUSTC.WASM.ccall('clearClasses', null, [], []);
+            }
+        }
     };
     JUSTC.Public = {
         get [Symbol.toStringTag]() {

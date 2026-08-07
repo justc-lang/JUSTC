@@ -1973,7 +1973,7 @@ bool Parser::CanIgnoreNoAssignmentOperator() {
 }
 ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool local, bool global) {
     std::string cpptype = "default";
-    if (isCPPType() || isStruct(currentToken().value).first) {
+    if (isCPPType() || isStruct(currentToken().value).first || isClass(currentToken().value).first) {
         cpptype = currentToken().value;
         advance();
     }
@@ -4709,6 +4709,15 @@ Value Parser::applyCPPTypeDeclaration(const Value value, const std::string& cppt
             }
         }
         if (!isDefault) throw std::runtime_error("");
+    } else if ((isID == 0 && isClass(cpptype).first) || isID == 2) {
+        uint64_t classID = isID == 0 ? isClass(cpptype).second.getNumericValue() : static_cast<uint64_t>(std::stoull(cpptype));
+        Class cls = getClass(classID);
+        result = callFunction(cls.constructor, {}, currentToken().start, doExecute);
+        if (result.type != DataType::JSON_OBJECT && result.type != DataType::JUSTC_OBJECT)
+            throw std::runtime_error("Constructor for class " + Utility::uint64ToHexString(classID) + " returned a non-object value.");
+        Value instanceObject = Value::createJsonObject({});
+        instanceObject.properties = cls.instanceObject;
+        result = doubleDot(instanceObject, result);
     }
 
     return result;

@@ -260,7 +260,11 @@ inline uint64_t incrementRootCounter() {
 }
 
 inline uint64_t setClass(const Class& value) {
-    return GlobalContext::getInstance().setClass(value);
+    try {
+        return GlobalContext::getInstance().setClass(value);
+    } catch (const std::bad_alloc& e) {
+        throw std::runtime_error("Out of memory: Class registry is full.");
+    }
 }
 
 inline Class getClass_(const uint64_t& classID, const std::string& className = "(unknown)") {

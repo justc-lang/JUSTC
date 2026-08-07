@@ -43,6 +43,7 @@ SOFTWARE.
 #include <algorithm>
 #include "../compiler/justb.hpp"
 #include "../loader/justb.hpp"
+#include <cstdint>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -443,6 +444,27 @@ char* load(const unsigned char* bytes, size_t length, const char* outputMode) {
 
     std::string json = outputString(mode, result);
     return strdup(json.c_str());
+}
+
+int unregisterClass(const char* raw_classID_str) {
+    if (raw_classID_str == nullptr) return 0;
+
+    std::lock_guard<std::mutex> lock(globalParserMutex);
+    ensureGlobalParser();
+
+    std::string classID_str = std::string(raw_classID_str);
+    unsigned long long raw_classID = std::stoull(classID_str);
+    uint64_t classID = raw_classID;
+
+    globalParser->unregisterClass(classID);
+
+    return 1;
+}
+
+void clearClasses() {
+    std::lock_guard<std::mutex> lock(globalParserMutex);
+    ensureGlobalParser();
+    globalParser->clearClasses();
 }
 
 }
