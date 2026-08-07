@@ -6936,8 +6936,8 @@ Value Parser::parseClassDeclaration(const Value& value, bool doExecute, std::str
     Value body = callFunction(value, {}, currentToken().start, doExecute);
     cls.constructor = accessProperty(body, "constructor").first;
     cls.destructor = accessProperty(body, "destructor").first;
-    cls.instanceObject = accessProperty(body, "instance").first;
-    cls.staticObject = accessProperty(body, "static").first;
+    cls.instanceObject = accessProperty(body, "instance").first.properties;
+    cls.staticObject = accessProperty(body, "static").first.properties;
     return createClass(cls, true, className);
 }
 
