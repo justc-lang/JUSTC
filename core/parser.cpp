@@ -4710,7 +4710,7 @@ Value Parser::applyCPPTypeDeclaration(const Value value, const std::string& cppt
         }
         if (!isDefault) throw std::runtime_error("");
     } else if ((isID == 0 && isClass(cpptype).first) || isID == 2) {
-        uint64_t classID = isID == 0 ? isClass(cpptype).second.getNumericValue() : static_cast<uint64_t>(std::stoull(cpptype));
+        uint64_t classID = isID == 0 ? isClass(cpptype).second.getNumericValue<uint64_t>() : static_cast<uint64_t>(std::stoull(cpptype));
         Class cls = getClass(classID);
         result = callFunction(cls.constructor, {}, currentToken().start, doExecute);
         if (result.type != DataType::JSON_OBJECT && result.type != DataType::JUSTC_OBJECT)
