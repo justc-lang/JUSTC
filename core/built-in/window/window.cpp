@@ -30,7 +30,7 @@ SOFTWARE.
 #include <sstream>
 #include <cstring>
 
-namespace Window {
+namespace JUSTCWindow {
 
 static std::unordered_map<uint64_t, WindowCreateOptions> managedWindows;
 

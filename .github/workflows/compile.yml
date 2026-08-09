@@ -96,10 +96,10 @@ jobs:
           path: ${{ github.workspace }}/install_root/bin/justc
           retention-days: 1
       - name: Build (exclude Luau)
-        if: github.event_name != 'schedule'
+        if: github.event_name == 'release'
         run: bash linux/compile.sh "-DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install_root -DJUSTC_NOLUAU=ON"
       - name: Upload CLI (without Luau)
-        if: github.event_name != 'schedule'
+        if: github.event_name == 'release'
         uses: actions/upload-artifact@v4
         with:
           name: justc-linux-cli-exclude-luau
@@ -245,7 +245,7 @@ jobs:
             -DJUSTC_NOLUAU=ON
       
       - name: Build (exclude Luau)
-        if: github.event_name != 'schedule'
+        if: github.event_name == 'release'
         shell: pwsh
         run: |
           $cores = (Get-CimInstance Win32_ComputerSystem).NumberOfLogicalProcessors
@@ -254,7 +254,7 @@ jobs:
           cmake --build build --config Release -j $jobs
       
       - name: Upload CLI (without Luau)
-        if: github.event_name != 'schedule'
+        if: github.event_name == 'release'
         uses: actions/upload-artifact@v4
         with:
           name: justc-windows-cli-exclude-luau
@@ -295,14 +295,14 @@ jobs:
           path: build/justc
           retention-days: 1
       - name: Build (exclude Luau)
-        if: github.event_name != 'schedule'
+        if: github.event_name == 'release'
         run: |
           rm -rf build_exclude_luau
           cmake -B build_exclude_luau -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXE_LINKER_FLAGS="-L/opt/homebrew/lib" -DCMAKE_SHARED_LINKER_FLAGS="-L/opt/homebrew/lib" -DCMAKE_PREFIX_PATH="$(brew --prefix icu4c)" -DJUSTC_NOLUAU=ON
           rm -f build_exclude_luau/_deps/quickjs-src/version
           cmake --build build_exclude_luau --config Release
       - name: Upload CLI (without Luau)
-        if: github.event_name != 'schedule'
+        if: github.event_name == 'release'
         uses: actions/upload-artifact@v4
         with:
           name: justc-macos-cli-exclude-luau

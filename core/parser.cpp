@@ -3668,8 +3668,8 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
         if (funcName == "Window") {
             #ifndef __EMSCRIPTEN__
                 std::unordered_map<std::string, Value> obj;
-                obj["window"] = Window::Create(args);
-                obj["RML"] = Window::RunMessageLoop(args);
+                obj["window"] = JUSTCWindow::Create(args);
+                obj["RML"] = JUSTCWindow::RunMessageLoop(args);
                 Value result = Value::createJsonObject(obj);
                 result.name = "Window";
                 return result;

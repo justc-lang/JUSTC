@@ -43,7 +43,7 @@ SOFTWARE.
     #include <ApplicationServices/ApplicationServices.h>
 #endif
 
-namespace Window {
+namespace JUSTCWindow {
 
 struct WindowInfo {
     std::string title;
