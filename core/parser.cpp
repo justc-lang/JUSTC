@@ -4479,7 +4479,7 @@ __int128 Parser::parseToInt128(const std::string& str) {
             else continue;
         }
         
-        if (result > (__int128)std::numeric_limits<unsigned long long>::max() / base) {
+        if (result > (__int128)(std::numeric_limits<unsigned long long>::max)() / base) {
             #ifdef __EMSCRIPTEN__
                 warn_int128(Utility::position(currentToken().start, input).c_str(), getCurrentTimestamp().c_str());
             #else
@@ -5777,7 +5777,7 @@ void Parser::evaluateAllVariablesSync() {
     uint64_t passes = 0;
     const uint64_t MAX_PASSES = std::min(
         static_cast<uint64_t>(0xFF) * variables.size(), 
-        std::numeric_limits<uint64_t>::max()
+        (std::numeric_limits<uint64_t>::max)()
     );
 
     do {

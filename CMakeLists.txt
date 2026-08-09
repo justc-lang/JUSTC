@@ -288,6 +288,12 @@ endif()
 target_include_directories(justc_core SYSTEM PRIVATE ${Boost_INCLUDE_DIRS})
 target_link_libraries(justc_core PRIVATE ICU::uc ICU::i18n)
 
+if(UNIX AND NOT APPLE)
+    find_package(X11 REQUIRED)
+    target_link_libraries(justc_core PRIVATE ${X11_LIBRARIES})
+    target_include_directories(justc_core PRIVATE ${X11_INCLUDE_DIR})
+endif()
+
 add_library(justc_lib SHARED core/entry/lib.cpp)
 target_compile_definitions(justc_lib PRIVATE JUSTC_BUILD)
 target_include_directories(justc_lib PUBLIC core)

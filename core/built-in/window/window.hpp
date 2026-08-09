@@ -34,6 +34,7 @@ SOFTWARE.
 #include "../../parser.h"
 
 #ifdef _WIN32
+    #define NOMINMAX
     #include <windows.h>
 #elif defined(__linux__)
     #include <X11/Xlib.h>
