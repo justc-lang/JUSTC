@@ -498,7 +498,9 @@ template Value Value::createNumberWithType<__float128>(__float128, NumericType);
 #endif
 
 Value Parser::createClass(const Class& value, bool hasName, std::string className) {
-    uint64_t classID = registerClass(value);
+    return addClass(registerClass(value), hasName, className);
+}
+Value Parser::addClass(const uint64_t& classID, bool hasName, std::string className) {
     Value result = Value::createNumberWithType(classID, NumericType::UINT64);
     result.type = DataType::CLASS;
     result.name = hasName ? className : Utility::uint64ToHexString(classID);
@@ -1009,6 +1011,8 @@ Parser::Parser(
     chartypeValue.name = "CharType";
     variables["CharType"] = chartypeValue;
     constVars["CharType"] = false;
+
+    builtinClasses();
 }
 
 std::string Parser::getCurrentTimestamp() {
@@ -2797,7 +2801,7 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
         Value result = runJavaScript(currentToken().value, Utility::position(currentToken().start, input), true);
         addLog("JAVASCRIPT", Utility::value2string(result), currentToken().start);
         advance();
-        result.name = "{{" + currentToken().value + "}}";
+        result.name = "j'" + currentToken().value + "'";
         return result;
 
         #elif !defined(_MSC_VER)
@@ -2810,7 +2814,7 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
         }
         advance();
         Value result = stringToValue(jsresult.first);
-        result.name = "{{" + currentToken().value + "}}";
+        result.name = "j'" + currentToken().value + "'";
         return result;
 
         #endif
@@ -2853,7 +2857,7 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
 
             addLog("LUAU", Utility::value2string(result), currentToken().start);
             advance();
-            result.name = "<<" + currentToken().value + ">>";
+            result.name = "l'" + currentToken().value + "'";
             return result;
         #else
             throw std::runtime_error("To run Luau, use the standard JUSTC build. The current build excludes Luau.");
@@ -3624,7 +3628,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             std::reverse(arr.begin(), arr.end());
 
             Value result = Value::createJsonArray(arr);
-            result.name = "[Array]";
+            result.name = "Array";
             return result;
         }
         if (funcName == "Array::ForEach") {
@@ -3655,11 +3659,23 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             }
 
             Value result = Value::createJsonArray(arr);
-            result.name = "[Array]";
+            result.name = "Array";
             return result;
         }
         if (funcName == "Element::Render") {
             return Value::createString(renderJSX(args[0]));
+        }
+        if (funcName == "Window") {
+            #ifndef __EMSCRIPTEN__
+                std::unordered_map<std::string, Value> obj;
+                obj["window"] = Window::Create(args);
+                obj["RML"] = Window::RunMessageLoop();
+                Value result = Value::createJsonObject(obj);
+                result.name = "Window";
+                return result;
+            #else
+                throw std::runtime_error("JUSTC Window is not supported in WebAssembly builds.");
+            #endif
         }
     } catch (const std::exception& e) {
         throw std::runtime_error(std::string(e.what()) + " at " + Utility::position(startPos, input) + ".");
@@ -3689,7 +3705,7 @@ Value Parser::doubleDot(const Value& left, const Value& right) {
         concatenated.insert(concatenated.end(), rightArr.begin(), rightArr.end());
 
         Value result = Value::createJsonArray(concatenated);
-        result.name = "[Array]";
+        result.name = "Array";
         return result;
     }
     // merge
@@ -3704,7 +3720,7 @@ Value Parser::doubleDot(const Value& left, const Value& right) {
         }
 
         Value result = Value::createJsonObject(merged);
-        result.name = "[Object]";
+        result.name = "Object";
         return result;
     }
     
@@ -4970,7 +4986,7 @@ Value Parser::isolated(const std::string& code, bool doExecute, size_t startPos,
         Value isolatedObject;
         isolatedObject.type = DataType::JUSTC_OBJECT;
         isolatedObject.object_type = DataType::JUSTC_OBJECT;
-        isolatedObject.name = "[Object]";
+        isolatedObject.name = "Object";
 
         if (isolatedParser.outputMode == "everything") {
             isolatedObject.properties = pmap(result.returnValues);
@@ -5094,7 +5110,7 @@ Value Parser::emptyJUSTC() {
     emptyContext->outputMode = "everything";
 
     Value emptyObject = Value::createJustcObject(emptyContext);
-    emptyObject.name = "[Object]";
+    emptyObject.name = "Object";
     return emptyObject;
 }
 Value Parser::functionJUSTC(const std::vector<Value>& args, size_t startPos) {
@@ -6008,7 +6024,7 @@ Value Parser::parseJustcObject(bool doExecute) {
         }
     }
 
-    result.name = "[Object]";
+    result.name = "Object";
     return result;
 }
 
@@ -6056,7 +6072,7 @@ Value Parser::parseJsonObject(bool doExecute) {
 
     Value result = Value::createJsonObject(properties);
     result.object_context = jsonContext;
-    result.name = "[Object]";
+    result.name = "Object";
 
     return result;
 }
@@ -6089,7 +6105,7 @@ Value Parser::parseJsonArray(bool doExecute) {
 
     Value result = Value::createJsonArray(elements);
     result.object_context = arrayContext;
-    result.name = "[Array]";
+    result.name = "Array";
 
     return result;
 }
@@ -7219,6 +7235,39 @@ void Parser::unregisterClass(const uint64_t& classID) {
 }
 void Parser::clearClasses() {
     clearClasses_();
+    builtinClasses();
+}
+
+uint64_t Parser::builtinClass(const std::string& name) {
+    Class cls(builtinObjectFunction(name));
+    Value val = createClass(cls, true, name);
+    variables[name] = val;
+    constVars[name] = true;
+    return val.getNumericValue<uint64_t>();
+}
+void Parser::builtinClasses() {
+    std::unordered_map<std::string, uint64_t> BIM;
+    if (!getBIC()) {
+        #ifndef __EMSCRIPTEN__
+            BIM["Window"] = builtinClass("Window");
+        #endif
+        setBIM(BIM);
+        setBIC(true);
+    } else {
+        BIM = getBIM();
+        #ifndef __EMSCRIPTEN__
+            fromBIM(BIM, "Window");
+        #endif
+    }
+}
+void Parser::fromBIM(const std::unordered_map<std::string, uint64_t>& BIM, const std::string& name) {
+    auto it = BIM.find(name);
+    if (it == BIM.end()) throw std::runtime_error("Class registry has been corrupted. Failed to register built-in class \"" + name + "\".");
+    uint64_t ClassID = it->second;
+
+    Value val = addClass(ClassID, true, name);
+    variables[name] = val;
+    constVars[name] = true;
 }
 
 ParseResult Parser::parseTokens(const std::vector<ParserToken>& tokens, bool doExecute, bool runAsync, const std::string& input, const bool allowJavaScript, const bool canAllowJS, const std::string scriptName, const std::string scriptType, const bool allowLuau, const bool canAllowLuau) {

@@ -257,6 +257,7 @@ set(CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/core/built-in/math/math.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/built-in/binary/binary.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/built-in/string/string.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/built-in/window/window.cpp
 )
 
 if(MSVC)

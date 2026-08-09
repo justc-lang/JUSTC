@@ -25,6 +25,8 @@ const monacoJUSTClang = {
 
             "true", "false", "yes", "no", "y", "n",
             "null", "nil",
+
+            "constructor", "destructor",
         ],
 
         typeKeywords: [
@@ -35,6 +37,8 @@ const monacoJUSTClang = {
             "uint8", "uint16", "uint32", "uint64",
             "uint128", "float32", "float64", "float128",
             "cuint8", "cuint16", "cuint32", "cuint64",
+
+            "Window",
         ],
 
         operators: [

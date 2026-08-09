@@ -1068,6 +1068,10 @@ private:
     Value parseClassDeclaration(const Value& value, bool doExecute, std::string className);
     std::pair<bool, Value> isClass(const std::string& name);
     void removeClassesFromOutput();
+    uint64_t builtinClass(const std::string& name);
+    void builtinClasses();
+    Value addClass(const uint64_t& classID, bool hasName = false, std::string className = "");
+    void fromBIM(const std::unordered_map<std::string, uint64_t>& BIM, const std::string& name);
 
 public:
     static std::string getCurrentTimestamp();
