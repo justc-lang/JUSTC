@@ -97,6 +97,8 @@ NODE_OUTPUT_EXCLUDE_LUAU="javascript_output/$SAFE_DIR/justc_noluau.node.js"
 JSOUT_DIR="javascript_output/$SAFE_DIR"
 
 web() {
+    echo "::group::core"
+
     set +e
     emcc $SOURCE_FILES core/lang/luau.cpp $LUAU_FILES \
         -o $WEB_OUTPUT \
@@ -106,14 +108,18 @@ web() {
     COMPILE_EXIT_CODE=$?
     set -e
 
+    echo "::endgroup::"
+
     if [ $COMPILE_EXIT_CODE -ne 0 ]; then
-        echo "Failed to compile."
+        echo "::error::Failed to compile to justc.core.js"
         exit 1
     fi
 
-    echo "Compiled to justc.core.js"
+    echo "::notice::Compiled to justc.core.js"
 }
 web_exclude_luau() {
+    echo "::group::core_noluau"
+
     set +e
     emcc $SOURCE_FILES \
         -o $WEB_OUTPUT_EXCLUDE_LUAU \
@@ -124,15 +130,19 @@ web_exclude_luau() {
     COMPILE_EXIT_CODE=$?
     set -e
 
+    echo "::endgroup::"
+
     if [ $COMPILE_EXIT_CODE -ne 0 ]; then
-        echo "Failed to compile."
+        echo "::error::Failed to compile to justc_noluau.core.js"
         exit 1
     fi
 
-    echo "Compiled to justc_noluau.core.js"
+    echo "::notice::Compiled to justc_noluau.core.js"
 }
 
 nodejs() {
+    echo "::group::node"
+
     mkdir -p $JSOUT_DIR
     set +e
     emcc $SOURCE_FILES core/lang/luau.cpp $LUAU_FILES \
@@ -141,15 +151,19 @@ nodejs() {
         $NODE_FLAGS
     COMPILE_EXIT_CODE=$?
     set -e
+    
+    echo "::endgroup::"
 
     if [ $COMPILE_EXIT_CODE -ne 0 ]; then
-        echo "Failed to compile."
+        echo "::error::Failed to compile to justc.node.js"
         exit 1
     fi
 
-    echo "Compiled to justc.node.js"
+    echo "::notice::Compiled to justc.node.js"
 }
 nodejs_exclude_luau() {
+    echo "::group::node_noluau"
+
     mkdir -p $JSOUT_DIR
     set +e
     emcc $SOURCE_FILES \
@@ -159,13 +173,15 @@ nodejs_exclude_luau() {
         -D JUSTC_NOLUAU
     COMPILE_EXIT_CODE=$?
     set -e
+    
+    echo "::endgroup::"
 
     if [ $COMPILE_EXIT_CODE -ne 0 ]; then
-        echo "Failed to compile."
+        echo "::error::Failed to compile to justc_noluau.node.js"
         exit 1
     fi
 
-    echo "Compiled to justc_noluau.node.js"
+    echo "::notice::Compiled to justc_noluau.node.js"
 }
 
 web && \
@@ -187,9 +203,9 @@ JUSTC_NAME="Just an Ultimate Site Tool Configuration language"
 JUSTC_HELP=$(justc -h || echo "undefined")
 
 if [[ "$JUSTC_VERSION" == "undefined" ]]; then
-    echo -e "::error::Invalid JUSTC version." && exit 1
+    echo -e "::error::Invalid JUSTC version" && exit 1
 elif [[ "$JUSTC_HELP" == "undefined" ]]; then
-    echo -e "::error::Invalid JUSTC --help." && exit 1
+    echo -e "::error::Invalid JUSTC --help" && exit 1
 fi
 OUTPUT_VERSION="$JUSTC_VERSION ($SAFE_DIR)"
 if [[ "$JUSTC_VERSION" == "$SAFE_DIR" ]]; then
@@ -245,7 +261,7 @@ for file in justc justc.node justc_noluau justc_noluau.node; do
     } > $JSOUT_DIR/$file.tmp
     wat2wasm $JSOUT_DIR/$file.tmp --enable-annotations -o $JSOUT_DIR/$file.wasm
     rm -f $JSOUT_DIR/$file.tmp $JSOUT_DIR/$file.wat
-    echo "Updated $file.wasm"
+    echo "::notice::Updated $file.wasm"
 done
 
 npm i strc
