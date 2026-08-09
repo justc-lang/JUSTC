@@ -40,7 +40,7 @@ Value HTTP::PUT(const std::string& url, const std::unordered_map<std::string, st
 Value HTTP::PATCH(const std::string& url, const std::unordered_map<std::string, std::string>& headers, const std::string& body) {
     return Fetch::request(url, "PATCH", headers, body);
 }
-Value HTTP::DELETE(const std::string& url, const std::unordered_map<std::string, std::string>& headers) {
+Value HTTP::DELETE_(const std::string& url, const std::unordered_map<std::string, std::string>& headers) {
     return Fetch::request(url, "DELETE", headers);
 }
 Value HTTP::HEAD(const std::string& url, const std::unordered_map<std::string, std::string>& headers) {
