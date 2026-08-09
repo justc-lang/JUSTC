@@ -67,7 +67,7 @@ struct WindowCreateOptions {
     bool visible = true;
 };
 
-Value Create(const std::vector<Value>& args);
+Value Create(const std::vector<Value>& args, const Parser* parser);
 Value Close(const std::vector<Value>& args);
 Value SetTitle(const std::vector<Value>& args);
 Value GetTitle(const std::vector<Value>& args);
