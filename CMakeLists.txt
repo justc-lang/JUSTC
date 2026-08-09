@@ -28,6 +28,7 @@ option(JUSTC_NOLUAU "Disable Luau support" OFF)
 if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     add_compile_options(/MT$<$<CONFIG:Debug>:d>)
+    add_compile_definitions(NOMINMAX)
 endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)

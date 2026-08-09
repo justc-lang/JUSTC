@@ -24,6 +24,10 @@ SOFTWARE.
 
 */
 
+#ifdef _WIN32
+    #define NOMINMAX
+#endif
+
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
