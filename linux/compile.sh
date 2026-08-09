@@ -31,6 +31,21 @@ sudo apt-get install -y libcurl4-openssl-dev cmake build-essential pkg-config zi
 
 sudo apt-get install -y libluau-dev libluau0 || echo "Luau not available in packages, will build from source"
 
+sudo apt-get install -y \
+    libx11-dev \
+    libx11-xcb-dev \
+    libxcb1-dev \
+    libxcb-util-dev \
+    libxcb-util0-dev \
+    libxcb-icccm4-dev \
+    libxcb-keysyms1-dev \
+    libxrandr-dev \
+    libxinerama-dev \
+    libxcursor-dev \
+    libxi-dev \
+    libgl1-mesa-dev \
+    libglu1-mesa-dev
+
 mkdir -p build
 cd build
 cmake .. $OPTIONS -DCMAKE_EXE_LINKER_FLAGS="-lquadmath" -DCMAKE_SHARED_LINKER_FLAGS="-lquadmath"
