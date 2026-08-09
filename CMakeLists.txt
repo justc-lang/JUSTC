@@ -295,21 +295,30 @@ if(UNIX AND NOT APPLE)
     target_include_directories(justc_core PRIVATE ${X11_INCLUDE_DIR})
 endif()
 
+find_library(ZSTD_LIB zstd)
+find_library(LZ4_LIB lz4)
+find_library(SNAPPY_LIB snappy)
+find_library(LZMA_LIB lzma)
 find_package(ZLIB REQUIRED)
-find_package(Zstd REQUIRED)
-find_package(LZ4 REQUIRED)
-find_package(Snappy REQUIRED)
-find_package(BZip2 REQUIRED)
-find_package(LZMA REQUIRED)
-
-target_link_libraries(justc_core PRIVATE 
+find_package(BZip2 QUIET)
+target_link_libraries(justc_core PRIVATE
     ZLIB::ZLIB
-    Zstd::Zstd
-    LZ4::LZ4
-    Snappy::Snappy
-    BZip2::BZip2
-    LZMA::LZMA
 )
+if(ZSTD_LIB)
+    target_link_libraries(justc_core PRIVATE ${ZSTD_LIB})
+endif()
+if(LZ4_LIB)
+    target_link_libraries(justc_core PRIVATE ${LZ4_LIB})
+endif()
+if(SNAPPY_LIB)
+    target_link_libraries(justc_core PRIVATE ${SNAPPY_LIB})
+endif()
+if(BZIP2_FOUND)
+    target_link_libraries(justc_core PRIVATE BZip2::BZip2)
+endif()
+if(LZMA_LIB)
+    target_link_libraries(justc_core PRIVATE ${LZMA_LIB})
+endif()
 
 add_library(justc_lib SHARED core/entry/lib.cpp)
 target_compile_definitions(justc_lib PRIVATE JUSTC_BUILD)
