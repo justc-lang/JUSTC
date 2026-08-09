@@ -63,7 +63,7 @@ bool readHeader(std::istream& in, Header& header) {
 }
 
 bool validateHeader(const Header& header) {
-    return memcmp(header.magic, MAGIC, MAGIC_SIZE);
+    return memcmp(header.magic, MAGIC, MAGIC_SIZE) == 0;
 }
 
 }
