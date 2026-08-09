@@ -56,7 +56,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     }
 }
 
-Value Create(const std::vector<Value>& args, const Parser* parser) {
+Value Create(const std::vector<Value>& args, Parser* parser) {
     try {
         WindowCreateOptions options;
         
@@ -237,7 +237,7 @@ void initX11() {
     rootWindow = DefaultRootWindow(display);
 }
 
-Value Create(const std::vector<Value>& args, const Parser* parser) {
+Value Create(const std::vector<Value>& args, Parser* parser) {
     try {
         initX11();
         
@@ -467,7 +467,7 @@ Value RunMessageLoop(const std::vector<Value>& args) {
 
 #elif defined(__APPLE__) && defined(__MACH__)
 
-Value Create(const std::vector<Value>& args, const Parser* parser) {
+Value Create(const std::vector<Value>& args, Parser* parser) {
     throw std::runtime_error("Window.Create: Not fully supported on macOS yet. Use Windows or Linux.");
 }
 
@@ -509,7 +509,7 @@ Value RunMessageLoop(const std::vector<Value>& args) {
 
 #else
 
-Value Create(const std::vector<Value>& args, const Parser* parser) {
+Value Create(const std::vector<Value>& args, Parser* parser) {
     throw std::runtime_error("Window.Create: Not supported on this platform");
 }
 
