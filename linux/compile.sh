@@ -44,7 +44,13 @@ sudo apt-get install -y \
     libxcursor-dev \
     libxi-dev \
     libgl1-mesa-dev \
-    libglu1-mesa-dev
+    libglu1-mesa-dev \
+    libzstd-dev \
+    liblz4-dev \
+    libsnappy-dev \
+    libbz2-dev \
+    liblzma-dev \
+    zlib1g-dev
 
 mkdir -p build
 cd build

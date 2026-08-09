@@ -166,6 +166,12 @@ jobs:
           ./vcpkg/vcpkg install icu:x64-windows-static --recurse
           ./vcpkg/vcpkg install boost-multiprecision:x64-windows-static --recurse
           ./vcpkg/vcpkg install boost-serialization:x64-windows-static --recurse
+          ./vcpkg/vcpkg install zlib:x64-windows-static --recurse
+          ./vcpkg/vcpkg install zstd:x64-windows-static --recurse
+          ./vcpkg/vcpkg install lz4:x64-windows-static --recurse
+          ./vcpkg/vcpkg install snappy:x64-windows-static --recurse
+          ./vcpkg/vcpkg install bzip2:x64-windows-static --recurse
+          ./vcpkg/vcpkg install liblzma:x64-windows-static --recurse
       
       - name: Clean build directory
         shell: pwsh
@@ -273,6 +279,7 @@ jobs:
             ln -sf /opt/homebrew/lib/libidn2.0.dylib /opt/homebrew/lib/libidn2.dylib
           fi
           brew install libx11 libxrandr libxinerama libxcursor libxi
+          brew install zstd lz4 snappy bzip2 xz zlib
       - name: Configure with explicit library path
         run: |
           export LDFLAGS="-L/opt/homebrew/lib"
