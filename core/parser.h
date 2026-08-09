@@ -749,6 +749,19 @@ struct PropertyPathNode {
     std::optional<ASTNode> typeNode;
 };
 
+enum class CompressionAlgorithm : uint8_t {
+    NONE = 0,
+    ZLIB = 1,
+    GZIP = 2,
+    BZIP2 = 3,
+    LZMA = 4,
+    ZSTD = 5,
+    LZ4 = 6,
+    SNAPPY = 7,
+    LZMA2 = 8,
+    DEFLATE = 9,
+};
+
 class Parser {
 private:
     bool doExecute;

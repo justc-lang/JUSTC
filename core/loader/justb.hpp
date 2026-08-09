@@ -31,8 +31,9 @@ SOFTWARE.
 #include <fstream>
 
 class JustbLoader {
+private:
+    static std::vector<uint8_t> decompressData(const std::vector<uint8_t>& compressedData, uint8_t compressionType, size_t originalSize);
 public:
     static ParseResult load(const std::string& inputPath);
-
     static ParseResult load(std::istream& in);
 };

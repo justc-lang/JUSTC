@@ -29,9 +29,46 @@ SOFTWARE.
 #include "../parser.h"
 #include <string>
 #include <fstream>
+#include <vector>
+#include <cstdint>
+
+struct CompressionResult {
+    CompressionAlgorithm algorithm;
+    std::vector<uint8_t> data;
+    size_t originalSize;
+    size_t compressedSize;
+    double ratio;
+};
 
 class JustbCompiler {
 public:
     static bool compile(const ParseResult& result, const std::string& outputPath);
     static bool compile(const ParseResult& result, std::ostream& out);
+
+    static void setCompressionLevel(int level) { compressionLevel = std::max(1, std::min(9, level)); }
+    static int getCompressionLevel() { return compressionLevel; }
+
+    static void setAutoSelect(bool enable) { autoSelect = enable; }
+    static bool getAutoSelect() { return autoSelect; }
+
+    static void setMinCompressionRatio(double ratio) { minCompressionRatio = std::max(0.0, std::min(1.0, ratio)); }
+    static double getMinCompressionRatio() { return minCompressionRatio; }
+
+private:
+    static int compressionLevel;
+    static bool autoSelect;
+    static double minCompressionRatio;
+
+    static std::vector<uint8_t> compressNone(const std::vector<uint8_t>& data);
+    static std::vector<uint8_t> compressZlib(const std::vector<uint8_t>& data, int level);
+    static std::vector<uint8_t> compressGzip(const std::vector<uint8_t>& data, int level);
+    static std::vector<uint8_t> compressBzip2(const std::vector<uint8_t>& data, int level);
+    static std::vector<uint8_t> compressLzma(const std::vector<uint8_t>& data, int level);
+    static std::vector<uint8_t> compressZstd(const std::vector<uint8_t>& data, int level);
+    static std::vector<uint8_t> compressLz4(const std::vector<uint8_t>& data);
+    static std::vector<uint8_t> compressSnappy(const std::vector<uint8_t>& data);
+    static std::vector<uint8_t> compressDeflate(const std::vector<uint8_t>& data, int level);
+
+    static CompressionResult tryCompression(const std::vector<uint8_t>& data, CompressionAlgorithm algorithm, int level = -1);
+    static CompressionResult selectBestCompression(const std::vector<uint8_t>& data);
 };

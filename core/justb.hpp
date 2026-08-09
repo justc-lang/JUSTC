@@ -51,7 +51,7 @@ struct Header {
     uint8_t compression;
 };
 
-bool writeHeader(std::ostream& out, const std::string& version = JUSTC_VERSION);
+bool writeHeader(std::ostream& out, const std::string& version = JUSTC_VERSION, const uint8_t& compression = 0, const uint8_t& type = 0);
 bool readHeader(std::istream& in, Header& header);
 bool validateHeader(const Header& header);
 
