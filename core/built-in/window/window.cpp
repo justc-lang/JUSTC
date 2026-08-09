@@ -56,7 +56,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     }
 }
 
-Value Create(const std::vector<Value>& args) {
+Value Create(const std::vector<Value>& args, const Parser* parser) {
     try {
         WindowCreateOptions options;
         
@@ -64,25 +64,25 @@ Value Create(const std::vector<Value>& args) {
             auto props = args[0].properties;
             
             auto it = props.find("title");
-            if (it != props.end()) options.title = v(it->second).toString();
+            if (it != props.end()) options.title = parser->v(it->second).toString();
             
             it = props.find("x");
-            if (it != props.end()) options.x = static_cast<int>(v(it->second).toNumber());
+            if (it != props.end()) options.x = static_cast<int>(parser->v(it->second).toNumber());
             
             it = props.find("y");
-            if (it != props.end()) options.y = static_cast<int>(v(it->second).toNumber());
+            if (it != props.end()) options.y = static_cast<int>(parser->v(it->second).toNumber());
             
             it = props.find("width");
-            if (it != props.end()) options.width = static_cast<int>(v(it->second).toNumber());
+            if (it != props.end()) options.width = static_cast<int>(parser->v(it->second).toNumber());
             
             it = props.find("height");
-            if (it != props.end()) options.height = static_cast<int>(v(it->second).toNumber());
+            if (it != props.end()) options.height = static_cast<int>(parser->v(it->second).toNumber());
             
             it = props.find("resizable");
-            if (it != props.end()) options.resizable = v(it->second).toBoolean();
+            if (it != props.end()) options.resizable = parser->v(it->second).toBoolean();
             
             it = props.find("visible");
-            if (it != props.end()) options.visible = v(it->second).toBoolean();
+            if (it != props.end()) options.visible = parser->v(it->second).toBoolean();
         }
         
         if (!windowClassRegistered) {
@@ -237,7 +237,7 @@ void initX11() {
     rootWindow = DefaultRootWindow(display);
 }
 
-Value Create(const std::vector<Value>& args) {
+Value Create(const std::vector<Value>& args, const Parser* parser) {
     try {
         initX11();
         
@@ -247,22 +247,22 @@ Value Create(const std::vector<Value>& args) {
             auto props = args[0].properties;
             
             auto it = props.find("title");
-            if (it != props.end()) options.title = v(it->second).toString();
+            if (it != props.end()) options.title = parser->v(it->second).toString();
             
             it = props.find("x");
-            if (it != props.end()) options.x = static_cast<int>(v(it->second).toNumber());
+            if (it != props.end()) options.x = static_cast<int>(parser->v(it->second).toNumber());
             
             it = props.find("y");
-            if (it != props.end()) options.y = static_cast<int>(v(it->second).toNumber());
+            if (it != props.end()) options.y = static_cast<int>(parser->v(it->second).toNumber());
             
             it = props.find("width");
-            if (it != props.end()) options.width = static_cast<int>(v(it->second).toNumber());
+            if (it != props.end()) options.width = static_cast<int>(parser->v(it->second).toNumber());
             
             it = props.find("height");
-            if (it != props.end()) options.height = static_cast<int>(v(it->second).toNumber());
+            if (it != props.end()) options.height = static_cast<int>(parser->v(it->second).toNumber());
             
             it = props.find("visible");
-            if (it != props.end()) options.visible = v(it->second).toBoolean();
+            if (it != props.end()) options.visible = parser->v(it->second).toBoolean();
         }
         
         int screen = DefaultScreen(display);
@@ -467,7 +467,7 @@ Value RunMessageLoop(const std::vector<Value>& args) {
 
 #elif defined(__APPLE__) && defined(__MACH__)
 
-Value Create(const std::vector<Value>& args) {
+Value Create(const std::vector<Value>& args, const Parser* parser) {
     throw std::runtime_error("Window.Create: Not fully supported on macOS yet. Use Windows or Linux.");
 }
 
@@ -509,7 +509,7 @@ Value RunMessageLoop(const std::vector<Value>& args) {
 
 #else
 
-Value Create(const std::vector<Value>& args) {
+Value Create(const std::vector<Value>& args, const Parser* parser) {
     throw std::runtime_error("Window.Create: Not supported on this platform");
 }
 
