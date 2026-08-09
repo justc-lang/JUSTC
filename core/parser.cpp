@@ -4906,7 +4906,7 @@ Value Parser::functionHTTP(size_t startPos, const std::string& method, const std
     } else if (method == "PATCH") {
         result = HTTP::PATCH(url, headers, body);
     } else if (method == "DELETE") {
-        result = HTTP::DELETE(url, headers);
+        result = (HTTP::DELETE)(url, headers);
     } else if (method == "HEAD") {
         result = HTTP::HEAD(url, headers);
     } else if (method == "OPTIONS") {
