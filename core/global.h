@@ -26,6 +26,9 @@ SOFTWARE.
 
 #ifdef _WIN32
     #define NOMINMAX
+    #undef INFINITE
+    #undef NAN
+    #undef ERROR
 #endif
 
 #ifndef GLOBAL_H

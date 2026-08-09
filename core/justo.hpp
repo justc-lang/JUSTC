@@ -32,6 +32,9 @@ JUSTO - Just an Ultimate Site Tool Object notation language.
 
 #ifdef _WIN32
     #define NOMINMAX
+    #undef INFINITE
+    #undef NAN
+    #undef ERROR
 #endif
 
 #ifndef JUSTO_HPP

@@ -35,6 +35,9 @@ SOFTWARE.
 
 #ifdef _WIN32
     #define NOMINMAX
+    #undef INFINITE
+    #undef NAN
+    #undef ERROR
     #include <windows.h>
 #elif defined(__linux__)
     #include <X11/Xlib.h>
