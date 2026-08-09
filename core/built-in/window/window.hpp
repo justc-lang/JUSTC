@@ -31,7 +31,7 @@ SOFTWARE.
 #include <vector>
 #include <unordered_map>
 #include <cstdint>
-#include "../parser.h"
+#include "../../parser.h"
 
 #ifdef _WIN32
     #include <windows.h>
