@@ -29,6 +29,7 @@ SOFTWARE.
     #undef INFINITE
     #undef NAN
     #undef ERROR
+    #undef DELETE
 #endif
 
 #include "parser.h"
