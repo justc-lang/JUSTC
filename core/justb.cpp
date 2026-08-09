@@ -63,9 +63,7 @@ bool readHeader(std::istream& in, Header& header) {
 }
 
 bool validateHeader(const Header& header) {
-    return memcmp(header.magic, MAGIC, MAGIC_SIZE) == 0 &&
-           header.version == JUSTC_VERSION &&
-           header.compression == 0;
+    return memcmp(header.magic, MAGIC, MAGIC_SIZE);
 }
 
 }
