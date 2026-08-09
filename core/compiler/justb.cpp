@@ -98,7 +98,8 @@ std::vector<uint8_t> JustbCompiler::compressBzip2(const std::vector<uint8_t>& da
     
     int ret = BZ2_bzBuffToBuffCompress(
         reinterpret_cast<char*>(result.data()), &compressedSize,
-        reinterpret_cast<const char*>(data.data()), data.size(),
+        const_cast<char*>(reinterpret_cast<const char*>(data.data())), 
+        static_cast<int>(data.size()),
         level, 0, 30
     );
     

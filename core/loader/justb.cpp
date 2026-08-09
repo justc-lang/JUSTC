@@ -76,7 +76,8 @@ std::vector<uint8_t> JustbLoader::decompressData(const std::vector<uint8_t>& com
             unsigned int destLen = originalSize;
             int ret = BZ2_bzBuffToBuffDecompress(
                 reinterpret_cast<char*>(result.data()), &destLen,
-                reinterpret_cast<const char*>(compressedData.data()), compressedData.size(),
+                const_cast<char*>(reinterpret_cast<const char*>(compressedData.data())), 
+                static_cast<int>(compressedData.size()),
                 0, 0
             );
             if (ret == BZ_OK) {
