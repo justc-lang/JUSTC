@@ -259,6 +259,8 @@ set(CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/core/built-in/binary/binary.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/built-in/string/string.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/built-in/window/window.cpp
+    
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/transpiler/js.cpp
 )
 
 if(MSVC)

@@ -43,6 +43,7 @@ SOFTWARE.
 #include "../compiler/justb.hpp"
 #include "../loader/justb.hpp"
 #include "../justb.hpp"
+#include "../transpiler/js.hpp"
 
 void logError(const std::string& error) {
     if (Utility::isGitHubActions()) {
@@ -325,6 +326,10 @@ struct CommandLineFlags {
     std::string input;
     std::string output;
 
+    // Опции для транспиляции
+    bool minify = false;
+    bool strict = true;
+
     std::vector<std::string> arguments;
 };
 
@@ -403,6 +408,12 @@ CommandLineFlags parseArguments(int argc, char* argv[]) {
             ++i;
         } else if (arg == "--disallow-luau") {
             flags.allowLuau = false;
+            ++i;
+        } else if (arg == "--minify") {
+            flags.minify = true;
+            ++i;
+        } else if (arg == "--no-strict") {
+            flags.strict = false;
             ++i;
         } else if (arg[0] == '-') {
             throwError("Unknown option: " + arg);
@@ -504,6 +515,45 @@ void handleSerialize(const CommandLineFlags& flags) {
         writeFile(flags.output, serialized);
     } else {
         std::cout << serialized << std::endl;
+    }
+}
+
+void handleTranspile(const CommandLineFlags& flags) {
+    if (flags.input.empty()) {
+        throwError("No input file specified for transpilation");
+    }
+
+    std::string code = readFile(flags.input);
+    std::string transpiled;
+    bool minify = flags.minify;
+
+    std::string lang = flags.language;
+    std::transform(lang.begin(), lang.end(), lang.begin(), ::tolower);
+
+    if (lang == "js" || lang == "javascript") {
+        if (flags.strict) {
+            transpiled = JUSTC::Transpiler::JavaScript::transpile(code, minify);
+        } else {
+            transpiled = JUSTC::Transpiler::JavaScript::transpile(code, minify);
+            size_t pos = transpiled.find("\"use strict\"");
+            if (pos != std::string::npos) {
+                transpiled.erase(pos, 14);
+                while (pos < transpiled.length() && (transpiled[pos] == ';' || transpiled[pos] == '\n' || transpiled[pos] == ' ')) {
+                    transpiled.erase(pos, 1);
+                }
+            }
+        }
+    } else {
+        throwError("Unknown language for transpilation: " + lang + ". Available: js, javascript");
+    }
+
+    if (!flags.output.empty()) {
+        writeFile(flags.output, transpiled);
+        if (flags.print) {
+            std::cout << transpiled << std::endl;
+        }
+    } else {
+        std::cout << transpiled << std::endl;
     }
 }
 
@@ -636,6 +686,8 @@ int main(int argc, char* argv[]) {
             handleExecuteJustb(flags);
         } else if (flags.command == "serialize") {
             handleSerialize(flags);
+        } else if (flags.command == "transpile") {
+            handleTranspile(flags);
         } else if (flags.command == "compile") {
             if (flags.format == "justb") {
                 handleCompileJustb(flags);
@@ -653,6 +705,18 @@ int main(int argc, char* argv[]) {
 
             if (flags.print) {
                 std::cout << JsonSerializer::serialize(result) << std::endl;
+            }
+        } else if (flags.command == "justc->js" || flags.command == "justc->javascript") {
+            flags.language = "js";
+            size_t pos = flags.command.find("->");
+            if (pos != std::string::npos) {
+                std::string ext = flags.input.substr(flags.input.find_last_of('.') + 1);
+                if (ext != "justc") {
+                    throwError("Input file must be .justc for transpilation");
+                }
+                handleTranspile(flags);
+            } else {
+                throwError("Invalid command format");
             }
         } else if (flags.command == "check" || flags.check) {
             handleCheck(flags);
