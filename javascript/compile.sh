@@ -73,7 +73,12 @@ if [ ! -f "snappy/build/libsnappy.a" ]; then
         -DBUILD_SHARED_LIBS=OFF \
         -DSNAPPY_BUILD_TESTS=OFF \
         -DSNAPPY_BUILD_BENCHMARKS=OFF \
-        -DCMAKE_DISABLE_FIND_PACKAGE_OpenSSL=ON
+        -DCMAKE_DISABLE_FIND_PACKAGE_OpenSSL=ON \
+        -DCMAKE_CXX_FLAGS="-w" \
+        -DCMAKE_C_FLAGS="-w" \
+        -DSNAPPY_BUILD_TESTS=OFF \
+        -DSNAPPY_BUILD_BENCHMARKS=OFF \
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
     emmake make -j$(nproc)
     cd ../..
     echo "::endgroup::"
