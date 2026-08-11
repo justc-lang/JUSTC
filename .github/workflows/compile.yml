@@ -420,6 +420,17 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '24.x'
+      - name: Cache zstd, lz4, snappy, lzma
+        uses: actions/cache@v4
+        with:
+          path: |
+            zstd
+            lz4
+            snappy
+            xz
+          key: ${{ runner.os }}-emscripten-deps-compression-${{ hashFiles('javascript/compile.sh', '**/CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-emscripten-deps-compression-
       - name: Compile C++ to WASM
         if: github.event_name != 'schedule'
         env:
