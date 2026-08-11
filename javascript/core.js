@@ -1040,6 +1040,14 @@ SOFTWARE.
             }
         }
     };
+    JUSTC.Output.compile = isBrowser || !JUSTC.Experiments ? function(code) {
+        return (new TextEncoder()).encode(STRING(JUSTC.Output.execute(code, 'justb')));
+    } : async function (code) {
+        return (new TextEncoder()).encode(STRING(await JUSTC.AsyncOutput(true, [code, 'justb'])));
+    };
+    JUSTC.Output.compileAsync = isBrowser && JUSTC.Experiments ? async function (code) {
+        return (new TextEncoder()).encode(STRING(await JUSTC.AsyncOutput(true, [code, 'justb'])));
+    } : undefined;
     JUSTC.Public = {
         get [Symbol.toStringTag]() {
             return 'JUSTC'
