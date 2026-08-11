@@ -58,9 +58,22 @@ fi
 if [ ! -f "snappy/build/libsnappy.a" ]; then
     echo "::group::Building snappy for Emscripten..."
     git clone --depth 1 --branch 1.1.10 https://github.com/google/snappy.git
-    mkdir -p snappy/build
-    cd snappy/build
-    emcmake cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+    cd snappy
+    
+    mkdir -p third_party/googletest
+    git clone --depth 1 https://github.com/google/googletest.git third_party/googletest
+    
+    mkdir -p third_party/benchmark
+    git clone --depth 1 https://github.com/google/benchmark.git third_party/benchmark
+    
+    mkdir -p build
+    cd build
+    emcmake cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DSNAPPY_BUILD_TESTS=OFF \
+        -DSNAPPY_BUILD_BENCHMARKS=OFF \
+        -DCMAKE_DISABLE_FIND_PACKAGE_OpenSSL=ON
     emmake make -j$(nproc)
     cd ../..
     echo "::endgroup::"
