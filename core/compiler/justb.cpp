@@ -42,6 +42,7 @@ SOFTWARE.
 
 #ifdef __EMSCRIPTEN__
     #include <emscripten.h>
+    #include "justb.emscripten.h"
 #endif
 
 int JustbCompiler::compressionLevel = 6;
@@ -353,7 +354,7 @@ bool JustbCompiler::compile(const ParseResult& result, std::ostream& out) {
         return out.good();
     } catch (const std::exception& e) {
         #ifdef __EMSCRIPTEN__
-            emscripten_console_log(("JUSTB Compilation error: " + std::string(e.what())).c_str());
+            error_compile_justb(std::string(e.what()).c_str());
         #endif
         return false;
     }
