@@ -98,7 +98,7 @@ fi
 if [ ! -f "xz/build/liblzma.a" ]; then
     echo "::group::Building lzma for Emscripten..."
     
-    wget https://tukaani.org/xz/xz-5.4.6.tar.gz
+    wget https://github.com/tukaani-project/xz/releases/download/v5.4.6/xz-5.4.6.tar.gz
     tar -xzf xz-5.4.6.tar.gz
     cd xz-5.4.6
     
