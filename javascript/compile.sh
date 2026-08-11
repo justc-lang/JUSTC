@@ -35,11 +35,6 @@ echo $OUTPUT_DIR
 echo $SAFE_DIR
 echo "dirpath=$SAFE_DIR" >> $GITHUB_OUTPUT
 
-if [ ! -f "$EMSDK/upstream/emscripten/cache/portable/lib/libz.a" ]; then
-    echo "Building zlib for Emscripten..."
-    emcc -s USE_ZLIB=1 -c
-fi
-
 if [ ! -f "zstd/lib/libzstd.a" ]; then
     echo "Building zstd for Emscripten..."
     git clone --depth 1 --branch v1.5.6 https://github.com/facebook/zstd.git
@@ -99,6 +94,41 @@ SNAPPY_FLAGS="-Isnappy -Isnappy/build -Lsnappy/build -lsnappy"
 BZIP2_FLAGS="-Ibzip2 -Lbzip2 -lbz2"
 LZMA_FLAGS="-Ixz/build -Lxz/build -llzma"
 
+if [ -f "zstd/lib/libzstd.a" ]; then
+    COMPRESSION_FLAGS="$COMPRESSION_FLAGS $ZSTD_FLAGS"
+    echo "::notice::Zstd found"
+else
+    echo "::warning::Zstd not found"
+fi
+
+if [ -f "lz4/lib/liblz4.a" ]; then
+    COMPRESSION_FLAGS="$COMPRESSION_FLAGS $LZ4_FLAGS"
+    echo "::notice::LZ4 found"
+else
+    echo "::warning::LZ4 not found"
+fi
+
+if [ -f "snappy/build/libsnappy.a" ]; then
+    COMPRESSION_FLAGS="$COMPRESSION_FLAGS $SNAPPY_FLAGS"
+    echo "::notice::Snappy found"
+else
+    echo "::warning::Snappy not found"
+fi
+
+if [ -f "bzip2/libbz2.a" ]; then
+    COMPRESSION_FLAGS="$COMPRESSION_FLAGS $BZIP2_FLAGS"
+    echo "::notice::BZip2 found"
+else
+    echo "::warning::BZip2 not found"
+fi
+
+if [ -f "xz/build/liblzma.a" ]; then
+    COMPRESSION_FLAGS="$COMPRESSION_FLAGS $LZMA_FLAGS"
+    echo "::notice::LZMA found"
+else
+    echo "::warning::LZMA not found"
+fi
+
 SOURCE_FILES="core/entry/jsapi.cpp core/lexer.cpp core/parser.cpp core/parser/json.cpp core/serializer/json.cpp core/keywords.cpp \
 core/fetch.cpp core/serializer/xml.cpp core/serializer/yaml.cpp core/utility.cpp core/import.cpp core/built-in/http/http.cpp \
 core/built-in/math/math.cpp core/built-in/binary/binary.cpp core/built-in/string/string.cpp core/unicode.cpp core/builtins.cpp core/serializer/justo.cpp \
@@ -138,7 +168,8 @@ COMMON_FLAGS="-s EXPORTED_FUNCTIONS=[\"_malloc\",\"_free\",\"_registerFunction\"
 --bind \
 -s DEMANGLE_SUPPORT=0 \
 -I./third-party \
-$LUAU_INCLUDE $CEREAL_INCLUDE"
+$LUAU_INCLUDE $CEREAL_INCLUDE \
+$ZLIB_FLAGS $COMPRESSION_FLAGS"
 
 WEB_FLAGS="-s ENVIRONMENT=web,worker \
 -s ASYNCIFY_IMPORTS=['fetch','emscripten_fetch','emscripten_fetch_close','use_luau']"
