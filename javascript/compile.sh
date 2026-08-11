@@ -102,6 +102,9 @@ if [ ! -f "xz/build/liblzma.a" ]; then
     tar -xzf xz-5.4.6.tar.gz
     cd xz-5.4.6
     
+    echo "Patching for Emscripten..."
+    sed -i 's/AC_CHECK_FUNCS([pthread_sigmask])/AC_CHECK_FUNCS([pthread_sigmask], [], [AC_DEFINE([pthread_sigmask], [0], [Define to 0 if not available])])/' configure.ac
+    
     emconfigure ./configure \
         --host=wasm32-unknown-emscripten \
         --disable-shared \
@@ -114,9 +117,11 @@ if [ ! -f "xz/build/liblzma.a" ]; then
         --disable-doc \
         --disable-nls \
         --disable-threads \
-        --disable-sandbox
+        --disable-sandbox \
+        --disable-rpath \
+        --disable-werror
     
-    emmake make -j$(nproc) liblzma.la
+    emmake make -j$(nproc)
     
     mkdir -p ../xz/build
     cp src/liblzma/.libs/liblzma.a ../xz/build/
