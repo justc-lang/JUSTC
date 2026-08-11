@@ -7,19 +7,18 @@
 </div> <br><br>
 
 # <img align="top" src="https://just.js.org/justc/logo-50.svg" alt="JUSTC Logo" width="40" height="40"> JUSTC ![Latest version](https://img.shields.io/npm/v/justc?label=&color=6e3bf3) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://just.js.org/justc/license.txt) [![Compile](https://github.com/js-just/JUSTC/actions/workflows/compile.yml/badge.svg)](https://github.com/js-just/JUSTC/actions/workflows/compile.yml)
-**JUSTC** (**J**USTC's **U**niversal **S**erialization, **T**ranspilation & **C**ompilation) is a powerful scripting language designed for automation, with JavaScript™ and Luau included, designed to be backwards compatible with JSON. <br>
+**JUSTC** is a powerful scripting language designed for automation, with JavaScript™ and Luau included, designed to be backwards compatible with JSON. <br>
 
-**JUSTB** (**J**USTC's **U**niversal **S**tructuren't **T**emporary **B**ytecode) is a bytecode format and a part of JUSTC, designed for faster loading and smaller file sizes. <br>
-**JUSTO** (**J**USTC's **U**niversal  **S**imple **T**ext **O**bject) is a mid-level object notation language with simple syntax, designed for easy and fast parsing, also a part of JUSTC.
+**JUSTB** is a bytecode format and a part of JUSTC, designed for faster loading and smaller file sizes. <br>
+**JUSTO** is an object notation language with simple syntax, designed for easy and fast parsing, also a part of JUSTC.
 
 JUSTC is a free and open-source software, made for Just an Ultimate Site Tool, the Web, and everything else.
 
 ## Features
-- JUSTC is **compilable** to `.justb` (JUSTB), Linux applications and `.lib` (planned), macOS applications and `.dylib` (planned), Windows `.exe` and `.dll` (planned);
+- JUSTC is **compilable** to `.justb` (JUSTB);
 - **Interpretable**;
 - **Serializable** to JSON, JUSTO, XML, YAML;
-- **Transpilable** to JavaScript (planned) and Luau (planned);
-- **Cross-platform**: WebAssembly (JavaScript&nbsp;- Node.js and browsers), Linux, macOS, Windows.
+- **Cross-platform**: Windows, Linux, macOS, WebAssembly (JavaScript&nbsp;- Node.js and browsers).
 
 # Quick Start
 
