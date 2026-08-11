@@ -73,6 +73,13 @@ SOFTWARE.
     const INT       = isBrowser ? globalThis_.parseInt      : parseInt;
     const INTL      = isBrowser ? globalThis_.Intl          : Intl;
     const MATH      = isBrowser ? globalThis_.Math          : Math;
+    const PROMISE   = isBrowser ? globalThis_.Promise       : Promise;
+    const ISNAN     = isBrowser ? globalThis_.isNaN         : isNaN;
+    const ISFINITE  = isBrowser ? globalThis_.isFinite      : isFinite;
+    const BIGINT    = isBrowser ? globalThis_.BigInt        : BigInt;
+    const TXTENCDR  = isBrowser ? globalThis_.TextEncoder   : TextEncoder;
+    const UI8A      = isBrowser ? globalThis_.Uint8Array    : Uint8Array;
+    const AB        = isBrowser ? globalThis_.ArrayBuffer   : ArrayBuffer;
 
     const isSafari = isBrowser ? /^((?!chrome|android).)*safari/i.test(globalThis_.navigator.userAgent) : false;
     const isNode   = isModule ? typeof process !== 'undefined' && process.versions && process.versions.node : false;
@@ -115,7 +122,7 @@ SOFTWARE.
     };
 
     if (isBrowser) {
-        JUSTC.Checks.sysFunc(OBJECT, ARRAY, __URL__, STRING, ERR, MAP, BLOB, FETCH, INT);
+        JUSTC.Checks.sysFunc(OBJECT, ARRAY, __URL__, STRING, ERR, MAP, BLOB, FETCH, INT, PROMISE, ISNAN, ISFINITE, BIGINT, TXTENCDR, UI8A, AB);
         JUSTC.Checks.sysObj(json_, CONSOLE, globalThis_, DOCUMENT, INTL, MATH);
         if (!isSafari) JUSTC.Checks.sysFunc(
             OBJECT.entries, OBJECT.defineProperty, OBJECT.freeze,
@@ -409,7 +416,7 @@ SOFTWARE.
         }
     };
     JUSTC.AsyncParse = async function(code, execute, outputMode = JUSTC.DefaultOutputMode) {
-        return new Promise((resolve, reject) => {
+        return new PROMISE((resolve, reject) => {
             try {
                 setTimeout(() => {
                     try {
@@ -531,7 +538,7 @@ SOFTWARE.
     JUSTO._pointers.set('nan', NaN);
     JUSTO._pointers.set('inf', Infinity);
     JUSTO.parse = function(justoString) {
-        if (typeof justoString !== 'string') throw new Error('JUSTO.parse requires a string');
+        if (typeof justoString !== 'string') throw new JUSTC.Error('JUSTO.parse requires a string');
 
         let pos = 0;
         const input = justoString;
@@ -696,16 +703,16 @@ SOFTWARE.
     JUSTO.stringify = function(value) {
         if (value === null || value === undefined) return ';';
         if (typeof value === 'number') {
-            if (isNaN(value)) return "'nan'";
-            if (!isFinite(value)) return "'inf'";
-            return 'n' + String(value);
+            if (ISNAN(value)) return "'nan'";
+            if (!ISFINITE(value)) return "'inf'";
+            return 'n' + STRING(value);
         }
         if (typeof value === 'string') {
             let escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
             return '"' + escaped + '"';
         }
         if (typeof value === 'boolean') return value ? '1' : '0';
-        if (Array.isArray(value)) {
+        if (ARRAY.isArray(value)) {
             let result = 'a[';
             for (let i = 0; i < value.length; i++) {
                 if (i > 0) result += ',';
@@ -717,7 +724,7 @@ SOFTWARE.
         if (typeof value === 'object') {
             let result = 'o{';
             let first = true;
-            for (const [key, val] of Object.entries(value)) {
+            for (const [key, val] of OBJECT.entries(value)) {
                 if (!first) result += ';';
                 first = false;
                 result += key + ':' + JUSTO.stringify(val);
@@ -728,15 +735,15 @@ SOFTWARE.
         return ';';
     };
     JUSTO.registerPointer = function(name, value) {
-        if (typeof name !== 'string') throw new Error('Pointer name must be a string');
+        if (typeof name !== 'string') throw new JUSTC.Error('Pointer name must be a string');
         JUSTO._pointers.set(name, value);
     };
     JUSTO.unregisterPointer = function(name) {
-        if (typeof name !== 'string') throw new Error('Pointer name must be a string');
+        if (typeof name !== 'string') throw new JUSTC.Error('Pointer name must be a string');
         JUSTO._pointers.delete(name);
     };
     JUSTO.getPointer = function(name) {
-        if (typeof name !== 'string') throw new Error('Pointer name must be a string');
+        if (typeof name !== 'string') throw new JUSTC.Error('Pointer name must be a string');
         return JUSTO._pointers.get(name);
     };
 
@@ -877,7 +884,7 @@ SOFTWARE.
             outputMode = args[0];
             start += 1;
         };
-        return await Promise.all(await Promise.all(JUSTC.Taskify(bool, outputMode, args.slice(start, end))))
+        return await PROMISE.all(await PROMISE.all(JUSTC.Taskify(bool, outputMode, args.slice(start, end))))
     };
     JUSTC.Output = {
         parse: isBrowser || !JUSTC.Experiments ? function(code, outputMode = JUSTC.DefaultOutputMode) {
@@ -1026,12 +1033,12 @@ SOFTWARE.
                 JUSTC.CheckWASM();
                 if (typeof id !== 'number' && typeof id !== 'bigint' && typeof id !== 'string') throw new JUSTC.Error('ClassID must be a BigInt, a number, or a string');
                 if (typeof id == 'string' && !/^\d{1,20}$/.test(id) && !/^0x[0-9a-fA-F]{1,16}$/.test(id)) throw new JUSTC.Error('Invalid ClassID');
-                if (!(BigInt(id) <= 18446744073709551615n) || id < 0) throw new JUSTC.Error('ClassID must be within UInt64 range');
+                if (!(BIGINT(id) <= 18446744073709551615n) || id < 0) throw new JUSTC.Error('ClassID must be within UInt64 range');
                 return JUSTC.WASM.ccall(
                     'unregisterClass',
                     'number',
                     ['string'],
-                    [String(id)]
+                    [STRING(id)]
                 ) === 1;
             },
             clear: function() {
@@ -1041,12 +1048,12 @@ SOFTWARE.
         }
     };
     JUSTC.Output.compile = isBrowser || !JUSTC.Experiments ? function(code) {
-        return (new TextEncoder()).encode(STRING(JUSTC.Output.execute(code, 'justb')));
+        return (new TXTENCDR()).encode(STRING(JUSTC.Output.execute(code, 'justb')));
     } : async function (code) {
-        return (new TextEncoder()).encode(STRING(await JUSTC.AsyncOutput(true, [code, 'justb'])));
+        return (new TXTENCDR()).encode(STRING(await JUSTC.AsyncOutput(true, [code, 'justb'])));
     };
     JUSTC.Output.compileAsync = isBrowser && JUSTC.Experiments ? async function (code) {
-        return (new TextEncoder()).encode(STRING(await JUSTC.AsyncOutput(true, [code, 'justb'])));
+        return (new TXTENCDR()).encode(STRING(await JUSTC.AsyncOutput(true, [code, 'justb'])));
     } : undefined;
     JUSTC.Public = {
         get [Symbol.toStringTag]() {
@@ -1086,7 +1093,7 @@ SOFTWARE.
     };
     JUSTC.HiddenOutput = {
         requestPermissions: function(what) {
-            if (Array.isArray(what)) {
+            if (ARRAY.isArray(what)) {
                 const output = [];
                 for (const item of what) {
                     output.push(JUSTC.Private(item));
@@ -1152,12 +1159,12 @@ SOFTWARE.
                         if (!JUSTC.OutputModes.includes(outputMode)) throw new JUSTC.Error(JUSTC.Errors.outputMode);
 
                         let data;
-                        if (binary instanceof Uint8Array) {
+                        if (binary instanceof UI8A) {
                             data = binary;
-                        } else if (binary instanceof ArrayBuffer) {
-                            data = new Uint8Array(binary);
+                        } else if (binary instanceof AB) {
+                            data = new UI8A(binary);
                         } else if (typeof binary === 'string') {
-                            const encoder = new TextEncoder();
+                            const encoder = new TXTENCDR();
                             data = encoder.encode(binary);
                         } else {
                             throw new JUSTC.Error('JUSTB.load expects Uint8Array, ArrayBuffer, or binary string.');
@@ -1284,15 +1291,15 @@ SOFTWARE.
                     };
 
                     const args = command.split(' ').filter(arg => arg);
-                    function print(arg) {
+                    function print_(arg) {
                         CONSOLE.info(typeof JUSTC[vars[arg]] === 'function' ? JUSTC[vars[arg]]() : JUSTC[vars[arg]])
                     };
-                    if (args.length == 1 && args[0] in vars) print(args[0]);
+                    if (args.length == 1 && args[0] in vars) print_(args[0]);
                     else {
                         switch (args[0]) {
                             case 'print':
                                 if (args.length != 2 ||!(args[1]in vars)) JUSTC.ErrorIfEnabled(JUSTC.Errors.redefine);
-                                else print(args[1]);
+                                else print_(args[1]);
                                 break;
                             case 'set':
                                 if (args.length != 3 ||!(args[1]in vars)||
