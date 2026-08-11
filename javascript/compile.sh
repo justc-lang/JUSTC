@@ -97,22 +97,32 @@ fi
 
 if [ ! -f "xz/build/liblzma.a" ]; then
     echo "::group::Building lzma for Emscripten..."
-    git clone --depth 1 --branch v5.4.6 https://github.com/tukaani-project/xz.git
-    mkdir -p xz/build
-    cd xz/build
-    emcmake cmake .. \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_SHARED_LIBS=OFF \
-        -DENABLE_SANDBOX=OFF \
-        -DENABLE_THREADS=OFF \
-        -DENABLE_NLS=OFF \
-        -DCMAKE_DISABLE_FIND_PACKAGE_OpenSSL=ON \
-        -DDISABLE_WERROR=ON \
-        -DHAVE_PTHREAD=OFF \
-        -DTUKLIB_CPUCORES_SYSCONF=0 \
-        -DTUKLIB_PHYSMEM_SYSCONF=0
-    emmake make -j$(nproc) liblzma
-    cd ../..
+    
+    wget https://tukaani.org/xz/xz-5.4.6.tar.gz
+    tar -xzf xz-5.4.6.tar.gz
+    cd xz-5.4.6
+    
+    emconfigure ./configure \
+        --host=wasm32-unknown-emscripten \
+        --disable-shared \
+        --enable-static \
+        --disable-xz \
+        --disable-xzdec \
+        --disable-lzmadec \
+        --disable-lzmainfo \
+        --disable-scripts \
+        --disable-doc \
+        --disable-nls \
+        --disable-threads \
+        --disable-sandbox
+    
+    emmake make -j$(nproc) liblzma.la
+    
+    mkdir -p ../xz/build
+    cp src/liblzma/.libs/liblzma.a ../xz/build/
+    cp -r src/liblzma/api ../xz/
+    cd ..
+    
     echo "::endgroup::"
 fi
 
