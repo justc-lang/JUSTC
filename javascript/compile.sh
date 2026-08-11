@@ -131,14 +131,6 @@ if [ ! -f "xz/build/liblzma.a" ]; then
     echo "::endgroup::"
 fi
 
-wget -q https://github.com/WebAssembly/wabt/releases/download/1.0.34/wabt-1.0.34-ubuntu.tar.gz
-tar -xzf wabt-1.0.34-ubuntu.tar.gz
-sudo cp wabt-1.0.34/bin/* /usr/local/bin/
-rm -rf wabt-1.0.34 wabt-1.0.34-ubuntu.tar.gz
-
-git clone --depth 1 --branch v1.3.2 https://github.com/USCiLab/cereal.git _deps/cereal-src
-CEREAL_INCLUDE="-I./_deps/cereal-src/include"
-
 COMPRESSION_FLAGS="$ZLIB_FLAGS $BZIP2_FLAGS"
 ZSTD_FLAGS="-Izstd/lib -Lzstd/lib -lzstd"
 LZ4_FLAGS="-Ilz4/lib -Llz4/lib -llz4"
