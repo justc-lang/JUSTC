@@ -1166,7 +1166,7 @@ SOFTWARE.
                             const resultPtr = JUSTC.WASM.ccall(
                                 'load',
                                 'number',
-                                ['string', 'string'],
+                                ['number', 'string'],
                                 [ptr, outputMode]
                             );
 
