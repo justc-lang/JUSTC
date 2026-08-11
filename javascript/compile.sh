@@ -37,6 +37,17 @@ echo $OUTPUT_DIR
 echo $SAFE_DIR
 echo "dirpath=$SAFE_DIR" >> $GITHUB_OUTPUT
 
+wget -q https://github.com/WebAssembly/wabt/releases/download/1.0.34/wabt-1.0.34-ubuntu.tar.gz
+tar -xzf wabt-1.0.34-ubuntu.tar.gz
+sudo cp wabt-1.0.34/bin/* /usr/local/bin/
+rm -rf wabt-1.0.34 wabt-1.0.34-ubuntu.tar.gz
+
+git clone --depth 1 --branch v1.3.2 https://github.com/USCiLab/cereal.git _deps/cereal-src
+CEREAL_INCLUDE="-I./_deps/cereal-src/include"
+
+ZLIB_FLAGS="-s USE_ZLIB=1"
+BZIP2_FLAGS="-s USE_BZIP2=1"
+
 if [ ! -f "zstd/lib/libzstd.a" ]; then
     echo "::group::Building zstd for Emscripten..."
     git clone --depth 1 --branch v1.5.6 https://github.com/facebook/zstd.git
@@ -61,10 +72,10 @@ if [ ! -f "snappy/build/libsnappy.a" ]; then
     cd snappy
     
     mkdir -p third_party/googletest
-    git clone --depth 1 https://github.com/google/googletest.git third_party/googletest
+    git clone --depth 1 https://github.com/google/googletest.git third_party/googletest || echo "::warning::googletest clone failed"
     
     mkdir -p third_party/benchmark
-    git clone --depth 1 https://github.com/google/benchmark.git third_party/benchmark
+    git clone --depth 1 https://github.com/google/benchmark.git third_party/benchmark || echo "::warning::benchmark clone failed"
     
     mkdir -p build
     cd build
@@ -84,21 +95,17 @@ if [ ! -f "snappy/build/libsnappy.a" ]; then
     echo "::endgroup::"
 fi
 
-if [ ! -f "bzip2/libbz2.a" ]; then
-    echo "::group::Building bzip2 for Emscripten..."
-    git clone --depth 1 https://gitlab.com/bzip2/bzip2.git
-    cd bzip2
-    emmake make CC=emcc AR=emar
-    cd ..
-    echo "::endgroup::"
-fi
-
 if [ ! -f "xz/build/liblzma.a" ]; then
     echo "::group::Building lzma for Emscripten..."
     git clone --depth 1 --branch v5.4.6 https://github.com/tukaani-project/xz.git
     mkdir -p xz/build
     cd xz/build
-    emcmake cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+    emcmake cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DENABLE_SANDBOX=OFF \
+        -DENABLE_THREADS=OFF \
+        -DENABLE_NLS=OFF
     emmake make -j$(nproc)
     cd ../..
     echo "::endgroup::"
@@ -112,11 +119,10 @@ rm -rf wabt-1.0.34 wabt-1.0.34-ubuntu.tar.gz
 git clone --depth 1 --branch v1.3.2 https://github.com/USCiLab/cereal.git _deps/cereal-src
 CEREAL_INCLUDE="-I./_deps/cereal-src/include"
 
-ZLIB_FLAGS="-s USE_ZLIB=1"
+COMPRESSION_FLAGS="$ZLIB_FLAGS $BZIP2_FLAGS"
 ZSTD_FLAGS="-Izstd/lib -Lzstd/lib -lzstd"
 LZ4_FLAGS="-Ilz4/lib -Llz4/lib -llz4"
 SNAPPY_FLAGS="-Isnappy -Isnappy/build -Lsnappy/build -lsnappy"
-BZIP2_FLAGS="-Ibzip2 -Lbzip2 -lbz2"
 LZMA_FLAGS="-Ixz/build -Lxz/build -llzma"
 
 if [ -f "zstd/lib/libzstd.a" ]; then
@@ -138,13 +144,6 @@ if [ -f "snappy/build/libsnappy.a" ]; then
     echo "::notice::Snappy found"
 else
     echo "::warning::Snappy not found"
-fi
-
-if [ -f "bzip2/libbz2.a" ]; then
-    COMPRESSION_FLAGS="$COMPRESSION_FLAGS $BZIP2_FLAGS"
-    echo "::notice::BZip2 found"
-else
-    echo "::warning::BZip2 not found"
 fi
 
 if [ -f "xz/build/liblzma.a" ]; then
@@ -194,7 +193,7 @@ COMMON_FLAGS="-s EXPORTED_FUNCTIONS=[\"_malloc\",\"_free\",\"_registerFunction\"
 -s DEMANGLE_SUPPORT=0 \
 -I./third-party \
 $LUAU_INCLUDE $CEREAL_INCLUDE \
-$ZLIB_FLAGS $COMPRESSION_FLAGS"
+$COMPRESSION_FLAGS"
 
 WEB_FLAGS="-s ENVIRONMENT=web,worker \
 -s ASYNCIFY_IMPORTS=['fetch','emscripten_fetch','emscripten_fetch_close','use_luau']"
