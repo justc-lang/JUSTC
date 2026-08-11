@@ -124,8 +124,9 @@ if [ ! -f "xz/build/liblzma.a" ]; then
     emmake make -j$(nproc)
     
     mkdir -p ../xz/build
+    mkdir -p ../xz/include
     cp src/liblzma/.libs/liblzma.a ../xz/build/
-    cp -r src/liblzma/api ../xz/
+    cp -r src/liblzma/api/* ../xz/include/
     cd ..
     
     echo "::endgroup::"
@@ -135,7 +136,7 @@ COMPRESSION_FLAGS="$ZLIB_FLAGS $BZIP2_FLAGS"
 ZSTD_FLAGS="-Izstd/lib -Lzstd/lib -lzstd"
 LZ4_FLAGS="-Ilz4/lib -Llz4/lib -llz4"
 SNAPPY_FLAGS="-Isnappy -Isnappy/build -Lsnappy/build -lsnappy"
-LZMA_FLAGS="-Ixz/build -Lxz/build -llzma"
+LZMA_FLAGS="-Ixz/include -Lxz/build -llzma"
 
 if [ -f "zstd/lib/libzstd.a" ]; then
     COMPRESSION_FLAGS="$COMPRESSION_FLAGS $ZSTD_FLAGS"
