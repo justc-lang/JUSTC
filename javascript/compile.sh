@@ -105,8 +105,13 @@ if [ ! -f "xz/build/liblzma.a" ]; then
         -DBUILD_SHARED_LIBS=OFF \
         -DENABLE_SANDBOX=OFF \
         -DENABLE_THREADS=OFF \
-        -DENABLE_NLS=OFF
-    emmake make -j$(nproc)
+        -DENABLE_NLS=OFF \
+        -DCMAKE_DISABLE_FIND_PACKAGE_OpenSSL=ON \
+        -DDISABLE_WERROR=ON \
+        -DHAVE_PTHREAD=OFF \
+        -DTUKLIB_CPUCORES_SYSCONF=0 \
+        -DTUKLIB_PHYSMEM_SYSCONF=0
+    emmake make -j$(nproc) liblzma
     cd ../..
     echo "::endgroup::"
 fi
