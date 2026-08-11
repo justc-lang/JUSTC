@@ -31,52 +31,59 @@ mkdir -p "javascript/$SAFE_DIR"
 emcc --version
 EMCCVERSION=$(emcc --version)
 
+emcc --show-ports
+
 echo $OUTPUT_DIR
 echo $SAFE_DIR
 echo "dirpath=$SAFE_DIR" >> $GITHUB_OUTPUT
 
 if [ ! -f "zstd/lib/libzstd.a" ]; then
-    echo "Building zstd for Emscripten..."
+    echo "::group::Building zstd for Emscripten..."
     git clone --depth 1 --branch v1.5.6 https://github.com/facebook/zstd.git
     cd zstd
     emmake make lib CC=emcc AR=emar
     cd ..
+    echo "::endgroup::"
 fi
 
 if [ ! -f "lz4/lib/liblz4.a" ]; then
-    echo "Building lz4 for Emscripten..."
+    echo "::group::Building lz4 for Emscripten..."
     git clone --depth 1 --branch v1.9.4 https://github.com/lz4/lz4.git
     cd lz4
     emmake make lib CC=emcc AR=emar
     cd ..
+    echo "::endgroup::"
 fi
 
 if [ ! -f "snappy/build/libsnappy.a" ]; then
-    echo "Building snappy for Emscripten..."
+    echo "::group::Building snappy for Emscripten..."
     git clone --depth 1 --branch 1.1.10 https://github.com/google/snappy.git
     mkdir -p snappy/build
     cd snappy/build
     emcmake cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
     emmake make -j$(nproc)
     cd ../..
+    echo "::endgroup::"
 fi
 
 if [ ! -f "bzip2/libbz2.a" ]; then
-    echo "Building bzip2 for Emscripten..."
+    echo "::group::Building bzip2 for Emscripten..."
     git clone --depth 1 https://gitlab.com/bzip2/bzip2.git
     cd bzip2
     emmake make CC=emcc AR=emar
     cd ..
+    echo "::endgroup::"
 fi
 
 if [ ! -f "xz/build/liblzma.a" ]; then
-    echo "Building lzma for Emscripten..."
+    echo "::group::Building lzma for Emscripten..."
     git clone --depth 1 --branch v5.4.6 https://github.com/tukaani-project/xz.git
     mkdir -p xz/build
     cd xz/build
     emcmake cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
     emmake make -j$(nproc)
     cd ../..
+    echo "::endgroup::"
 fi
 
 wget -q https://github.com/WebAssembly/wabt/releases/download/1.0.34/wabt-1.0.34-ubuntu.tar.gz
