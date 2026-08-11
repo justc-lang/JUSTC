@@ -532,9 +532,9 @@ void handleTranspile(const CommandLineFlags& flags) {
 
     if (lang == "js" || lang == "javascript") {
         if (flags.strict) {
-            transpiled = JUSTCTranspiler::JavaScript::transpile(code, minify);
+            transpiled = JUSTC::Transpiler::JavaScript::transpile(code, minify);
         } else {
-            transpiled = JUSTCTranspiler::JavaScript::transpile(code, minify);
+            transpiled = JUSTC::Transpiler::JavaScript::transpile(code, minify);
             size_t pos = transpiled.find("\"use strict\"");
             if (pos != std::string::npos) {
                 transpiled.erase(pos, 14);
