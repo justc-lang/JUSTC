@@ -675,20 +675,13 @@ struct Value {
         }
     }
 
-    bool operator==(const Value& other) const {
-        return Utility::compareValues(*this, other);
-    }
-    bool operator!=(const Value& other) const {
-        return !Utility::compareValues(*this, other);
-    }
+    bool operator==(const Value& other) const;
+    bool operator!=(const Value& other) const;
 };
 namespace std {
     template<>
     struct hash<Value> {
-        size_t operator()(const Value& value) const {
-            std::string hashStr = Utility::hashString(value);
-            return std::hash<std::string>{}(hashStr);
-        }
+        size_t operator()(const Value& value) const;
     };
 }
 struct Value::Property {

@@ -677,6 +677,19 @@ Value Value::toPrimitive() const {
     return result;
 }
 
+bool Value::operator==(const Value& other) const {
+    return Utility::compareValues(*this, other);
+}
+bool Value::operator!=(const Value& other) const {
+    return !(*this == other);
+}
+namespace std {
+    size_t hash<Value>::operator()(const Value& value) const {
+        std::string hashStr = Utility::hashString(value);
+        return std::hash<std::string>{}(hashStr);
+    }
+}
+
 namespace {
 
 Value stringArray(const std::vector<std::string_view>& strings) {
@@ -4022,8 +4035,8 @@ void Parser::assign(const Value& var, const Value& val, const std::string& pos) 
     if (var.isConst) throw std::runtime_error("Assignment to" + vtype + "constant variable \"" + var.variable + "\"" + pos);
 
     Value newVal = val;
-    val.isVariable = var.isVariable;
-    val.variable = var.variable;
+    newVal.isVariable = var.isVariable;
+    newVal.variable = var.variable;
 
     variables[var.variable] = newVal;
     switch (var.varType) {
