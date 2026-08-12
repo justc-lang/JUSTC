@@ -37,6 +37,7 @@ SOFTWARE.
 #include <snappy.h>
 #include <bzlib.h>
 #include <lzma.h>
+#include "../parser.h"
 
 std::vector<uint8_t> JustbLoader::decompressData(const std::vector<uint8_t>& compressedData, uint8_t compressionType, size_t originalSize) {
     if (compressionType == 0) { // NONE
@@ -160,13 +161,13 @@ std::vector<uint8_t> JustbLoader::decompressData(const std::vector<uint8_t>& com
     return compressedData;
 }
 
-ParseResult JustbLoader::load(const std::string& inputPath) {
+ParseResult JustbLoader::load(const std::string& inputPath, const std::string& entryFunction) {
     std::ifstream in(inputPath, std::ios::binary);
     if (!in) throw std::runtime_error("Cannot open JUSTB file");
     return load(in);
 }
 
-ParseResult JustbLoader::load(std::istream& in) {
+ParseResult JustbLoader::load(std::istream& in, const std::string& entryFunction) {
     JUSTB::Header header;
     if (!JUSTB::readHeader(in, header) || !JUSTB::validateHeader(header)) {
         throw std::runtime_error("Invalid JUSTB header");
@@ -194,5 +195,14 @@ ParseResult JustbLoader::load(std::istream& in) {
         cereal::BinaryInputArchive archive(buffer);
         archive(result.returnValues);
     }
+
+    auto it = result.returnValues.find(entryFunction);
+    if (it != result.returnValues.end()) {
+        Value func = it->second;
+        if (func.type != DataType::FUNCTION) throw std::runtime_error("\"" + entryFunction + "\" is defined, but it is not a function.");
+        Parser parser;
+        parser.callFunction(func);
+    }
+
     return result;
 }

@@ -1079,8 +1079,6 @@ private:
     Value functionJUSTO(const std::vector<Value>& args);
     Value toJUSTO(const std::vector<Value>& args);
 
-    Value callFunction(const Value& function, const std::vector<Value>& args, size_t startPos, bool doExecute);
-
     Value onExecDisabled(size_t startPos, std::string name);
     void parseOutputCommandError(const std::string mode);
     void parseScopeCommandError(const std::string scope);
@@ -1173,6 +1171,7 @@ public:
     ParseResult parse(bool doExecute = true);
     static ParseResult parseTokens(const std::vector<ParserToken>& tokens, bool doExecute = true, bool runAsync = false, const std::string& input = "", const bool allowJavaScript = true, const bool canAllowJS = true, const std::string scriptName = "", const std::string scriptType = "script", const bool allowLuau = true, const bool canAllowLuau = true);
 
+    Value callFunction(const Value& function, const std::vector<Value>& args, size_t startPos, bool doExecute);
     void registerFunction(const std::string& name, Function func, bool isConst = true);
     void registerFunctions(const std::unordered_map<std::string, Function>& functions, bool isConst = true);
     void unregisterFunction(const std::string& name);
