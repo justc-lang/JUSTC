@@ -52,42 +52,11 @@ sudo apt-get install -y \
     liblzma-dev \
     zlib1g-dev
 
-echo "::group::Building ICU with -fPIC..."
-
-if [ ! -f "/usr/local/lib/libicuuc.a" ] || [ ! -f "/usr/local/lib/libicui18n.a" ] || [ ! -f "/usr/local/lib/libicudata.a" ]; then
-    echo "Downloading and building ICU with -fPIC..."
-    
-    wget -q https://github.com/unicode-org/icu/releases/download/release-74-2/icu4c-74_2-src.tgz
-    tar -xzf icu4c-74_2-src.tgz
-    cd icu/source
-    
-    ./configure \
-        --enable-static \
-        --disable-shared \
-        CFLAGS="-fPIC" \
-        CXXFLAGS="-fPIC" \
-        --prefix=/usr/local
-    
-    make -j$(nproc)
-    sudo make install
-    
-    cd ../..
-    rm -rf icu icu4c-74_2-src.tgz
-    
-    echo "ICU with -fPIC installed to /usr/local"
-else
-    echo "ICU with -fPIC already installed"
-fi
-
-echo "::endgroup::"
-
 mkdir -p build
 cd build
 cmake .. $OPTIONS \
     -DCMAKE_EXE_LINKER_FLAGS="-lquadmath -Wl,-Bstatic -licuuc -licui18n -licudata -Wl,-Bdynamic" \
-    -DCMAKE_SHARED_LINKER_FLAGS="-lquadmath -Wl,-Bstatic -licuuc -licui18n -licudata -Wl,-Bdynamic" \
-    -DICU_ROOT=/usr/local
-
+    -DCMAKE_SHARED_LINKER_FLAGS="-Wl,-Bstatic -licuuc -licui18n -licudata -Wl,-Bdynamic"
 make -j$(nproc)
 
 sudo make install
