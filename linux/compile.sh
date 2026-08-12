@@ -54,9 +54,7 @@ sudo apt-get install -y \
 
 mkdir -p build
 cd build
-cmake .. $OPTIONS \
-    -DCMAKE_EXE_LINKER_FLAGS="-lquadmath -Wl,-Bstatic -licuuc -licui18n -licudata -Wl,-Bdynamic" \
-    -DCMAKE_SHARED_LINKER_FLAGS="-Wl,-Bstatic -licuuc -licui18n -licudata -Wl,-Bdynamic"
+cmake .. $OPTIONS -DCMAKE_EXE_LINKER_FLAGS="-lquadmath" -DCMAKE_SHARED_LINKER_FLAGS="-lquadmath"
 make -j$(nproc)
 
 sudo make install
