@@ -729,17 +729,17 @@ std::string Utility::hashString(const Value& val) {
     ss << val.cpptype;
     ss << (val.boolean_value ? "1" : "0");
     ss << val.toNumericString();
-    ss << static_cast<size_t> val.object_value.size();
+    ss << uint64ToHexString(static_cast<uint64_t>(val.object_value.size()));
     for (const auto& [key, item] : val.object_value) {
         ss << key;
         ss << hashString(item);
     }
-    ss << static_cast<size_t> val.properties.size();
+    ss << uint64ToHexString(static_cast<uint64_t>(val.properties.size()));
     for (const auto& [key, item] : val.properties) {
         ss << key;
         ss << hashString(item);
     }
-    ss << static_cast<size_t> val.array_elements.size();
+    ss << uint64ToHexString(static_cast<uint64_t>(val.array_elements.size()));
     for (const auto& item : val.array_elements) {
         ss << hashString(item);
     }
