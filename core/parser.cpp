@@ -61,6 +61,7 @@ SOFTWARE.
 #include "cpptypes.h"
 #include <iomanip>
 #include <functional>
+#include <unordered_set>
 
 #ifdef __SIZEOF_FLOAT128__
     #if JUSTC_HAS_QUADMATH
@@ -137,6 +138,8 @@ SOFTWARE.
     #include "lang/js.hpp"
 #endif
 
+#define DEFAULT_CPP_TYPE "_"
+
 std::string Value::toString() const {
     switch (type) {
         case DataType::STRING:
@@ -175,6 +178,20 @@ std::string Value::toString() const {
         case DataType::JSON_OBJECT:
             return "[object " + name + "]";
         case DataType::JSON_ARRAY:
+        case DataType::INT8_ARRAY:
+        case DataType::INT16_ARRAY:
+        case DataType::INT32_ARRAY:
+        case DataType::INT64_ARRAY:
+        case DataType::UINT8_ARRAY:
+        case DataType::UINT16_ARRAY:
+        case DataType::UINT32_ARRAY:
+        case DataType::UINT64_ARRAY:
+        case DataType::CUINT8_ARRAY:
+        case DataType::CUINT16_ARRAY:
+        case DataType::CUINT32_ARRAY:
+        case DataType::CUINT64_ARRAY:
+        case DataType::FLOAT32_ARRAY:
+        case DataType::FLOAT64_ARRAY:
             return "[array " + name + "]";
         case DataType::CLASS:
             return "[class " + name + "]";
@@ -216,6 +233,10 @@ std::string Value::toString() const {
             return "[struct " + name + "]";
         case DataType::JSX_ELEMENT:
             return "[element " + name + "]";
+        case DataType::MAP:
+            return "[map " + name + "]";
+        case DataType::SET:
+            return "[set " + name + "]";
         default:
             return "unknown";
     }
@@ -234,6 +255,23 @@ std::string Value::toIdentifier() const {
         case DataType::JSON_ARRAY:
         case DataType::CLASS:
         case DataType::SPACE:
+        case DataType::STRUCT:
+        case DataType::MAP:
+        case DataType::SET:
+        case DataType::INT8_ARRAY:
+        case DataType::INT16_ARRAY:
+        case DataType::INT32_ARRAY:
+        case DataType::INT64_ARRAY:
+        case DataType::UINT8_ARRAY:
+        case DataType::UINT16_ARRAY:
+        case DataType::UINT32_ARRAY:
+        case DataType::UINT64_ARRAY:
+        case DataType::CUINT8_ARRAY:
+        case DataType::CUINT16_ARRAY:
+        case DataType::CUINT32_ARRAY:
+        case DataType::CUINT64_ARRAY:
+        case DataType::FLOAT32_ARRAY:
+        case DataType::FLOAT64_ARRAY:
             return name;
         default:
             return toString();
@@ -289,6 +327,23 @@ bool Value::toBoolean() const {
         case DataType::CLASS:
         case DataType::SPACE:
         case DataType::JSX_ELEMENT:
+        case DataType::STRUCT:
+        case DataType::MAP:
+        case DataType::SET:
+        case DataType::INT8_ARRAY:
+        case DataType::INT16_ARRAY:
+        case DataType::INT32_ARRAY:
+        case DataType::INT64_ARRAY:
+        case DataType::UINT8_ARRAY:
+        case DataType::UINT16_ARRAY:
+        case DataType::UINT32_ARRAY:
+        case DataType::UINT64_ARRAY:
+        case DataType::CUINT8_ARRAY:
+        case DataType::CUINT16_ARRAY:
+        case DataType::CUINT32_ARRAY:
+        case DataType::CUINT64_ARRAY:
+        case DataType::FLOAT32_ARRAY:
+        case DataType::FLOAT64_ARRAY:
             return true;
         default:
             return false;
@@ -612,6 +667,16 @@ std::string Value::toNumericString() const {
     return ss.str();
 }
 
+Value Value::toPrimitive() const {
+    Value result = *this;
+    result.name = "";
+    result.isVariable = false;
+    result.variable = "";
+    result.varType = VariableType::VARIABLE;
+    result.isConst = false;
+    return result;
+}
+
 namespace {
 
 Value stringArray(const std::vector<std::string_view>& strings) {
@@ -817,7 +882,9 @@ Parser::Parser(
         {"IndexOf", "Array::IndexOf"},
         {"LastIndexOf", "Array::LastIndexOf"},
         {"Reverse", "Array::Reverse"},
-        {"ForEach", "Array::ForEach"}
+        {"ForEach", "Array::ForEach"},
+        {"Push", "Array::Push"},
+        {"Unshift", "Array::Unshift"}
     };
     typeMethods[DataType::NULL_TYPE] = {
         {"ToString", "String"},
@@ -856,6 +923,18 @@ Parser::Parser(
         {"ToLink", "Link"},
 
         {"Render", "Element::Render"}
+    };
+    typeMethods[DataType::MAP] = {
+        {"ToString", "String"},
+        {"ToNumber", "Number"},
+        {"ToInt", "ParseInt"},
+        {"ToLink", "Link"},
+    };
+    typeMethods[DataType::SET] = {
+        {"ToString", "String"},
+        {"ToNumber", "Number"},
+        {"ToInt", "ParseInt"},
+        {"ToLink", "Link"},
     };
 
     // built-in variables
@@ -1984,7 +2063,7 @@ bool Parser::CanIgnoreNoAssignmentOperator() {
             match("{") || match("[") || match(";"));
 }
 ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool local, bool global) {
-    std::string cpptype = "default";
+    std::string cpptype = DEFAULT_CPP_TYPE;
     if (isCPPType() || isStruct(currentToken().value).first || isClass(currentToken().value).first) {
         cpptype = currentToken().value;
         advance();
@@ -2609,12 +2688,14 @@ Value Parser::evaluateLengthOperator(const Value& value) {
             break;
 
         case DataType::JSON_ARRAY:
+        case DataType::SET:
             result.type = DataType::NUMBER;
             result.number_value = static_cast<double>(value.array_elements.size());
             result.name = std::to_string(value.array_elements.size());
             break;
 
         case DataType::JSON_OBJECT:
+        case DataType::JUSTC_OBJECT:
             result.type = DataType::NUMBER;
             result.number_value = static_cast<double>(value.properties.size());
             result.name = std::to_string(value.properties.size());
@@ -3670,6 +3751,56 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             result.name = "Array";
             return result;
         }
+        if (funcName == "Array::Push") {
+            if (args.size() < 2) throw std::runtime_error("Expected value");
+            if (args[0].type != DataType::JSON_ARRAY) throw std::runtime_error("Expected array");
+
+            if (args[0].isVariable) {
+                auto& arr = variables[args[0].variable].array_elements;
+                arr.reserve(arr.size() + args.size() - 1);
+                for (size_t i = 1; i < args.size(); i++) {
+                    arr.push_back(args[i]);
+                }
+                return variables[args[0].variable];
+            } else {
+                std::vector<Value> arr;
+                arr.reserve(args[0].array_elements.size() + args.size() - 1);
+                arr.insert(
+                    arr.end(),
+                    std::make_move_iterator(const_cast<std::vector<Value>&>(args[0].array_elements).begin()),
+                    std::make_move_iterator(const_cast<std::vector<Value>&>(args[0].array_elements).end())
+                );
+                for (size_t i = 1; i < args.size(); i++) {
+                    arr.push_back(args[i]);
+                }
+                Value result = Value::createJsonArray(std::move(arr));
+                result.name = "Array";
+                return result;
+            }
+        }
+        if (funcName == "Array::Unshift") {
+            if (args.size() < 2) throw std::runtime_error("Expected value");
+            if (args[0].type != DataType::JSON_ARRAY) throw std::runtime_error("Expected array");
+
+            if (args[0].isVariable) {
+                auto& arr = variables[args[0].variable].array_elements;
+                arr.reserve(arr.size() + args.size() - 1);
+                arr.insert(arr.begin(), args.begin() + 1, args.end());
+                return variables[args[0].variable];
+            } else {
+                std::vector<Value> arr;
+                arr.reserve(args[0].array_elements.size() + args.size() - 1);
+                arr.insert(arr.end(), args.begin() + 1, args.end());
+                arr.insert(
+                    arr.end(),
+                    std::make_move_iterator(const_cast<std::vector<Value>&>(args[0].array_elements).begin()),
+                    std::make_move_iterator(const_cast<std::vector<Value>&>(args[0].array_elements).end())
+                );
+                Value result = Value::createJsonArray(std::move(arr));
+                result.name = "Array";
+                return result;
+            }
+        }
         if (funcName == "Element::Render") {
             return Value::createString(renderJSX(args[0]));
         }
@@ -3684,6 +3815,146 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             #else
                 throw std::runtime_error("JUSTC Window is not supported in WebAssembly builds.");
             #endif
+        }
+        if (funcName == "Set") {
+            Value result;
+            result.type = DataType::SET;
+            std::unordered_set<Value> arr;
+            arr.reserve(args.size());
+            for (Value val : args) {
+                arr.insert(val.toPrimitive());
+            }
+            result.setComplexData(arr);
+            result.name = "Set";
+            return result;
+        }
+        if (funcName == "Map") {
+            Value result;
+            result.type = DataType::MAP;
+            std::unordered_map<Value, Value> map;
+            result.setComplexData(map);
+            result.name = "Map";
+            return result;
+        }
+        if (funcName == "Int8Array") {
+            Value result;
+            result.type = DataType::INT8_ARRAY;
+            std::vector<int8_t> arr;
+            arr.reserve(args.size());
+            for (Value val : args) {
+                arr.push_back(val.getNumericValue<int8_t>());
+            }
+            result.setComplexData(arr);
+            result.name = "Int8 Array";
+            return result;
+        }
+        if (funcName == "Int16Array") {
+            Value result;
+            result.type = DataType::INT16_ARRAY;
+            std::vector<int16_t> arr;
+            arr.reserve(args.size());
+            for (Value val : args) {
+                arr.push_back(val.getNumericValue<int16_t>());
+            }
+            result.setComplexData(arr);
+            result.name = "Int16 Array";
+            return result;
+        }
+        if (funcName == "Int32Array") {
+            Value result;
+            result.type = DataType::INT32_ARRAY;
+            std::vector<int32_t> arr;
+            arr.reserve(args.size());
+            for (Value val : args) {
+                arr.push_back(val.getNumericValue<int32_t>());
+            }
+            result.setComplexData(arr);
+            result.name = "Int32 Array";
+            return result;
+        }
+        if (funcName == "Int64Array") {
+            Value result;
+            result.type = DataType::INT64_ARRAY;
+            std::vector<int64_t> arr;
+            arr.reserve(args.size());
+            for (Value val : args) {
+                arr.push_back(val.getNumericValue<int64_t>());
+            }
+            result.setComplexData(arr);
+            result.name = "Int32 Array";
+            return result;
+        }
+        if (funcName == "UInt8Array" || funcName == "CUInt8Array") {
+            Value result;
+            result.type = funcName == "UInt8Array" ? DataType::UINT8_ARRAY : DataType::CUINT8_ARRAY;
+            std::vector<uint8_t> arr;
+            arr.reserve(args.size());
+            for (Value val : args) {
+                arr.push_back(val.getNumericValue<uint8_t>());
+            }
+            result.setComplexData(arr);
+            result.name = funcName == "UInt8Array" ? "UInt8 Array" : "UInt8 clamped Array";
+            return result;
+        }
+        if (funcName == "UInt16Array" || funcName == "CUInt16Array") {
+            Value result;
+            result.type = funcName == "UInt16Array" ? DataType::UINT16_ARRAY : DataType::CUINT16_ARRAY;
+            std::vector<uint16_t> arr;
+            arr.reserve(args.size());
+            for (Value val : args) {
+                arr.push_back(val.getNumericValue<uint16_t>());
+            }
+            result.setComplexData(arr);
+            result.name = funcName == "UInt16Array" ? "UInt16 Array" : "UInt16 clamped Array";
+            return result;
+        }
+        if (funcName == "UInt32Array" || funcName == "CUInt32Array") {
+            Value result;
+            result.type = funcName == "UInt32Array" ? DataType::UINT32_ARRAY : DataType::CUINT32_ARRAY;
+            std::vector<uint32_t> arr;
+            arr.reserve(args.size());
+            for (Value val : args) {
+                arr.push_back(val.getNumericValue<uint32_t>());
+            }
+            result.setComplexData(arr);
+            result.name = funcName == "UInt32Array" ? "UInt32 Array" : "UInt32 clamped Array";
+            return result;
+        }
+        if (funcName == "UInt64Array" || funcName == "CUInt64Array") {
+            Value result;
+            result.type = funcName == "UInt64Array" ? DataType::UINT64_ARRAY : DataType::CUINT64_ARRAY;
+            std::vector<uint64_t> arr;
+            arr.reserve(args.size());
+            for (Value val : args) {
+                arr.push_back(val.getNumericValue<uint64_t>());
+            }
+            result.setComplexData(arr);
+            result.name = funcName == "UInt64Array" ? "UInt64 Array" : "UInt64 clamped Array";
+            return result;
+        }
+        if (funcName == "Float32Array") {
+            Value result;
+            result.type = DataType::FLOAT32_ARRAY;
+            std::vector<float> arr;
+            arr.reserve(args.size());
+            for (Value val : args) {
+                arr.push_back(val.getNumericValue<float>());
+            }
+            result.setComplexData(arr);
+            result.name = "Float32 Array";
+            return result;
+        }
+        if (funcName == "Float64Array") {
+            Value result;
+            result.type = DataType::FLOAT64_ARRAY;
+            std::vector<double> arr;
+            arr.reserve(args.size());
+            for (Value val : args) {
+                arr.push_back(val.getNumericValue<double>());
+            }
+            result.setComplexData(arr);
+            result.name = "Float64 Array";
+            return result;
         }
     } catch (const std::exception& e) {
         throw std::runtime_error(std::string(e.what()) + " at " + Utility::position(startPos, input) + ".");
@@ -3745,14 +4016,18 @@ void Parser::assign(const Value& var, const Value& val, const std::string& pos) 
 
     if (var.isConst) throw std::runtime_error("Assignment to" + vtype + "constant variable \"" + var.variable + "\"" + pos);
 
-    variables[var.variable] = val;
+    Value newVal = val;
+    val.isVariable = var.isVariable;
+    val.variable = var.variable;
+
+    variables[var.variable] = newVal;
     switch (var.varType) {
         case VariableType::GLOBAL:
-            registerGlobal(var.variable, val, false, true);
+            registerGlobal(var.variable, newVal, false, true);
             break;
 
         case VariableType::LOCAL:
-            setLocal(currentScope, var.variable, val, false);
+            setLocal(currentScope, var.variable, newVal, false);
             break;
 
         case VariableType::VARIABLE:
@@ -3760,7 +4035,7 @@ void Parser::assign(const Value& var, const Value& val, const std::string& pos) 
             try {
                 mutated.erase(var.variable);
             } catch (...) {}
-            mutated.try_emplace(var.variable, Mutated(val, currentToken().start));
+            mutated.try_emplace(var.variable, Mutated(newVal, currentToken().start));
             break;
     }
 }
@@ -4575,7 +4850,7 @@ __float128 Parser::parseToFloat128(const std::string& str) {
 }
 #endif
 Value Parser::applyCPPTypeDeclaration(const Value value, const std::string& cpptype, const DataType typeDecl, bool doExecute, const bool canBeDefault, const uint8_t isID) {
-    if (cpptype == "default") return value;
+    if (cpptype == DEFAULT_CPP_TYPE) return value;
 
     Value result = value;
     const bool isDefault = canBeDefault && value.type == DataType::NULL_TYPE;

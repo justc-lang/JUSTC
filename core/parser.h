@@ -117,6 +117,24 @@ enum class DataType : int8_t {
     HTTP_ERROR   = 27,
     JSX_ELEMENT  = 28,
     STRUCT       = 29,
+    MAP          = 30,
+    SET          = 31,
+
+    INT8_ARRAY   =-2,
+    INT16_ARRAY  =-3,
+    INT32_ARRAY  =-4,
+    INT64_ARRAY  =-5,
+    UINT8_ARRAY  =-6,
+    UINT16_ARRAY =-7,
+    UINT32_ARRAY =-8,
+    UINT64_ARRAY =-9,
+    CUINT8_ARRAY =-10,
+    CUINT16_ARRAY=-11,
+    CUINT32_ARRAY=-12,
+    CUINT64_ARRAY=-13,
+    FLOAT32_ARRAY=-14,
+    FLOAT64_ARRAY=-15,
+
     UNKNOWN      =-1
 };
 
@@ -149,6 +167,24 @@ inline std::string dataTypeToString(DataType type) {
         case DataType::HTTP_ERROR:   return "HTTP Error";
         case DataType::JSX_ELEMENT:  return "Element";
         case DataType::STRUCT:       return "Struct";
+        case DataType::MAP:          return "Map";
+        case DataType::SET:          return "Set";
+
+        case DataType::INT8_ARRAY:   return "Int8 Array";
+        case DataType::INT16_ARRAY:  return "Int16 Array";
+        case DataType::INT32_ARRAY:  return "Int32 Array";
+        case DataType::INT64_ARRAY:  return "Int64 Array";
+        case DataType::UINT8_ARRAY:  return "UInt8 Array";
+        case DataType::UINT16_ARRAY: return "UInt16 Array";
+        case DataType::UINT32_ARRAY: return "UInt32 Array";
+        case DataType::UINT64_ARRAY: return "UInt64 Array";
+        case DataType::CUINT8_ARRAY: return "UInt8 clamped Array";
+        case DataType::CUINT16_ARRAY:return "UInt16 clamped Array";
+        case DataType::CUINT32_ARRAY:return "UInt32 clamped Array";
+        case DataType::CUINT64_ARRAY:return "UInt32 clamped Array";
+        case DataType::FLOAT32_ARRAY:return "Float32 Array";
+        case DataType::FLOAT64_ARRAY:return "Float64 Array";
+
         case DataType::UNKNOWN:      return "unknown";
         default:                     return "invalid";
     }
@@ -168,6 +204,8 @@ inline std::string dataTypeToTypeDecl(DataType type) {
         case DataType::BINARY_DATA:  return "data";
         case DataType::BIGNUM:       return "number";
         case DataType::JSX_ELEMENT:  return "element";
+        case DataType::MAP:          return "map";
+        case DataType::SET:          return "set";
         default:                     return "auto";
     }
 };
@@ -555,6 +593,21 @@ struct Value {
     
     std::string toNumericString() const;
 
+    Value toPrimitive() const;
+
+    template<typename T>
+    void setComplexData(const T& data) {
+        complex_value = std::make_shared<T>(data);
+    }
+    
+    template<typename T>
+    T getComplexData() const {
+        if (!complex_value) return T{};
+        auto ptr = std::static_pointer_cast<T>(complex_value);
+        if (!ptr) return T{};
+        return *ptr;
+    }
+
     template <class Archive>
     void serialize(Archive& archive) {
         int typeInt = static_cast<int>(type);
@@ -598,6 +651,24 @@ struct Value {
                 break;
             case DataType::BINARY_DATA:
                 archive(binary_data);
+                break;
+            case DataType::MAP:
+            case DataType::SET:
+            case DataType::INT8_ARRAY:
+            case DataType::INT16_ARRAY:
+            case DataType::INT32_ARRAY:
+            case DataType::INT64_ARRAY:
+            case DataType::UINT8_ARRAY:
+            case DataType::UINT16_ARRAY:
+            case DataType::UINT32_ARRAY:
+            case DataType::UINT64_ARRAY:
+            case DataType::CUINT8_ARRAY:
+            case DataType::CUINT16_ARRAY:
+            case DataType::CUINT32_ARRAY:
+            case DataType::CUINT64_ARRAY:
+            case DataType::FLOAT32_ARRAY:
+            case DataType::FLOAT64_ARRAY:
+                archive(*complex_value);
                 break;
             default:
                 break;

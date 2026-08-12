@@ -191,6 +191,8 @@ DataType Utility::typeDeclaration2dataType(const std::string& typeDeclaration, c
         { "infinity",    DataType::INFINITE     },     { "inf",  DataType::INFINITE     },
         { "data",        DataType::BINARY_DATA  },
         { "element",     DataType::JSX_ELEMENT  },
+        { "map",         DataType::MAP          },
+        { "set",         DataType::SET          },
         { "auto",        DataType::UNKNOWN      },
     };
 
@@ -692,4 +694,31 @@ bool Utility::checkElement(const Value& val) {
         default:
             return false;
     }
+}
+
+bool Utility::checkArray(const Value& val) {
+    switch (val.type) {
+        case DataType::JSON_ARRAY:
+        case DataType::SET:
+        case DataType::INT8_ARRAY:
+        case DataType::INT16_ARRAY:
+        case DataType::INT32_ARRAY:
+        case DataType::INT64_ARRAY:
+        case DataType::UINT8_ARRAY:
+        case DataType::UINT16_ARRAY:
+        case DataType::UINT32_ARRAY:
+        case DataType::UINT64_ARRAY:
+        case DataType::CUINT8_ARRAY:
+        case DataType::CUINT16_ARRAY:
+        case DataType::CUINT32_ARRAY:
+        case DataType::CUINT64_ARRAY:
+        case DataType::FLOAT32_ARRAY:
+        case DataType::FLOAT64_ARRAY:
+            return true;
+        default:
+            return false;
+    }
+}
+bool Utility::checkArrays(const Value& left, const Value& right) {
+    return (checkArray(left) && checkArray(right));
 }
