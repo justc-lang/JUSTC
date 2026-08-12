@@ -200,8 +200,8 @@ ParseResult JustbLoader::load(std::istream& in, const std::string& entryFunction
     if (it != result.returnValues.end()) {
         Value func = it->second;
         if (func.type != DataType::FUNCTION) throw std::runtime_error("\"" + entryFunction + "\" is defined, but it is not a function.");
-        Parser parser;
-        parser.callFunction(func);
+        Parser parser({});
+        parser.callFunction(func, {}, 0, true);
     }
 
     return result;
