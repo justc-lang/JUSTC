@@ -668,13 +668,29 @@ struct Value {
             case DataType::CUINT64_ARRAY:
             case DataType::FLOAT32_ARRAY:
             case DataType::FLOAT64_ARRAY:
-                archive(*complex_value);
+                //archive(*complex_value);
                 break;
             default:
                 break;
         }
     }
+
+    bool operator==(const Value& other) const {
+        return Utility::compareValues(*this, other);
+    }
+    bool operator!=(const Value& other) const {
+        return !Utility::compareValues(*this, other);
+    }
 };
+namespace std {
+    template<>
+    struct hash<Value> {
+        size_t operator()(const Value& value) const {
+            std::string hashStr = Utility::hashString(value);
+            return std::hash<std::string>{}(hashStr);
+        }
+    };
+}
 struct Value::Property {
     Access access = Access::READ_WRITE;
     std::shared_ptr<Value> getter;

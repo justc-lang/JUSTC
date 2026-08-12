@@ -3956,6 +3956,11 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             result.name = "Float64 Array";
             return result;
         }
+        if (funcName == "hash") {
+            std::hash<Value> hasher;
+            uint64_t hash = static_cast<uint64_t>(hasher(args[0]));
+            return Value::createNumberWithType(hash, NumericType::UINT64);
+        }
     } catch (const std::exception& e) {
         throw std::runtime_error(std::string(e.what()) + " at " + Utility::position(startPos, input) + ".");
     }
