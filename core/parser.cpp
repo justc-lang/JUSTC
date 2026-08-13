@@ -3279,7 +3279,6 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
         return functionFILE(args);
     }
     if (funcName == "size") return functionSTAT(args);
-    if (funcName == "env") return functionENV(args);
     if (funcName == "config") return functionCONFIG(args);
 
     if (funcName == "JavaScript.IsAllowed") {
@@ -3973,6 +3972,9 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             std::hash<Value> hasher;
             uint64_t hash = static_cast<uint64_t>(hasher(args[0]));
             return Value::createNumberWithType(hash, NumericType::UINT64);
+        }
+        if (funcName == "env") {
+            return Value::createString(Utility::env(args[0].toString()));
         }
     } catch (const std::exception& e) {
         throw std::runtime_error(std::string(e.what()) + " at " + Utility::position(startPos, input) + ".");
@@ -5899,7 +5901,6 @@ Value Parser::callFunction(const Value& function, const std::vector<Value>& args
 
 Value Parser::functionFILE(const std::vector<Value>& args) { return Value(); }
 Value Parser::functionSTAT(const std::vector<Value>& args) { return Value(); }
-Value Parser::functionENV(const std::vector<Value>& args) { return Value(); }
 Value Parser::functionCONFIG(const std::vector<Value>& args) { return Value(); }
 
 Value Parser::stringToValue(const std::string& str) {

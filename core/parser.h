@@ -1074,7 +1074,6 @@ private:
     Value functionJUSTC2(const std::string& code, bool doExecute, size_t startPos);
     Value functionFILE(const std::vector<Value>& args);
     Value functionSTAT(const std::vector<Value>& args);
-    Value functionENV(const std::vector<Value>& args);
     Value functionCONFIG(const std::vector<Value>& args);
     Value functionJUSTO(const std::vector<Value>& args);
     Value toJUSTO(const std::vector<Value>& args);
