@@ -3974,7 +3974,9 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             return Value::createNumberWithType(hash, NumericType::UINT64);
         }
         if (funcName == "env") {
-            return Value::createString(Utility::env(args[0].toString()));
+            const std::pair<bool, std::string> getEnv = Utility::env(args[0].toString());
+            if (!getEnv.first) return Value::createNull();
+            return Value::createString(getEnv.second);
         }
     } catch (const std::exception& e) {
         throw std::runtime_error(std::string(e.what()) + " at " + Utility::position(startPos, input) + ".");

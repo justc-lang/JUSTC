@@ -250,7 +250,7 @@ public:
     static std::string hashString(const Value& val);
     static std::string hashString(const Value::Property& val);
 
-    static std::string env(const std::string& name);
+    static std::pair<bool, std::string> env(const std::string& name);
 };
 class UnicodeUtility {
 public:
