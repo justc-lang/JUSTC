@@ -321,7 +321,7 @@ if(LZMA_LIB)
 endif()
 
 if(MSVC)
-    target_include_directories(MyApp PRIVATE 
+    target_include_directories(justc_core PRIVATE 
         ${CMAKE_CURRENT_SOURCE_DIR}/WindowLib
     )
 
