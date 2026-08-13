@@ -183,7 +183,7 @@ luau/VM/src/lvmutils.cpp luau/Ast/src/Allocator.cpp luau/Ast/src/Cst.cpp luau/As
 luau/VM/src/lbuflib.cpp luau/VM/src/lgcdebug.cpp luau/VM/src/lnumprint.cpp luau/VM/src/lveclib.cpp"
 LUAU_INCLUDE="-I./luau/Ast/include -I./luau/Common/include -I./luau/Compiler/include -I./luau/VM/include"
 
-COMMON_FLAGS="-s EXPORTED_FUNCTIONS=[\"_malloc\",\"_free\",\"_registerFunction\",\"_unregisterFunction\",\"_clearUserFunctions\",\"_registerGlobal\",\"_getGlobal\",\"_hasGlobal\",\"_unregisterGlobal\",\"_clearGlobals\",\"_registerPointer\",\"_getPointer\",\"_unregisterPointer\",\"_clearPointers\",\"_addVariableUpdateListener\",\"_clearVariableUpdateListeners\",\"_justoParse\",\"_lexer\",\"_parser\",\"_parse\",\"_free_string\",\"_version\",\"_load\",\"_unregisterClass\",\"_clearClasses\",\"_initialize\"] \
+COMMON_FLAGS="-s EXPORTED_FUNCTIONS=[\"_malloc\",\"_free\",\"_registerFunction\",\"_unregisterFunction\",\"_clearUserFunctions\",\"_registerGlobal\",\"_getGlobal\",\"_hasGlobal\",\"_unregisterGlobal\",\"_clearGlobals\",\"_registerPointer\",\"_getPointer\",\"_unregisterPointer\",\"_clearPointers\",\"_addVariableUpdateListener\",\"_clearVariableUpdateListeners\",\"_justoParse\",\"_lexer\",\"_parser\",\"_parse\",\"_free_string\",\"_version\",\"_load\",\"_unregisterClass\",\"_clearClasses\"] \
 -s EXPORTED_RUNTIME_METHODS=[\"ccall\",\"cwrap\",\"addFunction\",\"removeFunction\",\"UTF8ToString\",\"stringToUTF8\",\"setValue\",\"getValue\",\"HEAPU8\",\"HEAP32\",\"HEAP16\",\"HEAP8\"] \
 -s MODULARIZE=1 \
 -s EXPORT_ALL=1 \
@@ -206,8 +206,7 @@ COMMON_FLAGS="-s EXPORTED_FUNCTIONS=[\"_malloc\",\"_free\",\"_registerFunction\"
 -s DEMANGLE_SUPPORT=0 \
 -I./third-party \
 $LUAU_INCLUDE $CEREAL_INCLUDE \
-$COMPRESSION_FLAGS \
--DJUSTC_VERSION_IMPORT=\"${JUSTC_VERSION}\""
+$COMPRESSION_FLAGS"
 
 WEB_FLAGS="-s ENVIRONMENT=web,worker \
 -s ASYNCIFY_IMPORTS=['fetch','emscripten_fetch','emscripten_fetch_close','use_luau']"
@@ -220,8 +219,6 @@ NODE_OUTPUT="javascript_output/$SAFE_DIR/justc.node.js"
 NODE_OUTPUT_EXCLUDE_LUAU="javascript_output/$SAFE_DIR/justc_noluau.node.js"
 
 JSOUT_DIR="javascript_output/$SAFE_DIR"
-
-JUSTC_VERSION=$(justc --raw-version 2>/dev/null || echo "undefined")
 
 web() {
     echo "::group::core"
@@ -325,6 +322,7 @@ mv javascript/$SAFE_DIR/justc_noluau.core.js $JSOUT_DIR/justc_noluau.core.js
 mv javascript/core.js $JSOUT_DIR/justc.js
 mv javascript/test.js $JSOUT_DIR/test.js
 
+JUSTC_VERSION=$(justc --raw-version 2>/dev/null || echo "undefined")
 JUSTC_NAME="Just an Ultimate Site Tool Configuration language"
 JUSTC_HELP=$(justc -h || echo "undefined")
 

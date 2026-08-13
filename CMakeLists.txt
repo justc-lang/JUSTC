@@ -25,18 +25,6 @@ cmake_minimum_required(VERSION 3.14)
 project(JUSTC)
 option(JUSTC_NOLUAU "Disable Luau support" OFF)
 
-set(JUSTC_VERSION_MAJOR 0)
-set(JUSTC_VERSION_MINOR 3)
-set(JUSTC_VERSION_PATCH 0)
-set(JUSTC_VERSION_BUILD 0)
-set(JUSTC_VERSION_SUFFIX "")
-configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/version.h.in
-    ${CMAKE_CURRENT_BINARY_DIR}/core/version.h
-    @ONLY
-)
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
-
 if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     add_compile_options(/MT$<$<CONFIG:Debug>:d>)
@@ -332,23 +320,12 @@ if(LZMA_LIB)
     target_link_libraries(justc_core PRIVATE ${LZMA_LIB})
 endif()
 
-configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/icon/exe.rc.in
-    ${CMAKE_CURRENT_BINARY_DIR}/exe.rc
-    @ONLY
-)
-configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/icon/dll.rc.in
-    ${CMAKE_CURRENT_BINARY_DIR}/dll.rc
-    @ONLY
-)
-set(RESOURCE_FILE_EXE ${CMAKE_CURRENT_BINARY_DIR}/exe.rc)
-set(RESOURCE_FILE_DLL ${CMAKE_CURRENT_BINARY_DIR}/dll.rc)
+set(RESOURCE_FILE ${CMAKE_CURRENT_SOURCE_DIR}/icon/resources.rc)
 
 add_library(justc_lib SHARED core/entry/lib.cpp)
 if(MSVC)
-    if(EXISTS ${RESOURCE_FILE_DLL})
-        target_sources(justc_lib PRIVATE ${RESOURCE_FILE_DLL})
+    if(EXISTS ${RESOURCE_FILE})
+        target_sources(justc_lib PRIVATE ${RESOURCE_FILE})
     endif()
 endif()
 target_compile_definitions(justc_lib PRIVATE JUSTC_BUILD)
@@ -364,8 +341,8 @@ endif()
 
 add_executable(justc_cli core/entry/cli.cpp)
 if(MSVC)
-    if(EXISTS ${RESOURCE_FILE_EXE})
-        target_sources(justc_cli PRIVATE ${RESOURCE_FILE_EXE})
+    if(EXISTS ${RESOURCE_FILE})
+        target_sources(justc_cli PRIVATE ${RESOURCE_FILE})
     endif()
 endif()
 target_include_directories(justc_cli SYSTEM PRIVATE ${CEREAL_INCLUDE_DIR})

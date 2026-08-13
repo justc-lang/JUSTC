@@ -799,7 +799,6 @@ Parser::Parser(
     endOfScript("."), returnValue(DataType::UNKNOWN), isFunction(isFunction), chartype(chartype), currentScope(0), rootIndex(0),
     parsertype(parsertype), nextStructConstructor(0)
 {
-
     initializeCPPTypes();
     initializeBuiltIns();
 
