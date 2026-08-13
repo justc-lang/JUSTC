@@ -188,6 +188,13 @@ jobs:
           if (Test-Path "_deps") {
             Remove-Item -Recurse -Force _deps
           }
+
+      - name: Install WindowLib
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/justc-lang/Windows-WindowLib/releases/latest/download/justcwl.lib" -OutFile "justcwl.lib"
+          New-Item -ItemType Directory -Force -Path WindowLib
+          Invoke-WebRequest -Uri "https://github.com/justc-lang/Windows-WindowLib/releases/latest/download/IWindow.h" -OutFile "WindowLib\IWindow.h"
       
       - name: Configure CMake with Ninja + MSVC
         shell: pwsh
@@ -353,7 +360,7 @@ jobs:
           Copy-Item ${{ github.workspace }}/downloaded_artifacts/justc.exe C:\
           & C:\justc.exe interpret -p test/linux/test.justc
 
-  download-luau:
+  install-wasm-deps:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -368,7 +375,7 @@ jobs:
 
   compile-wasm:
     runs-on: ubuntu-latest
-    needs: [determine-dirpath, compile-linux, download-luau]
+    needs: [determine-dirpath, compile-linux, install-wasm-deps]
     if: always() && (github.event_name == 'schedule' || (needs.determine-dirpath.result == 'success' && needs.compile-linux.result == 'success' && needs.download-luau.result == 'success'))
     timeout-minutes: ${{ github.event_name == 'schedule' && 10 || 120 }}
     outputs:

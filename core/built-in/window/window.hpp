@@ -31,6 +31,7 @@ SOFTWARE.
 #include <vector>
 #include <unordered_map>
 #include <cstdint>
+#include <memory>
 #include "../../parser.h"
 
 #ifdef _WIN32
@@ -38,7 +39,7 @@ SOFTWARE.
     #undef INFINITE
     #undef NAN
     #undef ERROR
-    #include <windows.h>
+    #include "IWindow.h"
 #elif defined(__linux__)
     #include <X11/Xlib.h>
     #include <X11/Xatom.h>

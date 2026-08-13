@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.20)
 
 project(JUSTC)
 option(JUSTC_NOLUAU "Disable Luau support" OFF)
@@ -318,6 +318,20 @@ if(BZIP2_FOUND)
 endif()
 if(LZMA_LIB)
     target_link_libraries(justc_core PRIVATE ${LZMA_LIB})
+endif()
+
+if(MSVC)
+    target_include_directories(MyApp PRIVATE 
+        ${CMAKE_CURRENT_SOURCE_DIR}/WindowLib
+    )
+
+    target_link_libraries(justc_core
+        ${CMAKE_CURRENT_SOURCE_DIR}/justcwl.lib
+        user32
+        kernel32
+        gdi32
+        shell32
+    )
 endif()
 
 set(RESOURCE_FILE ${CMAKE_CURRENT_SOURCE_DIR}/icon/resources.rc)

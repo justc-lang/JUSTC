@@ -36,25 +36,8 @@ static std::unordered_map<uint64_t, WindowCreateOptions> managedWindows;
 
 #ifdef _WIN32
 
-static const char* WINDOW_CLASS = "JUSTCWindowClass";
-static bool windowClassRegistered = false;
-
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    switch (uMsg) {
-        case WM_DESTROY: {
-            uint64_t handle = reinterpret_cast<uint64_t>(hwnd);
-            managedWindows.erase(handle);
-            PostQuitMessage(0);
-            return 0;
-        }
-        case WM_CLOSE: {
-            DestroyWindow(hwnd);
-            return 0;
-        }
-        default:
-            return DefWindowProc(hwnd, uMsg, wParam, lParam);
-    }
-}
+static std::unique_ptr<WindowLib::IWindow> g_window;
+static uint64_t g_windowHandle = 0;
 
 Value Create(const std::vector<Value>& args, Parser* parser) {
     try {
@@ -85,54 +68,33 @@ Value Create(const std::vector<Value>& args, Parser* parser) {
             if (it != props.end()) options.visible = parser->v(it->second).toBoolean();
         }
         
-        if (!windowClassRegistered) {
-            WNDCLASSEXA wc = {};
-            wc.cbSize = sizeof(WNDCLASSEXA);
-            wc.style = CS_HREDRAW | CS_VREDRAW;
-            wc.lpfnWndProc = WindowProc;
-            wc.hInstance = GetModuleHandle(NULL);
-            wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-            wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-            wc.lpszClassName = WINDOW_CLASS;
-            
-            if (RegisterClassExA(&wc)) {
-                windowClassRegistered = true;
-            } else {
-                throw std::runtime_error("Failed to register window class");
-            }
+        g_window = WindowLib::CreateClassicWindow();
+        if (!g_window) {
+            throw std::runtime_error("Failed to create window instance");
         }
         
-        DWORD style = WS_OVERLAPPEDWINDOW;
-        if (!options.resizable) {
-            style &= ~WS_THICKFRAME;
-            style &= ~WS_MAXIMIZEBOX;
-        }
+        WindowLib::WindowConfig config;
+        config.title = options.title.empty() ? L"JUSTC Window" : std::wstring(options.title.begin(), options.title.end());
+        config.width = options.width > 0 ? options.width : 800;
+        config.height = options.height > 0 ? options.height : 600;
+        config.x = options.x;
+        config.y = options.y;
+        config.resizable = options.resizable;
+        config.maximized = false;
+        config.hInstance = GetModuleHandle(nullptr);
         
-        HWND hwnd = CreateWindowExA(
-            0,
-            WINDOW_CLASS,
-            options.title.c_str(),
-            style,
-            options.x, options.y,
-            options.width, options.height,
-            NULL, NULL,
-            GetModuleHandle(NULL),
-            NULL
-        );
-        
-        if (!hwnd) {
+        if (!g_window->Create(config)) {
             throw std::runtime_error("Failed to create window");
         }
         
-        uint64_t handle = reinterpret_cast<uint64_t>(hwnd);
-        managedWindows[handle] = options;
+        g_windowHandle = reinterpret_cast<uint64_t>(g_window.get());
+        managedWindows[g_windowHandle] = options;
         
         if (options.visible) {
-            ShowWindow(hwnd, SW_SHOW);
-            UpdateWindow(hwnd);
+            g_window->Show();
         }
         
-        return Value::createNumberWithType(handle, NumericType::UINT64);
+        return Value::createNumberWithType(g_windowHandle, NumericType::UINT64);
         
     } catch (const std::exception& e) {
         throw std::runtime_error("Window.Create: " + std::string(e.what()));
@@ -140,27 +102,20 @@ Value Create(const std::vector<Value>& args, Parser* parser) {
 }
 
 WindowInfo getWindowInfo(uint64_t handle) {
-    HWND hwnd = reinterpret_cast<HWND>(handle);
-    if (!IsWindow(hwnd)) {
+    if (managedWindows.find(handle) == managedWindows.end()) {
         throw std::runtime_error("Window not found");
     }
     
+    auto it = managedWindows.find(handle);
     WindowInfo info;
     info.handle = handle;
+    info.title = it->second.title;
+    info.x = it->second.x;
+    info.y = it->second.y;
+    info.width = it->second.width;
+    info.height = it->second.height;
+    info.isVisible = it->second.visible;
     
-    char title[256];
-    GetWindowTextA(hwnd, title, sizeof(title));
-    info.title = title;
-    
-    RECT rect;
-    if (GetWindowRect(hwnd, &rect)) {
-        info.x = rect.left;
-        info.y = rect.top;
-        info.width = rect.right - rect.left;
-        info.height = rect.bottom - rect.top;
-    }
-    
-    info.isVisible = IsWindowVisible(hwnd);
     return info;
 }
 
@@ -177,47 +132,82 @@ std::vector<WindowInfo> getAllWindows() {
 }
 
 bool setWindowTitle(uint64_t handle, const std::string& title) {
-    HWND hwnd = reinterpret_cast<HWND>(handle);
-    if (!IsWindow(hwnd)) return false;
-    return SetWindowTextA(hwnd, title.c_str()) != 0;
+    auto it = managedWindows.find(handle);
+    if (it == managedWindows.end() || !g_window) {
+        return false;
+    }
+    
+    std::wstring wTitle(title.begin(), title.end());
+    g_window->SetTitle(wTitle);
+    it->second.title = title;
+    return true;
 }
 
 bool setWindowPosition(uint64_t handle, int x, int y) {
-    HWND hwnd = reinterpret_cast<HWND>(handle);
-    if (!IsWindow(hwnd)) return false;
-    return SetWindowPos(hwnd, NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER) != 0;
+    auto it = managedWindows.find(handle);
+    if (it == managedWindows.end() || !g_window) {
+        return false;
+    }
+
+    it->second.x = x;
+    it->second.y = y;
+    
+    return true;
 }
 
 bool setWindowSize(uint64_t handle, int width, int height) {
-    HWND hwnd = reinterpret_cast<HWND>(handle);
-    if (!IsWindow(hwnd)) return false;
-    return SetWindowPos(hwnd, NULL, 0, 0, width, height, SWP_NOMOVE | SWP_NOZORDER) != 0;
+    auto it = managedWindows.find(handle);
+    if (it == managedWindows.end() || !g_window) {
+        return false;
+    }
+    
+    g_window->SetSize(width, height);
+    it->second.width = width;
+    it->second.height = height;
+    return true;
 }
 
 bool showWindow(uint64_t handle) {
-    HWND hwnd = reinterpret_cast<HWND>(handle);
-    if (!IsWindow(hwnd)) return false;
-    return ShowWindow(hwnd, SW_SHOW) != 0;
+    auto it = managedWindows.find(handle);
+    if (it == managedWindows.end() || !g_window) {
+        return false;
+    }
+    
+    g_window->Show();
+    it->second.visible = true;
+    return true;
 }
 
 bool hideWindow(uint64_t handle) {
-    HWND hwnd = reinterpret_cast<HWND>(handle);
-    if (!IsWindow(hwnd)) return false;
-    return ShowWindow(hwnd, SW_HIDE) != 0;
+    auto it = managedWindows.find(handle);
+    if (it == managedWindows.end() || !g_window) {
+        return false;
+    }
+    
+    g_window->Hide();
+    it->second.visible = false;
+    return true;
 }
 
 bool closeWindow(uint64_t handle) {
-    HWND hwnd = reinterpret_cast<HWND>(handle);
-    if (!IsWindow(hwnd)) return false;
-    return PostMessage(hwnd, WM_CLOSE, 0, 0) != 0;
+    auto it = managedWindows.find(handle);
+    if (it == managedWindows.end() || !g_window) {
+        return false;
+    }
+    
+    g_window->Close();
+    managedWindows.erase(handle);
+    g_window.reset();
+    g_windowHandle = 0;
+    return true;
 }
 
 Value RunMessageLoop(const std::vector<Value>& args) {
-    MSG msg;
-    while (GetMessage(&msg, NULL, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+    if (!g_window) {
+        throw std::runtime_error("No window to run message loop");
     }
+    
+    g_window->RunMessageLoop();
     return Value::createNull();
 }
 
@@ -550,6 +540,8 @@ Value RunMessageLoop(const std::vector<Value>& args) {
 }
 
 #endif
+
+// Общие функции преобразования (работают на всех платформах)
 
 Value windowInfoToValue(const WindowInfo& info) {
     std::unordered_map<std::string, Value> obj;
