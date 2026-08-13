@@ -149,6 +149,8 @@ SOFTWARE.
     JUSTC.Silent = false;
     JUSTC.Experiments = false;
     JUSTC.Initialized = false;
+    JUSTC.Blocked = false;
+    JUSTC.BlockMessage = "";
 
     if (!isBrowser && !JUSTC.JUSTC && !JUSTC.WASM && JUSTC.NodeWASM) {JUSTC.JUSTC = JUSTC.NodeWASM}
     else if (isBrowser && globalThis_.__justc__) throw new JUSTC.Error(JUSTC.Errors.environment);
@@ -361,6 +363,18 @@ SOFTWARE.
                 }
             }
             JUSTC.Initialized = true;
+            try {
+                const resultPtr = JUSTC.WASM.ccall('initialize', 'number', [], []);
+                const resultJson = JUSTC.WASM.UTF8ToString(resultPtr);
+                JUSTC.WASM.ccall('free_string', null, ['number'], [resultPtr]);
+                const result = JUSTC.TryCatchLog(()=>json_.parse(resultJson), resultJson);
+                if ("error" in result) throw new JUSTC.Error(result["error"]);
+            } catch (initError) {
+                JUSTC.Blocked = true;
+                JUSTC.BlockMessage = initError;
+                JUSTC.Initialized = false;
+                JUSTC.Console("error", initError);
+            }
         } else {
             JUSTC.Initialized = false;
         }
@@ -837,7 +851,11 @@ SOFTWARE.
         }
     };
 
+    JUSTC.CheckBlock = () => {
+        if (JUSTC.Blocked) throw new JUSTC.Error(JUSTC.BlockMessage);
+    };
     JUSTC.Check = (code) => {
+        JUSTC.CheckBlock();
         if (JUSTC.CheckInput(code)) throw new JUSTC.Error(JUSTC.Errors.wrongInputType);
         JUSTC.CheckWASM();
     };
@@ -917,12 +935,15 @@ SOFTWARE.
             return await JUSTC.AsyncOutput(true, code)
         },
         initialize: isBrowser ? async function(excludeLuau = false) {
+            JUSTC.CheckBlock();
             if (typeof excludeLuau != 'boolean') throw new JUSTC.Error(JUSTC.Errors.boolInput0);
             await JUSTC.InitWASM(excludeLuau);
         } : async function() {
+            JUSTC.CheckBlock();
             await JUSTC.InitWASM();
         },
         stringify: function(JavaScriptObjectNotation) {
+            JUSTC.CheckBlock();
             if (typeof JavaScriptObjectNotation != 'object') throw new JUSTC.Error(JUSTC.Errors.objectInput);
             return JUSTC.fromJSON(JavaScriptObjectNotation);
         },
@@ -935,6 +956,7 @@ SOFTWARE.
 
         globals: {
             register: function(name, value, isConst = true) {
+                JUSTC.CheckBlock();
                 JUSTC.CheckWASM();
                 if (typeof name !== 'string') throw new JUSTC.Error('Name must be a string');
 
@@ -950,6 +972,7 @@ SOFTWARE.
                 return result === 1;
             },
             get: function(name) {
+                JUSTC.CheckBlock();
                 JUSTC.CheckWASM();
                 if (typeof name !== 'string') throw new JUSTC.Error('Name must be a string');
 
@@ -960,6 +983,7 @@ SOFTWARE.
                 return JUSTO.parse(justoValue);
             },
             has: function(name) {
+                JUSTC.CheckBlock();
                 JUSTC.CheckWASM();
                 if (typeof name !== 'string') throw new JUSTC.Error('Name must be a string');
 
@@ -967,6 +991,7 @@ SOFTWARE.
                 return result === 1;
             },
             unregister: function(name) {
+                JUSTC.CheckBlock();
                 JUSTC.CheckWASM();
                 if (typeof name !== 'string') throw new JUSTC.Error('Name must be a string');
 
@@ -974,12 +999,14 @@ SOFTWARE.
                 return result === 1;
             },
             clear: function() {
+                JUSTC.CheckBlock();
                 JUSTC.CheckWASM();
                 JUSTC.WASM.ccall('clearGlobals', null, [], []);
             },
         },
         userFunctions: {
             register: function(name, func, isConst = true) {
+                JUSTC.CheckBlock();
                 JUSTC.CheckWASM();
                 if (typeof name !== 'string') throw new JUSTC.Error('Name must be a string');
                 if (typeof func !== 'function') throw new JUSTC.Error('Function must be a function');
@@ -998,6 +1025,7 @@ SOFTWARE.
                 return result === 1;
             },
             unregister: function(name) {
+                JUSTC.CheckBlock();
                 JUSTC.CheckWASM();
                 if (typeof name !== 'string') throw new JUSTC.Error('Name must be a string');
                 JUSTC.JavaScriptImports.Functions.delete(name);
@@ -1005,11 +1033,13 @@ SOFTWARE.
                 return result === 1;
             },
             clear: function() {
+                JUSTC.CheckBlock();
                 JUSTC.CheckWASM();
                 JUSTC.JavaScriptImports.Functions.clear();
                 JUSTC.WASM.ccall('clearUserFunctions', null, [], []);
             },
             has: function(name) {
+                JUSTC.CheckBlock();
                 JUSTC.CheckWASM();
                 if (typeof name !== 'string') throw new JUSTC.Error('Name must be a string');
                 return JUSTC.JavaScriptImports.Functions.has(name);
@@ -1018,18 +1048,22 @@ SOFTWARE.
         listeners: {
             variableUpdate: {
                 register: function(callback) {
+                    JUSTC.CheckBlock();
                     return JUSTC.JavaScriptListeners.VariableUpdate.Add(callback);
                 },
                 unregister: function(id) {
+                    JUSTC.CheckBlock();
                     return JUSTC.JavaScriptListeners.VariableUpdate.Remove(id);
                 },
                 clear: function() {
+                    JUSTC.CheckBlock();
                     JUSTC.JavaScriptListeners.VariableUpdate.Clear();
                 },
             },
         },
         classes: {
             unregister: function(id) {
+                JUSTC.CheckBlock();
                 JUSTC.CheckWASM();
                 if (typeof id !== 'number' && typeof id !== 'bigint' && typeof id !== 'string') throw new JUSTC.Error('ClassID must be a BigInt, a number, or a string');
                 if (typeof id == 'string' && !/^\d{1,20}$/.test(id) && !/^0x[0-9a-fA-F]{1,16}$/.test(id)) throw new JUSTC.Error('Invalid ClassID');
@@ -1042,6 +1076,7 @@ SOFTWARE.
                 ) === 1;
             },
             clear: function() {
+                JUSTC.CheckBlock();
                 JUSTC.CheckWASM();
                 JUSTC.WASM.ccall('clearClasses', null, [], []);
             }
@@ -1057,9 +1092,11 @@ SOFTWARE.
     } : undefined;
     JUSTC.Public = {
         get [Symbol.toStringTag]() {
-            return 'JUSTC'
+            JUSTC.CheckBlock();
+            return 'JUSTC';
         },
         get ["version"]() {
+            JUSTC.CheckBlock();
             JUSTC.CheckWASM();
             const resultptr = JUSTC.WASM.ccall("version", "number");
             const result = JUSTC.WASM.UTF8ToString(resultptr);
@@ -1093,6 +1130,7 @@ SOFTWARE.
     };
     JUSTC.HiddenOutput = {
         requestPermissions: function(what) {
+            JUSTC.CheckBlock();
             if (ARRAY.isArray(what)) {
                 const output = [];
                 for (const item of what) {
@@ -1115,26 +1153,33 @@ SOFTWARE.
     JUSTO.Output = function(where) {
         OBJECT.defineProperty(where, 'JUSTO', {
             get: function() {
+                JUSTC.CheckBlock();
                 const JUSTOPublic = {
                     parse: function ParseJUSTO(code) {
+                        JUSTC.CheckBlock();
                         return JUSTO.parse(code);
                     },
                     stringify: function StringifyJUSTO(JavaScriptObjectNotation) {
+                        JUSTC.CheckBlock();
                         return JUSTO.stringify(JavaScriptObjectNotation);
                     },
                     get ['version']() {
+                        JUSTC.CheckBlock();
                         return JUSTC.Public.version;
                     },
                 };
                 OBJECT.defineProperty(JUSTOPublic, 'pointers', {
                     value: {
                         register: function RegisterPointer(key, value) {
+                            JUSTC.CheckBlock();
                             JUSTO.registerPointer(key, value);
                         },
                         unregister: function UnregisterPointer(key) {
+                            JUSTC.CheckBlock();
                             JUSTO.unregisterPointer(key);
                         },
                         get: function GetPointer(key) {
+                            JUSTC.CheckBlock();
                             JUSTO.getPointer(key);
                         },
                     },
@@ -1145,6 +1190,7 @@ SOFTWARE.
                 return JUSTOPublic;
             },
             set: function() {
+                JUSTC.CheckBlock();
                 JUSTC.ErrorIfEnabled(JUSTC.Errors.redefineO);
             },
             configurable: false
@@ -1153,8 +1199,10 @@ SOFTWARE.
     JUSTB.Output = function(where) {
         OBJECT.defineProperty(where, 'JUSTB', {
             get: function() {
+                JUSTC.CheckBlock();
                 return OBJECT.freeze({
                     load: function loadJUSTB(binary, outputMode = JUSTC.DefaultOutputMode) {
+                        JUSTC.CheckBlock();
                         JUSTC.CheckWASM();
                         if (!JUSTC.OutputModes.includes(outputMode)) throw new JUSTC.Error(JUSTC.Errors.outputMode);
 
@@ -1195,11 +1243,13 @@ SOFTWARE.
                         return result;
                     },
                     get ['version']() {
+                        JUSTC.CheckBlock();
                         return JUSTC.Public.version;
                     },
                 });
             },
             set: function() {
+                JUSTC.CheckBlock();
                 JUSTC.ErrorIfEnabled(JUSTC.Errors.redefineB);
             },
             configurable: false
@@ -1210,6 +1260,7 @@ SOFTWARE.
         const exports = {};
         for (const [name, value] of OBJECT.entries(JUSTC.Output)) {
             exports[name] = typeof value === 'function' ? async function(...args) {
+                JUSTC.CheckBlock();
                 if (!JUSTC.Initialized) await JUSTC.InitWASM();
                 return value.constructor.name === "AsyncFunction" ? await value(...args) : value(...args);
             } : value;
@@ -1217,6 +1268,7 @@ SOFTWARE.
         for (const [name, value] of OBJECT.entries(JUSTC.HiddenOutput)) {
             OBJECT.defineProperty(exports, name, {
                 value: async function(...args) {
+                    JUSTC.CheckBlock();
                     if (!JUSTC.Initialized) await JUSTC.InitWASM();
                     return value.constructor.name === "AsyncFunction" ? await value(...args) : value(...args);
                 },
@@ -1231,6 +1283,7 @@ SOFTWARE.
         });
         OBJECT.defineProperty(exports, "defineWASM", {
             value: function(WASMmodule) {
+                JUSTC.CheckBlock();
                 if (!JUSTC.JUSTC) {
                     JUSTC.JUSTC = WASMmodule;
                 }
@@ -1249,9 +1302,11 @@ SOFTWARE.
         if ("JUSTC" in globalThis_.window || "$JUSTC" in globalThis_.window || "JUSTO" in globalThis_.window) throw new JUSTC.Error(JUSTC.Errors.environment);
         OBJECT.defineProperty(globalThis_.window, 'JUSTC', {
             get: function() {
+                JUSTC.CheckBlock();
                 return OBJECT.freeze(JUSTC.Public);
             },
             set: function(command) {
+                JUSTC.CheckBlock();
                 if (typeof command === 'string' && command.length > 0) {
                     const vars = {
                         "version": "Public.version",
@@ -1382,9 +1437,11 @@ SOFTWARE.
         });
         OBJECT.defineProperty(globalThis_.window, '$JUSTC', {
             get: function() {
+                JUSTC.CheckBlock();
                 return JUSTC.Output.execute;
             },
             set: function() {
+                JUSTC.CheckBlock();
                 JUSTC.ErrorIfEnabled('$'+JUSTC.Errors.redefine);
             },
             configurable: false

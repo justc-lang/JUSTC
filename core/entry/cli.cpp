@@ -615,6 +615,11 @@ void handelJsonToJusto(const CommandLineFlags& flags) {
 }
 
 int main(int argc, char* argv[]) {
+    if (JUSTC_VERSION == JUSTC_VERSION_INVALID) {
+        logError("Invalid JUSTC version");
+        return 1;
+    }
+
     setupGlobalExceptionHandler();
     OutputRedirector* outputRedirector = nullptr;
 

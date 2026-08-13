@@ -467,6 +467,12 @@ void clearClasses() {
     globalParser->clearClasses();
 }
 
+char* initialize() {
+    if (JUSTC_VERSION == JUSTC_VERSION_INVALID) {
+        return strdup("{\"error\":\"Invalid JUSTC version\"}".c_str());
+    } else return strdup("{}".c_str());
+}
+
 }
 
 struct JUSTOInitializer {

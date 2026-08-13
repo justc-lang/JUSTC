@@ -24,19 +24,6 @@ SOFTWARE.
 
 */
 
-#ifndef VERSION_H
-#define VERSION_H
+#include "version.h"
 
-#include <string>
-
-#define JUSTC_VERSION_INVALID "0.0.0"
-
-#ifndef JUSTC_VERSION_IMPORT
-    static const std::string JUSTC_VERSION = "0.0.0";
-#else
-    #define STRINGIFY(x) #x
-    #define TOSTRING(x) STRINGIFY(x)
-    static const std::string JUSTC_VERSION = TOSTRING(JUSTC_VERSION_IMPORT);
-#endif
-
-#endif
+const std::string JUSTC_VERSION = JUSTC_VERSION_FULL;
