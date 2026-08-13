@@ -325,7 +325,7 @@ if(MSVC)
         ${CMAKE_CURRENT_SOURCE_DIR}/WindowLib
     )
 
-    target_link_libraries(justc_core
+    target_link_libraries(justc_core PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/justcwl.lib
         user32
         kernel32
