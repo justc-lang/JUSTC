@@ -1,0 +1,5 @@
+IDI_ICON1 ICON "small.ico"
+IDI_ICON2 ICON "big.ico"
+
+IDI_ICON3 ICON "mini.ico"
+IDI_ICON4 ICON "juststudio.ico"
