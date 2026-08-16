@@ -3170,7 +3170,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
     if (isFunctionId(funcName)) {
         uint64_t funcId = extractFunctionId(funcName);
         try {
-            auto func = ::getFunction(funcId, Utility::uint64ToHexString(id));
+            auto func = ::getFunction(funcId, Utility::uint64ToHexString(funcId));
             return func(args);
         } catch (const std::exception& e) {
             throw std::runtime_error(std::string(e.what()) + " at " + Utility::position(startPos, input));
