@@ -74,6 +74,10 @@ SOFTWARE.
     using uint128_t = unsigned long long;
 #endif
 
+#ifndef DEFAULT_CPP_TYPE
+#define DEFAULT_CPP_TYPE "_"
+#endif
+
 struct Value;
 class Parser;
 
@@ -510,9 +514,9 @@ struct Value {
     
     std::shared_ptr<NumericValue> numeric_data;
 
-    Value() : type(DataType::UNKNOWN), cpptype("default"), number_value(0), name("unknown"), object_type(DataType::UNKNOWN), native(false), isVariable(false), varType(VariableType::VARIABLE) {}
-    Value(DataType t) : type(t), cpptype("default"), number_value(0), name(dataTypeToString(t)), object_type(DataType::UNKNOWN), native(false), isVariable(false), varType(VariableType::VARIABLE) {}
-    Value(DataType t, std::string s) : type(t), cpptype("default"), string_value(s), name(dataTypeToString(t)), object_type(DataType::UNKNOWN), native(false), isVariable(false), varType(VariableType::VARIABLE) {}
+    Value() : type(DataType::UNKNOWN), cpptype(DEFAULT_CPP_TYPE), number_value(0), name("unknown"), object_type(DataType::UNKNOWN), native(false), isVariable(false), varType(VariableType::VARIABLE) {}
+    Value(DataType t) : type(t), cpptype(DEFAULT_CPP_TYPE), number_value(0), name(dataTypeToString(t)), object_type(DataType::UNKNOWN), native(false), isVariable(false), varType(VariableType::VARIABLE) {}
+    Value(DataType t, std::string s) : type(t), cpptype(DEFAULT_CPP_TYPE), string_value(s), name(dataTypeToString(t)), object_type(DataType::UNKNOWN), native(false), isVariable(false), varType(VariableType::VARIABLE) {}
 
     std::string toString() const;
     std::string toIdentifier() const;
@@ -1204,6 +1208,15 @@ public:
     Class getClass(const uint64_t& classID);
     void unregisterClass(const uint64_t& classID);
     void clearClasses();
+
+    uint64_t registerUserFunction(std::function<Value(const std::vector<Value>&)> func);
+    std::function<Value(const std::vector<Value>&)> getUserFunction(uint64_t id);
+    void unregisterUserFunction(uint64_t id);
+    void clearUserFunctions_();
+    Value createFunction(std::function<Value(const std::vector<Value>&)> func, const std::string& name = "");
+    bool isFunctionValue(const Value& value) const;
+    bool isFunctionId(const std::string& name) const;
+    uint64_t extractFunctionId(const std::string& name) const;
 };
 
 #endif

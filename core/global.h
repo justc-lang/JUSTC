@@ -53,6 +53,9 @@ SOFTWARE.
         bool m_builtinClasses = false;
         std::unordered_map<std::string, uint64_t> m_builtinClassMap;
 
+        std::unordered_map<uint64_t, std::function<Value(const std::vector<Value>&)>> m_functions;
+        uint64_t m_nextFunctionId = 0;
+
     public:
         static GlobalContext& getInstance() {
             static GlobalContext instance;
@@ -139,6 +142,29 @@ SOFTWARE.
         }
         std::unordered_map<std::string, uint64_t> getBIM() {
             return m_builtinClassMap;
+        }
+
+        uint64_t registerFunction(std::function<Value(const std::vector<Value>&)> func) {
+            uint64_t id = m_nextFunctionId++;
+            m_functions[id] = func;
+            return id;
+        }
+        std::function<Value(const std::vector<Value>&)> getFunction(uint64_t id, const std::string& name) const {
+            auto it = m_functions.find(id);
+            if (it == m_functions.end()) {
+                throw std::runtime_error("Function registry has been corrupted. Failed to access function " + name + ".");
+            }
+            return it->second;
+        }
+        void removeFunction(uint64_t id) {
+            m_functions.erase(id);
+        }
+        void clearFunctions() {
+            m_functions.clear();
+            m_nextFunctionId = 0;
+        }
+        bool hasFunction(uint64_t id) const {
+            return m_functions.find(id) != m_functions.end();
         }
     };
 #else
@@ -157,6 +183,9 @@ SOFTWARE.
         bool m_builtinClasses = false;
         std::unordered_map<std::string, uint64_t> m_builtinClassMap;
 
+        std::unordered_map<uint64_t, std::function<Value(const std::vector<Value>&)>> m_functions;
+        uint64_t m_nextFunctionId = 0;
+
     public:
         static GlobalContext& getInstance() {
             static GlobalContext instance;
@@ -261,6 +290,34 @@ SOFTWARE.
         std::unordered_map<std::string, uint64_t> getBIM() {
             std::shared_lock<std::shared_mutex> lock(m_mutex);
             return m_builtinClassMap;
+        }
+
+        uint64_t registerFunction(std::function<Value(const std::vector<Value>&)> func) {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            uint64_t id = m_nextFunctionId++;
+            m_functions[id] = func;
+            return id;
+        }
+        std::function<Value(const std::vector<Value>&)> getFunction(uint64_t id, const std::string& name) const {
+            std::shared_lock<std::shared_mutex> lock(m_mutex);
+            auto it = m_functions.find(id);
+            if (it == m_functions.end()) {
+                throw std::runtime_error("Function registry has been corrupted. Failed to access function " + name + ".");
+            }
+            return it->second;
+        }
+        void removeFunction(uint64_t id) {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            m_functions.erase(id);
+        }
+        void clearFunctions() {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            m_functions.clear();
+            m_nextFunctionId = 0;
+        }
+        bool hasFunction(uint64_t id) const {
+            std::shared_lock<std::shared_mutex> lock(m_mutex);
+            return m_functions.find(id) != m_functions.end();
         }
     };
 #endif
@@ -334,6 +391,26 @@ inline std::unordered_map<std::string, uint64_t> getBIM() {
 
 inline void setBIM(const std::unordered_map<std::string, uint64_t>& map) {
     GlobalContext::getInstance().setBIM(map);
+}
+
+inline uint64_t registerFunction(std::function<Value(const std::vector<Value>&)> func) {
+    return GlobalContext::getInstance().registerFunction(func);
+}
+
+inline std::function<Value(const std::vector<Value>&)> getFunction(uint64_t id, const std::string& name) {
+    return GlobalContext::getInstance().getFunction(id, name);
+}
+
+inline void removeFunction(uint64_t id) {
+    GlobalContext::getInstance().removeFunction(id);
+}
+
+inline void clearFunctions_() {
+    GlobalContext::getInstance().clearFunctions();
+}
+
+inline bool hasFunction(uint64_t id) {
+    return GlobalContext::getInstance().hasFunction(id);
 }
 
 #endif

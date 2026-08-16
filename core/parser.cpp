@@ -138,7 +138,12 @@ SOFTWARE.
     #include "lang/js.hpp"
 #endif
 
+#ifndef DEFAULT_CPP_TYPE
 #define DEFAULT_CPP_TYPE "_"
+#endif
+#ifndef FUNCTION_PREFIX
+#define FUNCTION_PREFIX "__function_"
+#endif
 
 std::string Value::toString() const {
     switch (type) {
@@ -3161,6 +3166,16 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
     if (!doExecute) {
         return onExecDisabled(startPos, funcName);
     }
+    
+    if (isFunctionId(funcName)) {
+        uint64_t funcId = extractFunctionId(funcName);
+        try {
+            auto func = ::getFunction(funcId);
+            return func(args);
+        } catch (const std::exception& e) {
+            throw std::runtime_error(std::string(e.what()) + " at " + Utility::position(startPos, input));
+        }
+    }
 
     auto customIt = userFunctions.find(funcName);
     if (customIt != userFunctions.end()) {
@@ -3818,9 +3833,192 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
         }
         if (funcName == "Window") {
             #ifndef __EMSCRIPTEN__
+                Value windowHandle = JUSTCWindow::Create(args, this);
                 std::unordered_map<std::string, Value> obj;
-                obj["window"] = JUSTCWindow::Create(args, this);
-                obj["RML"] = JUSTCWindow::RunMessageLoop(args);
+                obj["_handle"] = windowHandle;
+                
+                obj["Show"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                    bool success = JUSTCWindow::showWindow(windowHandle.getNumericValue<uint64_t>());
+                    return Value::createBoolean(success);
+                }, "Window.Show");
+                
+                obj["Hide"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                    bool success = JUSTCWindow::hideWindow(windowHandle.getNumericValue<uint64_t>());
+                    return Value::createBoolean(success);
+                }, "Window.Hide");
+                
+                obj["Close"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                    bool success = JUSTCWindow::closeWindow(windowHandle.getNumericValue<uint64_t>());
+                    return Value::createBoolean(success);
+                }, "Window.Close");
+                
+                obj["getTitle"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                    try {
+                        JUSTCWindow::WindowInfo info = JUSTCWindow::getWindowInfo(windowHandle.getNumericValue<uint64_t>());
+                        return Value::createString(info.title);
+                    } catch (...) {
+                        return Value::createString("");
+                    }
+                }, "Window.getTitle");
+                
+                obj["setTitle"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                    if (args.empty()) {
+                        return Value::createBoolean(false);
+                    }
+                    std::string title = args[0].toString();
+                    bool success = JUSTCWindow::setWindowTitle(windowHandle.getNumericValue<uint64_t>(), title);
+                    return Value::createBoolean(success);
+                }, "Window.setTitle");
+                
+                obj["getWidth"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                    try {
+                        JUSTCWindow::WindowInfo info = JUSTCWindow::getWindowInfo(windowHandle.getNumericValue<uint64_t>());
+                        return Value::createNumber(info.width);
+                    } catch (...) {
+                        return Value::createNumber(0);
+                    }
+                }, "Window.getWidth");
+                
+                obj["setWidth"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                    if (args.empty()) {
+                        return Value::createBoolean(false);
+                    }
+                    int width = static_cast<int>(args[0].toNumber());
+                    try {
+                        JUSTCWindow::WindowInfo info = JUSTCWindow::getWindowInfo(windowHandle.getNumericValue<uint64_t>());
+                        bool success = JUSTCWindow::setWindowSize(windowHandle.getNumericValue<uint64_t>(), width, info.height);
+                        return Value::createBoolean(success);
+                    } catch (...) {
+                        return Value::createBoolean(false);
+                    }
+                }, "Window.setWidth");
+                
+                obj["getHeight"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                    try {
+                        JUSTCWindow::WindowInfo info = JUSTCWindow::getWindowInfo(windowHandle.getNumericValue<uint64_t>());
+                        return Value::createNumber(info.height);
+                    } catch (...) {
+                        return Value::createNumber(0);
+                    }
+                }, "Window.getHeight");
+                
+                obj["setHeight"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                    if (args.empty()) {
+                        return Value::createBoolean(false);
+                    }
+                    int height = static_cast<int>(args[0].toNumber());
+                    try {
+                        JUSTCWindow::WindowInfo info = JUSTCWindow::getWindowInfo(windowHandle.getNumericValue<uint64_t>());
+                        bool success = JUSTCWindow::setWindowSize(windowHandle.getNumericValue<uint64_t>(), info.width, height);
+                        return Value::createBoolean(success);
+                    } catch (...) {
+                        return Value::createBoolean(false);
+                    }
+                }, "Window.setHeight");
+                
+                obj["getSize"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                    try {
+                        JUSTCWindow::WindowInfo info = JUSTCWindow::getWindowInfo(windowHandle.getNumericValue<uint64_t>());
+                        std::unordered_map<std::string, Value> result;
+                        result["width"] = Value::createNumber(info.width);
+                        result["height"] = Value::createNumber(info.height);
+                        return Value::createJsonObject(result);
+                    } catch (...) {
+                        return Value::createJsonObject({});
+                    }
+                }, "Window.getSize");
+                
+                obj["setSize"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                    if (args.size() < 2) {
+                        return Value::createBoolean(false);
+                    }
+                    int width = static_cast<int>(args[0].toNumber());
+                    int height = static_cast<int>(args[1].toNumber());
+                    bool success = JUSTCWindow::setWindowSize(windowHandle.getNumericValue<uint64_t>(), width, height);
+                    return Value::createBoolean(success);
+                }, "Window.setSize");
+                
+                obj["getX"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                    try {
+                        JUSTCWindow::WindowInfo info = JUSTCWindow::getWindowInfo(windowHandle.getNumericValue<uint64_t>());
+                        return Value::createNumber(info.x);
+                    } catch (...) {
+                        return Value::createNumber(0);
+                    }
+                }, "Window.getX");
+                
+                obj["setX"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                    if (args.empty()) {
+                        return Value::createBoolean(false);
+                    }
+                    int x = static_cast<int>(args[0].toNumber());
+                    try {
+                        JUSTCWindow::WindowInfo info = JUSTCWindow::getWindowInfo(windowHandle.getNumericValue<uint64_t>());
+                        bool success = JUSTCWindow::setWindowPosition(windowHandle.getNumericValue<uint64_t>(), x, info.y);
+                        return Value::createBoolean(success);
+                    } catch (...) {
+                        return Value::createBoolean(false);
+                    }
+                }, "Window.setX");
+                
+                obj["getY"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                    try {
+                        JUSTCWindow::WindowInfo info = JUSTCWindow::getWindowInfo(windowHandle.getNumericValue<uint64_t>());
+                        return Value::createNumber(info.y);
+                    } catch (...) {
+                        return Value::createNumber(0);
+                    }
+                }, "Window.getY");
+                
+                obj["setY"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                    if (args.empty()) {
+                        return Value::createBoolean(false);
+                    }
+                    int y = static_cast<int>(args[0].toNumber());
+                    try {
+                        JUSTCWindow::WindowInfo info = JUSTCWindow::getWindowInfo(windowHandle.getNumericValue<uint64_t>());
+                        bool success = JUSTCWindow::setWindowPosition(windowHandle.getNumericValue<uint64_t>(), info.x, y);
+                        return Value::createBoolean(success);
+                    } catch (...) {
+                        return Value::createBoolean(false);
+                    }
+                }, "Window.setY");
+                
+                obj["getPosition"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                    try {
+                        JUSTCWindow::WindowInfo info = JUSTCWindow::getWindowInfo(windowHandle.getNumericValue<uint64_t>());
+                        std::unordered_map<std::string, Value> result;
+                        result["x"] = Value::createNumber(info.x);
+                        result["y"] = Value::createNumber(info.y);
+                        return Value::createJsonObject(result);
+                    } catch (...) {
+                        return Value::createJsonObject({});
+                    }
+                }, "Window.getPosition");
+                
+                obj["setPosition"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                    if (args.size() < 2) {
+                        return Value::createBoolean(false);
+                    }
+                    int x = static_cast<int>(args[0].toNumber());
+                    int y = static_cast<int>(args[1].toNumber());
+                    bool success = JUSTCWindow::setWindowPosition(windowHandle.getNumericValue<uint64_t>(), x, y);
+                    return Value::createBoolean(success);
+                }, "Window.setPosition");
+                
+                obj["isVisible"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                    try {
+                        JUSTCWindow::WindowInfo info = JUSTCWindow::getWindowInfo(windowHandle.getNumericValue<uint64_t>());
+                        return Value::createBoolean(info.isVisible);
+                    } catch (...) {
+                        return Value::createBoolean(false);
+                    }
+                }, "Window.isVisible");
+
+                obj["RunMessageLoop"] = createFunction([](const std::vector<Value>& args) -> Value {
+                    return JUSTCWindow::RunMessageLoop(args);
+                }, "Window.RunMessageLoop");
+
                 Value result = Value::createJsonObject(obj);
                 result.name = "Window";
                 return result;
@@ -7572,6 +7770,56 @@ void Parser::fromBIM(const std::unordered_map<std::string, uint64_t>& BIM, const
     Value val = addClass(ClassID, true, name);
     variables[name] = val;
     constVars[name] = true;
+}
+
+uint64_t Parser::registerUserFunction(std::function<Value(const std::vector<Value>&)> func) {
+    return ::registerFunction(func);
+}
+
+std::function<Value(const std::vector<Value>&)> Parser::getUserFunction(uint64_t id) {
+    return ::getFunction(id, Utility::uint64ToHexString(classID));
+}
+
+void Parser::unregisterUserFunction(uint64_t id) {
+    ::removeFunction(id);
+}
+
+void Parser::clearUserFunctions_() {
+    ::clearFunctions_();
+}
+
+Value Parser::createFunction(std::function<Value(const std::vector<Value>&)> func, const std::string& name) {
+    uint64_t id = registerUserFunction(func);
+    
+    Value result;
+    result.type = DataType::FUNCTION;
+    result.name = name.empty() ? FUNCTION_PREFIX + Utility::uint64ToHexString(id) : name;
+    result.string_value = "[native code]";
+    result.object_type = DataType::FUNCTION;
+    result.native = true;
+    result.function_info.paramNames.push_back("__function_id");
+    result.function_info.paramTypes.push_back(DataType::NUMBER);
+    result.function_info.defaultValues.push_back(Value::createNumberWithType(id, NumericType::UINT64));
+    
+    return result;
+}
+
+bool Parser::isFunctionValue(const Value& value) const {
+    return value.type == DataType::FUNCTION && 
+           value.string_value == "[native code]" && 
+           value.native;
+}
+
+bool Parser::isFunctionId(const std::string& name) const {
+    return name.find(FUNCTION_PREFIX) == 0;
+}
+
+uint64_t Parser::extractFunctionId(const std::string& name) const {
+    if (!isFunctionId(name)) {
+        throw std::runtime_error("Not a function ID: " + name);
+    }
+    std::string hexStr = name.substr(FUNCTION_PREFIX.length());
+    return std::stoull(hexStr);
 }
 
 ParseResult Parser::parseTokens(const std::vector<ParserToken>& tokens, bool doExecute, bool runAsync, const std::string& input, const bool allowJavaScript, const bool canAllowJS, const std::string scriptName, const std::string scriptType, const bool allowLuau, const bool canAllowLuau) {
