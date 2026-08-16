@@ -3170,7 +3170,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
     if (isFunctionId(funcName)) {
         uint64_t funcId = extractFunctionId(funcName);
         try {
-            auto func = ::getFunction(funcId);
+            auto func = ::getFunction(funcId, Utility::uint64ToHexString(id));
             return func(args);
         } catch (const std::exception& e) {
             throw std::runtime_error(std::string(e.what()) + " at " + Utility::position(startPos, input));
@@ -7777,7 +7777,7 @@ uint64_t Parser::registerUserFunction(std::function<Value(const std::vector<Valu
 }
 
 std::function<Value(const std::vector<Value>&)> Parser::getUserFunction(uint64_t id) {
-    return ::getFunction(id, Utility::uint64ToHexString(classID));
+    return ::getFunction(id, Utility::uint64ToHexString(id));
 }
 
 void Parser::unregisterUserFunction(uint64_t id) {
@@ -7818,7 +7818,7 @@ uint64_t Parser::extractFunctionId(const std::string& name) const {
     if (!isFunctionId(name)) {
         throw std::runtime_error("Not a function ID: " + name);
     }
-    std::string hexStr = name.substr(FUNCTION_PREFIX.length());
+    std::string hexStr = name.substr(std::string(FUNCTION_PREFIX).length());
     return std::stoull(hexStr);
 }
 
