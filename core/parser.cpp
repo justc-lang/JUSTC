@@ -831,6 +831,8 @@ Parser::Parser(
         {"toNumber", "Number"},
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
+
+        {"size", "Object::size"},
     };
     typeMethods[DataType::NUMBER] = {
         {"toString", "String"},
@@ -885,6 +887,8 @@ Parser::Parser(
         {"toNumber", "Number"},
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
+
+        {"size", "Object::size"},
     };
     typeMethods[DataType::JSON_ARRAY] = {
         {"toString", "String"},
@@ -899,7 +903,8 @@ Parser::Parser(
         {"reverse", "Array::reverse"},
         {"forEach", "Array::forEach"},
         {"push", "Array::push"},
-        {"unshift", "Array::unshift"}
+        {"unshift", "Array::unshift"},
+        {"size", "Array::size"},
     };
     typeMethods[DataType::NULL_TYPE] = {
         {"toString", "String"},
@@ -937,19 +942,32 @@ Parser::Parser(
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
 
-        {"render", "Element::render"}
+        {"render", "Element::render"},
     };
     typeMethods[DataType::MAP] = {
         {"toString", "String"},
         {"toNumber", "Number"},
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
+
+        {"set", "Map::set"},
+        {"get", "Map::get"},
+        {"has", "Map::has"},
+        {"delete", "Map::delete"},
+        {"clear", "Map::clear"},
+        {"size", "Map::size"},
     };
     typeMethods[DataType::SET] = {
         {"toString", "String"},
         {"toNumber", "Number"},
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
+
+        {"add", "Set::add"},
+        {"has", "Set::has"},
+        {"delete", "Set::delete"},
+        {"clear", "Set::clear"},
+        {"size", "Set::size"},
     };
     typeMethods[DataType::INT8_ARRAY] = {
         {"toString", "String"},
@@ -959,6 +977,7 @@ Parser::Parser(
 
         {"compress", "Int8Array::compress"},
         {"decompress", "Int8Array::decompress"},
+        {"size", "Int8Array::size"},
     };
     typeMethods[DataType::INT16_ARRAY] = {
         {"toString", "String"},
@@ -968,6 +987,7 @@ Parser::Parser(
 
         {"compress", "Int16Array::compress"},
         {"decompress", "Int16Array::decompress"},
+        {"size", "Int16Array::size"},
     };
     typeMethods[DataType::INT32_ARRAY] = {
         {"toString", "String"},
@@ -977,6 +997,7 @@ Parser::Parser(
 
         {"compress", "Int32Array::compress"},
         {"decompress", "Int32Array::decompress"},
+        {"size", "Int32Array::size"},
     };
     typeMethods[DataType::INT64_ARRAY] = {
         {"toString", "String"},
@@ -986,66 +1007,103 @@ Parser::Parser(
 
         {"compress", "Int64Array::compress"},
         {"decompress", "Int64Array::decompress"},
+        {"size", "Int64Array::size"},
     };
     typeMethods[DataType::UINT8_ARRAY] = {
         {"toString", "String"},
         {"toNumber", "Number"},
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
+
+        {"compress", "UInt8Array::compress"},
+        {"decompress", "UInt8Array::decompress"},
+        {"size", "UInt8Array::size"},
     };
     typeMethods[DataType::UINT16_ARRAY] = {
         {"toString", "String"},
         {"toNumber", "Number"},
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
+
+        {"compress", "UInt16Array::compress"},
+        {"decompress", "UInt16Array::decompress"},
+        {"size", "UInt16Array::size"},
     };
     typeMethods[DataType::UINT32_ARRAY] = {
         {"toString", "String"},
         {"toNumber", "Number"},
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
+
+        {"compress", "UInt32Array::compress"},
+        {"decompress", "UInt32Array::decompress"},
+        {"size", "UInt32Array::size"},
     };
     typeMethods[DataType::UINT64_ARRAY] = {
         {"toString", "String"},
         {"toNumber", "Number"},
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
+
+        {"compress", "UInt64Array::compress"},
+        {"decompress", "UInt64Array::decompress"},
+        {"size", "UInt64Array::size"},
     };
     typeMethods[DataType::CUINT8_ARRAY] = {
         {"toString", "String"},
         {"toNumber", "Number"},
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
+
+        {"compress", "CUInt8Array::compress"},
+        {"decompress", "CUInt8Array::decompress"},
+        {"size", "CUInt8Array::size"},
     };
     typeMethods[DataType::CUINT16_ARRAY] = {
         {"toString", "String"},
         {"toNumber", "Number"},
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
+
+        {"compress", "CUInt16Array::compress"},
+        {"decompress", "CUInt16Array::decompress"},
+        {"size", "CUInt16Array::size"},
     };
     typeMethods[DataType::CUINT32_ARRAY] = {
         {"toString", "String"},
         {"toNumber", "Number"},
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
+
+        {"compress", "CUInt32Array::compress"},
+        {"decompress", "CUInt32Array::decompress"},
+        {"size", "CUInt32Array::size"},
     };
     typeMethods[DataType::CUINT64_ARRAY] = {
         {"toString", "String"},
         {"toNumber", "Number"},
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
+
+        {"compress", "CUInt64Array::compress"},
+        {"decompress", "CUInt64Array::decompress"},
+        {"size", "CUInt64Array::size"},
     };
     typeMethods[DataType::FLOAT32_ARRAY] = {
         {"toString", "String"},
         {"toNumber", "Number"},
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
+        
+        {"size", "Float32Array::size"},
     };
     typeMethods[DataType::FLOAT64_ARRAY] = {
         {"toString", "String"},
         {"toNumber", "Number"},
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
+        
+        {"size", "Float64Array::size"},
     };
 
     // built-in variables
@@ -4375,6 +4433,122 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             result.name = "Int64 Array";
             return result;
         }
+        if (funcName == "UInt8Array::compress" || funcName == "CUInt8Array::compress") {
+            DataType t = funcName == "UInt8Array::compress" ? DataType::UINT8_ARRAY : DataType::CUINT8_ARRAY;
+            std::string n = "UInt8 " + std::string(t == DataType::CUINT8_ARRAY ? "clamped " : "") + "Array";
+
+            if (args[0].type != t) throw std::runtime_error("Expected " + n);
+            if (args.size() < 2) throw std::runtime_error("Expected algorithm");
+            Value result;
+            result.type = t;
+            std::string alg = Unicode::Lower(args[1].toString());
+            const std::vector<uint8_t> arr = args[0].getComplexData<std::vector<uint8_t>>();
+            std::vector<uint8_t> compressed;
+
+            int lvl = 6;
+            if (args.size() > 2) lvl = static_cast<int>(args[2].toNumber());
+
+            if (alg == "zlib") compressed = ZLIB::CompressU8(arr, lvl);
+            else if (alg == "gzip") compressed = GZIP::CompressU8(arr, lvl);
+            else if (alg == "bzip2") compressed = BZIP2::CompressU8(arr, lvl);
+            else if (alg == "lzma") compressed = LZMA::CompressU8(arr, lvl);
+            else if (alg == "zstd") compressed = ZSTD::CompressU8(arr, lvl);
+            else if (alg == "lz4") compressed = LZ4::CompressU8(arr, lvl);
+            else if (alg == "snappy") compressed = SNAPPY::CompressU8(arr, lvl);
+            else if (alg == "deflate") compressed = DEFLATE::CompressU8(arr, lvl);
+            else throw std::runtime_error("Unknown algorithm \"" + args[1].toString() + "\"");
+
+            result.setComplexData(compressed);
+            result.name = n;
+            return result;
+        }
+        if (funcName == "UInt16Array::compress" || funcName == "CUInt16Array::compress") {
+            DataType t = funcName == "UInt16Array::compress" ? DataType::UINT16_ARRAY : DataType::CUINT16_ARRAY;
+            std::string n = "UInt16 " + std::string(t == DataType::CUINT16_ARRAY ? "clamped " : "") + "Array";
+
+            if (args[0].type != t) throw std::runtime_error("Expected " + n);
+            if (args.size() < 2) throw std::runtime_error("Expected algorithm");
+            Value result;
+            result.type = t;
+            std::string alg = Unicode::Lower(args[1].toString());
+            const std::vector<uint16_t> arr = args[0].getComplexData<std::vector<uint16_t>>();
+            std::vector<uint16_t> compressed;
+
+            int lvl = 6;
+            if (args.size() > 2) lvl = static_cast<int>(args[2].toNumber());
+
+            if (alg == "zlib") compressed = ZLIB::CompressU16(arr, lvl);
+            else if (alg == "gzip") compressed = GZIP::CompressU16(arr, lvl);
+            else if (alg == "bzip2") compressed = BZIP2::CompressU16(arr, lvl);
+            else if (alg == "lzma") compressed = LZMA::CompressU16(arr, lvl);
+            else if (alg == "zstd") compressed = ZSTD::CompressU16(arr, lvl);
+            else if (alg == "lz4") compressed = LZ4::CompressU16(arr, lvl);
+            else if (alg == "snappy") compressed = SNAPPY::CompressU16(arr, lvl);
+            else if (alg == "deflate") compressed = DEFLATE::CompressU16(arr, lvl);
+            else throw std::runtime_error("Unknown algorithm \"" + args[1].toString() + "\"");
+
+            result.setComplexData(compressed);
+            result.name = n;
+            return result;
+        }
+        if (funcName == "UInt32Array::compress" || funcName == "CUInt32Array::compress") {
+            DataType t = funcName == "UInt32Array::compress" ? DataType::UINT32_ARRAY : DataType::CUINT32_ARRAY;
+            std::string n = "UInt32 " + std::string(t == DataType::CUINT32_ARRAY ? "clamped " : "") + "Array";
+
+            if (args[0].type != t) throw std::runtime_error("Expected " + n);
+            if (args.size() < 2) throw std::runtime_error("Expected algorithm");
+            Value result;
+            result.type = t;
+            std::string alg = Unicode::Lower(args[1].toString());
+            const std::vector<uint32_t> arr = args[0].getComplexData<std::vector<uint32_t>>();
+            std::vector<uint32_t> compressed;
+
+            int lvl = 6;
+            if (args.size() > 2) lvl = static_cast<int>(args[2].toNumber());
+
+            if (alg == "zlib") compressed = ZLIB::CompressU32(arr, lvl);
+            else if (alg == "gzip") compressed = GZIP::CompressU32(arr, lvl);
+            else if (alg == "bzip2") compressed = BZIP2::CompressU32(arr, lvl);
+            else if (alg == "lzma") compressed = LZMA::CompressU32(arr, lvl);
+            else if (alg == "zstd") compressed = ZSTD::CompressU32(arr, lvl);
+            else if (alg == "lz4") compressed = LZ4::CompressU32(arr, lvl);
+            else if (alg == "snappy") compressed = SNAPPY::CompressU32(arr, lvl);
+            else if (alg == "deflate") compressed = DEFLATE::CompressU32(arr, lvl);
+            else throw std::runtime_error("Unknown algorithm \"" + args[1].toString() + "\"");
+
+            result.setComplexData(compressed);
+            result.name = n;
+            return result;
+        }
+        if (funcName == "UInt64Array::compress" || funcName == "CUInt64Array::compress") {
+            DataType t = funcName == "UInt64Array::compress" ? DataType::UINT64_ARRAY : DataType::CUINT64_ARRAY;
+            std::string n = "UInt64 " + std::string(t == DataType::CUINT64_ARRAY ? "clamped " : "") + "Array";
+
+            if (args[0].type != t) throw std::runtime_error("Expected " + n);
+            if (args.size() < 2) throw std::runtime_error("Expected algorithm");
+            Value result;
+            result.type = t;
+            std::string alg = Unicode::Lower(args[1].toString());
+            const std::vector<uint64_t> arr = args[0].getComplexData<std::vector<uint64_t>>();
+            std::vector<uint64_t> compressed;
+
+            int lvl = 6;
+            if (args.size() > 2) lvl = static_cast<int>(args[2].toNumber());
+
+            if (alg == "zlib") compressed = ZLIB::CompressU64(arr, lvl);
+            else if (alg == "gzip") compressed = GZIP::CompressU64(arr, lvl);
+            else if (alg == "bzip2") compressed = BZIP2::CompressU64(arr, lvl);
+            else if (alg == "lzma") compressed = LZMA::CompressU64(arr, lvl);
+            else if (alg == "zstd") compressed = ZSTD::CompressU64(arr, lvl);
+            else if (alg == "lz4") compressed = LZ4::CompressU64(arr, lvl);
+            else if (alg == "snappy") compressed = SNAPPY::CompressU64(arr, lvl);
+            else if (alg == "deflate") compressed = DEFLATE::CompressU64(arr, lvl);
+            else throw std::runtime_error("Unknown algorithm \"" + args[1].toString() + "\"");
+
+            result.setComplexData(compressed);
+            result.name = n;
+            return result;
+        }
         if (funcName == "Int8Array::decompress") {
             if (args[0].type != DataType::INT8_ARRAY) throw std::runtime_error("Expected Int8 Array");
             if (args.size() < 2) throw std::runtime_error("Expected algorithm");
@@ -4466,6 +4640,269 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             result.setComplexData(decompressed);
             result.name = "Int64 Array";
             return result;
+        }
+        if (funcName == "UInt8Array::decompress" || funcName == "CUInt8Array::decompress") {
+            DataType t = funcName == "UInt8Array::compress" ? DataType::UINT8_ARRAY : DataType::CUINT8_ARRAY;
+            std::string n = "UInt8 " + std::string(t == DataType::CUINT8_ARRAY ? "clamped " : "") + "Array";
+
+            if (args[0].type != t) throw std::runtime_error("Expected " + n);
+            if (args.size() < 2) throw std::runtime_error("Expected algorithm");
+            Value result;
+            result.type = t;
+            std::string alg = Unicode::Lower(args[1].toString());
+            const std::vector<uint8_t> arr = args[0].getComplexData<std::vector<uint8_t>>();
+            std::vector<uint8_t> decompressed;
+
+            if (alg == "zlib") decompressed = ZLIB::DecompressU8(arr);
+            else if (alg == "gzip") decompressed = GZIP::DecompressU8(arr);
+            else if (alg == "bzip2") decompressed = BZIP2::DecompressU8(arr);
+            else if (alg == "lzma") decompressed = LZMA::DecompressU8(arr);
+            else if (alg == "zstd") decompressed = ZSTD::DecompressU8(arr);
+            else if (alg == "lz4") decompressed = LZ4::DecompressU8(arr);
+            else if (alg == "snappy") decompressed = SNAPPY::DecompressU8(arr);
+            else if (alg == "deflate") decompressed = DEFLATE::DecompressU8(arr);
+            else throw std::runtime_error("Unknown algorithm \"" + args[1].toString() + "\"");
+
+            result.setComplexData(decompressed);
+            result.name = n;
+            return result;
+        }
+        if (funcName == "UInt16Array::decompress" || funcName == "CUInt16Array::decompress") {
+            DataType t = funcName == "UInt16Array::compress" ? DataType::UINT16_ARRAY : DataType::CUINT16_ARRAY;
+            std::string n = "UInt16 " + std::string(t == DataType::CUINT16_ARRAY ? "clamped " : "") + "Array";
+
+            if (args[0].type != t) throw std::runtime_error("Expected " + n);
+            if (args.size() < 2) throw std::runtime_error("Expected algorithm");
+            Value result;
+            result.type = t;
+            std::string alg = Unicode::Lower(args[1].toString());
+            const std::vector<uint16_t> arr = args[0].getComplexData<std::vector<uint16_t>>();
+            std::vector<uint16_t> decompressed;
+
+            if (alg == "zlib") decompressed = ZLIB::DecompressU16(arr);
+            else if (alg == "gzip") decompressed = GZIP::DecompressU16(arr);
+            else if (alg == "bzip2") decompressed = BZIP2::DecompressU16(arr);
+            else if (alg == "lzma") decompressed = LZMA::DecompressU16(arr);
+            else if (alg == "zstd") decompressed = ZSTD::DecompressU16(arr);
+            else if (alg == "lz4") decompressed = LZ4::DecompressU16(arr);
+            else if (alg == "snappy") decompressed = SNAPPY::DecompressU16(arr);
+            else if (alg == "deflate") decompressed = DEFLATE::DecompressU16(arr);
+            else throw std::runtime_error("Unknown algorithm \"" + args[1].toString() + "\"");
+
+            result.setComplexData(decompressed);
+            result.name = n;
+            return result;
+        }
+        if (funcName == "UInt32Array::decompress" || funcName == "CUInt32Array::decompress") {
+            DataType t = funcName == "UInt32Array::compress" ? DataType::UINT32_ARRAY : DataType::CUINT32_ARRAY;
+            std::string n = "UInt32 " + std::string(t == DataType::CUINT32_ARRAY ? "clamped " : "") + "Array";
+
+            if (args[0].type != t) throw std::runtime_error("Expected " + n);
+            if (args.size() < 2) throw std::runtime_error("Expected algorithm");
+            Value result;
+            result.type = t;
+            std::string alg = Unicode::Lower(args[1].toString());
+            const std::vector<uint32_t> arr = args[0].getComplexData<std::vector<uint32_t>>();
+            std::vector<uint32_t> decompressed;
+
+            if (alg == "zlib") decompressed = ZLIB::DecompressU32(arr);
+            else if (alg == "gzip") decompressed = GZIP::DecompressU32(arr);
+            else if (alg == "bzip2") decompressed = BZIP2::DecompressU32(arr);
+            else if (alg == "lzma") decompressed = LZMA::DecompressU32(arr);
+            else if (alg == "zstd") decompressed = ZSTD::DecompressU32(arr);
+            else if (alg == "lz4") decompressed = LZ4::DecompressU32(arr);
+            else if (alg == "snappy") decompressed = SNAPPY::DecompressU32(arr);
+            else if (alg == "deflate") decompressed = DEFLATE::DecompressU32(arr);
+            else throw std::runtime_error("Unknown algorithm \"" + args[1].toString() + "\"");
+
+            result.setComplexData(decompressed);
+            result.name = n;
+            return result;
+        }
+        if (funcName == "UInt64Array::decompress" || funcName == "CUInt64Array::decompress") {
+            DataType t = funcName == "UInt64Array::compress" ? DataType::UINT64_ARRAY : DataType::CUINT64_ARRAY;
+            std::string n = "UInt64 " + std::string(t == DataType::CUINT64_ARRAY ? "clamped " : "") + "Array";
+
+            if (args[0].type != t) throw std::runtime_error("Expected " + n);
+            if (args.size() < 2) throw std::runtime_error("Expected algorithm");
+            Value result;
+            result.type = t;
+            std::string alg = Unicode::Lower(args[1].toString());
+            const std::vector<uint64_t> arr = args[0].getComplexData<std::vector<uint64_t>>();
+            std::vector<uint64_t> decompressed;
+
+            if (alg == "zlib") decompressed = ZLIB::DecompressU64(arr);
+            else if (alg == "gzip") decompressed = GZIP::DecompressU64(arr);
+            else if (alg == "bzip2") decompressed = BZIP2::DecompressU64(arr);
+            else if (alg == "lzma") decompressed = LZMA::DecompressU64(arr);
+            else if (alg == "zstd") decompressed = ZSTD::DecompressU64(arr);
+            else if (alg == "lz4") decompressed = LZ4::DecompressU64(arr);
+            else if (alg == "snappy") decompressed = SNAPPY::DecompressU64(arr);
+            else if (alg == "deflate") decompressed = DEFLATE::DecompressU64(arr);
+            else throw std::runtime_error("Unknown algorithm \"" + args[1].toString() + "\"");
+
+            result.setComplexData(decompressed);
+            result.name = n;
+            return result;
+        }
+        if (funcName == "Map::set") {
+            if (args.size() < 2) throw std::runtime_error("Expected key");
+            if (args.size() < 3) throw std::runtime_error("Expected value");
+            if (args[0].type != DataType::MAP) throw std::runtime_error("Expected map");
+
+            if (args[0].isVariable) {
+                std::unordered_map<Value, Value> map = variables[args[0].variable].getComplexData<std::unordered_map<Value, Value>>();
+                map[args[1].toPrimitive()] = args[2];
+                variables[args[0].variable].setComplexData(map);
+                return variables[args[0].variable];
+            } else {
+                std::unordered_map<Value, Value> map = args[0].getComplexData<std::unordered_map<Value, Value>>();
+                map[args[1].toPrimitive()] = args[2];
+                args[0].setComplexData(map);
+                return args[0];
+            }
+        }
+        if (funcName == "Map::get") {
+            if (args.size() < 2) throw std::runtime_error("Expected key");
+            if (args[0].type != DataType::MAP) throw std::runtime_error("Expected map");
+
+            std::unordered_map<Value, Value> map;
+            if (args[0].isVariable) {
+                map = variables[args[0].variable].getComplexData<std::unordered_map<Value, Value>>();
+            } else {
+                map = args[0].getComplexData<std::unordered_map<Value, Value>>();
+            }
+            
+            auto it = map.find(args[1].toPrimitive());
+            if (it != map.end()) {
+                return it->second;
+            }
+            return Value::createNull();
+        }
+        if (funcName == "Map::has") {
+            if (args.size() < 2) throw std::runtime_error("Expected key");
+            if (args[0].type != DataType::MAP) throw std::runtime_error("Expected map");
+
+            std::unordered_map<Value, Value> map;
+            if (args[0].isVariable) {
+                map = variables[args[0].variable].getComplexData<std::unordered_map<Value, Value>>();
+            } else {
+                map = args[0].getComplexData<std::unordered_map<Value, Value>>();
+            }
+
+            auto it = map.find(args[1].toPrimitive());
+            if (it != map.end()) {
+                return Value::createBoolean(true);
+            }
+            return Value::createBoolean(false);
+        }
+        if (funcName == "Map::delete") {
+            if (args.size() < 2) throw std::runtime_error("Expected key");
+            if (args[0].type != DataType::MAP) throw std::runtime_error("Expected map");
+
+            if (args[0].isVariable) {
+                std::unordered_map<Value, Value> map = variables[args[0].variable].getComplexData<std::unordered_map<Value, Value>>();
+                map.erase(args[1].toPrimitive());
+                variables[args[0].variable].setComplexData(map);
+                return variables[args[0].variable];
+            } else {
+                std::unordered_map<Value, Value> map = args[0].getComplexData<std::unordered_map<Value, Value>>();
+                map.erase(args[1].toPrimitive());
+                args[0].setComplexData(map);
+                return args[0];
+            }
+        }
+        if (funcName == "Map::clear") {
+            if (args[0].type != DataType::MAP) throw std::runtime_error("Expected map");
+
+            std::unordered_map<Value, Value> map;
+            if (args[0].isVariable) {
+                variables[args[0].variable].setComplexData(map);
+                return variables[args[0].variable];
+            } else {
+                Value result;
+                result.type = DataType::MAP;
+                result.setComplexData(map);
+                result.name = "Map";
+                return result;
+            }
+        }
+        if (funcName == "Set::add") {
+            if (args.size() < 2) throw std::runtime_error("Expected value");
+            if (args[0].type != DataType::SET) throw std::runtime_error("Expected set");
+
+            if (args[0].isVariable) {
+                std::unordered_set<Value> set = variables[args[0].variable].getComplexData<std::unordered_set<Value>>();
+                set.insert(args[1].toPrimitive());
+                variables[args[0].variable].setComplexData(set);
+                return variables[args[0].variable];
+            } else {
+                std::unordered_set<Value> set = args[0].getComplexData<std::unordered_set<Value>>();
+                set.insert(args[1].toPrimitive());
+                args[0].setComplexData(set);
+                return args[0];
+            }
+        }
+        if (funcName == "Set::has") {
+            if (args.size() < 2) throw std::runtime_error("Expected value");
+            if (args[0].type != DataType::SET) throw std::runtime_error("Expected set");
+
+            std::unordered_set<Value> set;
+            if (args[0].isVariable) {
+                set = variables[args[0].variable].getComplexData<std::unordered_set<Value>>();
+            } else {
+                set = args[0].getComplexData<std::unordered_set<Value>>();
+            }
+
+            auto it = set.find(args[1].toPrimitive());
+            if (it != set.end()) {
+                return Value::createBoolean(true);
+            }
+            return Value::createBoolean(false);
+        }
+        if (funcName == "Set::delete") {
+            if (args.size() < 2) throw std::runtime_error("Expected value");
+            if (args[0].type != DataType::SET) throw std::runtime_error("Expected set");
+
+            if (args[0].isVariable) {
+                std::unordered_set<Value> set = variables[args[0].variable].getComplexData<std::unordered_set<Value>>();
+                set.erase(args[1].toPrimitive());
+                variables[args[0].variable].setComplexData(set);
+                return variables[args[0].variable];
+            } else {
+                std::unordered_set<Value> set = args[0].getComplexData<std::unordered_set<Value>>();
+                set.erase(args[1].toPrimitive());
+                args[0].setComplexData(set);
+                return args[0];
+            }
+        }
+        if (funcName == "Set::clear") {
+            if (args[0].type != DataType::SET) throw std::runtime_error("Expected set");
+
+            std::unordered_set<Value> set;
+            if (args[0].isVariable) {
+                variables[args[0].variable].setComplexData(set);
+                return variables[args[0].variable];
+            } else {
+                Value result;
+                result.type = DataType::SET;
+                result.setComplexData(set);
+                result.name = "Set";
+                return result;
+            }
+        }
+        if (funcName == "Object::size") {
+            uint64_t size = static_cast<uint64_t>(args[0].properties.size());
+            return Value::createNumberWithType(size, NumericType::UINT64);
+        }
+        if (funcName == "Array::size") {
+            uint64_t size = static_cast<uint64_t>(args[0].array_elements.size());
+            return Value::createNumberWithType(size, NumericType::UINT64);
+        }
+        if (funcName == "Map::size" || funcName == "Set::size" || funcName == "Int8Array::size" || funcName == "Int16Array::size" || funcName == "Int32Array::size" || funcName == "Int64Array::size" || funcName == "UInt8Array::size" || funcName == "UInt16Array::size" || funcName == "UInt32Array::size" || funcName == "UInt64Array::size" || funcName == "CUInt8Array::size" || funcName == "CUInt16Array::size" || funcName == "CUInt32Array::size" || funcName == "CUInt64Array::size") {
+            auto data = *args[0].complex_value;
+            uint64_t size = static_cast<uint64_t>(data.size());
+            return Value::createNumberWithType(size, NumericType::UINT64);
         }
     } catch (const std::exception& e) {
         throw std::runtime_error(std::string(e.what()) + " at " + Utility::position(startPos, input) + ".");
@@ -7013,34 +7450,32 @@ Value Parser::parseObjectPropertyAccess(bool doExecute, bool set) {
     }
 }
 std::pair<Value, Value::Property> Parser::accessProperty(const Value& obj, const std::string& propName, const Access& requestAccess) {
-    if (obj.type == DataType::JUSTC_OBJECT) {
-        if (obj.object_context && obj.object_context->parser) {
-            if (obj.object_context->parser->outputMode == "disabled") {
-                throw std::runtime_error("Attempt to access \"" + propName + "\" of a closure (Object with output mode \"disabled\") at " + Utility::position(currentToken().start, input) + ".");
-            }
-
-            auto it = obj.properties.find(propName);
-            if (it != obj.properties.end()) {
-                return vp(it->second, requestAccess);
-            }
-
-            auto& parserVars = obj.object_context->variables;
-            auto varIt = parserVars.find(propName);
-            if (varIt != parserVars.end()) {
-                Value val = varIt->second;
-                Value::Property empty(val, Access::READ_WRITE);
-                return {val, empty};
-            }
-
-            throw std::runtime_error("Property '" + propName + "' not found in object at " + Utility::position(currentToken().start, input) + ".");
+    if (obj.type == DataType::JUSTC_OBJECT && (obj.object_context && obj.object_context->parser)) {
+        if (obj.object_context->parser->outputMode == "disabled") {
+            throw std::runtime_error("Attempt to access \"" + propName + "\" of a closure (Object with output mode \"disabled\") at " + Utility::position(currentToken().start, input) + ".");
         }
-    } else if (obj.type == DataType::JSON_OBJECT) {
+
+        auto it = obj.properties.find(propName);
+        if (it != obj.properties.end()) {
+            return vp(it->second, requestAccess);
+        }
+
+        auto& parserVars = obj.object_context->variables;
+        auto varIt = parserVars.find(propName);
+        if (varIt != parserVars.end()) {
+            Value val = varIt->second;
+            Value::Property empty(val, Access::READ_WRITE);
+            return {val, empty};
+        }
+
+        throw std::runtime_error("Property '" + propName + "' not found in object at " + Utility::position(currentToken().start, input) + ".");
+    } else if (Utility::checkObject(obj)) {
         auto it = obj.properties.find(propName);
         if (it != obj.properties.end()) {
             return vp(it->second, requestAccess);
         }
         throw std::runtime_error("Property '" + propName + "' not found in object at " + Utility::position(currentToken().start, input) + ".");
-    } else if (obj.type == DataType::JSON_ARRAY) {
+    } else if (Utility::checkArray(obj)) {
         throw std::runtime_error("Cannot access property '" + propName + "' on array at " + Utility::position(currentToken().start, input) + ".");
     }
 
@@ -7050,6 +7485,76 @@ Value Parser::accessIndex(const Value& arr, size_t index) {
     if (arr.type == DataType::JSON_ARRAY) {
         if (index < arr.array_elements.size()) {
             return arr.array_elements[index];
+        }
+        return Value::createNull();
+    }
+    if (arr.type == DataType::INT8_ARRAY) {
+        std::vector<int8_t> a = arr.getComplexData<std::vector<int8_t>>();
+        if (index < a.size()) {
+            return Value::createNumberWithType(a[index], NumericType::INT8);
+        }
+        return Value::createNull();
+    }
+    if (arr.type == DataType::INT16_ARRAY) {
+        std::vector<int16_t> a = arr.getComplexData<std::vector<int16_t>>();
+        if (index < a.size()) {
+            return Value::createNumberWithType(a[index], NumericType::INT16);
+        }
+        return Value::createNull();
+    }
+    if (arr.type == DataType::INT32_ARRAY) {
+        std::vector<int32_t> a = arr.getComplexData<std::vector<int32_t>>();
+        if (index < a.size()) {
+            return Value::createNumberWithType(a[index], NumericType::INT32);
+        }
+        return Value::createNull();
+    }
+    if (arr.type == DataType::INT64_ARRAY) {
+        std::vector<int64_t> a = arr.getComplexData<std::vector<int64_t>>();
+        if (index < a.size()) {
+            return Value::createNumberWithType(a[index], NumericType::INT64);
+        }
+        return Value::createNull();
+    }
+    if (arr.type == DataType::UINT8_ARRAY || arr.type == DataType::CUINT8_ARRAY) {
+        std::vector<uint8_t> a = arr.getComplexData<std::vector<uint8_t>>();
+        if (index < a.size()) {
+            return Value::createNumberWithType(a[index], arr.type == DataType::UINT8_ARRAY ? NumericType::UINT8 : NumericType::CUINT8);
+        }
+        return Value::createNull();
+    }
+    if (arr.type == DataType::UINT16_ARRAY || arr.type == DataType::CUINT16_ARRAY) {
+        std::vector<uint16_t> a = arr.getComplexData<std::vector<uint16_t>>();
+        if (index < a.size()) {
+            return Value::createNumberWithType(a[index], arr.type == DataType::UINT16_ARRAY ? NumericType::UINT16 : NumericType::CUINT16);
+        }
+        return Value::createNull();
+    }
+    if (arr.type == DataType::UINT32_ARRAY || arr.type == DataType::CUINT32_ARRAY) {
+        std::vector<uint32_t> a = arr.getComplexData<std::vector<uint32_t>>();
+        if (index < a.size()) {
+            return Value::createNumberWithType(a[index], arr.type == DataType::UINT32_ARRAY ? NumericType::UINT32 : NumericType::CUINT32);
+        }
+        return Value::createNull();
+    }
+    if (arr.type == DataType::UINT64_ARRAY || arr.type == DataType::CUINT64_ARRAY) {
+        std::vector<uint64_t> a = arr.getComplexData<std::vector<uint64_t>>();
+        if (index < a.size()) {
+            return Value::createNumberWithType(a[index], arr.type == DataType::UINT64_ARRAY ? NumericType::UINT64 : NumericType::CUINT64);
+        }
+        return Value::createNull();
+    }
+    if (arr.type == DataType::FLOAT32_ARRAY) {
+        std::vector<float> a = arr.getComplexData<std::vector<float>>();
+        if (index < a.size()) {
+            return Value::createNumberWithType(a[index], NumericType::FLOAT32);
+        }
+        return Value::createNull();
+    }
+    if (arr.type == DataType::FLOAT64_ARRAY) {
+        std::vector<double> a = arr.getComplexData<std::vector<double>>();
+        if (index < a.size()) {
+            return Value::createNumberWithType(a[index], NumericType::FLOAT64);
         }
         return Value::createNull();
     }
