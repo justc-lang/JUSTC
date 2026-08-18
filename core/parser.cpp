@@ -856,10 +856,7 @@ Parser::Parser(
         {"byteSlice", "String::byteSlice"},
         {"lower", "String::lower"},
         {"upper", "String::upper"},
-        {"normalizeNFC", "String::normalizeNFC"},
-        {"normalizeNFD", "String::normalizeNFD"},
-        {"normalizeNFKC", "String::normalizeNFKC"},
-        {"normalizeNFKD", "String::normalizeNFKD"},
+        {"normalize", "String::normalize"},
         {"length", "String::length"},
         {"graphemeLength", "String::graphemeLength"},
         {"codePointLength", "String::codePointLength"},
@@ -954,30 +951,41 @@ Parser::Parser(
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
     };
-    
     typeMethods[DataType::INT8_ARRAY] = {
         {"toString", "String"},
         {"toNumber", "Number"},
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
+
+        {"compress", "Int8Array::compress"},
+        {"decompress", "Int8Array::decompress"},
     };
     typeMethods[DataType::INT16_ARRAY] = {
         {"toString", "String"},
         {"toNumber", "Number"},
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
+
+        {"compress", "Int16Array::compress"},
+        {"decompress", "Int16Array::decompress"},
     };
     typeMethods[DataType::INT32_ARRAY] = {
         {"toString", "String"},
         {"toNumber", "Number"},
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
+
+        {"compress", "Int32Array::compress"},
+        {"decompress", "Int32Array::decompress"},
     };
     typeMethods[DataType::INT64_ARRAY] = {
         {"toString", "String"},
         {"toNumber", "Number"},
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
+
+        {"compress", "Int64Array::compress"},
+        {"decompress", "Int64Array::decompress"},
     };
     typeMethods[DataType::UINT8_ARRAY] = {
         {"toString", "String"},
@@ -3649,17 +3657,19 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
         if (funcName == "String::upper") {
             return stringToValue(Unicode::Upper(args[0].toString()));
         }
-        if (funcName == "String::normalizeNFC") {
-            return stringToValue(Unicode::NormalizeNFC(args[0].toString()));
-        }
-        if (funcName == "String::normalizeNFD") {
-            return stringToValue(Unicode::NormalizeNFD(args[0].toString()));
-        }
-        if (funcName == "String::normalizeNFKC") {
-            return stringToValue(Unicode::NormalizeNFKC(args[0].toString()));
-        }
-        if (funcName == "String::normalizeNFKD") {
-            return stringToValue(Unicode::NormalizeNFKD(args[0].toString()));
+        if (funcName == "String::normalize") {
+            if (args.size() < 2) throw std::runtime_error("Expected form");
+            std::string form = Unicode::Lower(args[1].toString());
+            std::string original = args[0].toString();
+            if (form == "nfc") {
+                return stringToValue(Unicode::NormalizeNFC(original));
+            } else if (form == "nfd") {
+                return stringToValue(Unicode::NormalizeNFD(original));
+            } else if (form == "nfkc") {
+                return stringToValue(Unicode::NormalizeNFKC(original));
+            } else if (form == "nfkd") {
+                return stringToValue(Unicode::NormalizeNFKD(original));
+            } else throw std::runtime_error("Unknown form \"" + args[1].toString() + "\"");
         }
         if (funcName == "String::graphemeLength" || (
             chartype == CharType::GRAPHEME && funcName == "String::length"
@@ -4261,24 +4271,200 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             if (!getEnv.first) return Value::createNull();
             return Value::createString(getEnv.second);
         }
-        if (funcName == "c8") {
-            if (args[0].type != DataType::INT8_ARRAY) throw std::runtime_error("");
+        if (funcName == "Int8Array::compress") {
+            if (args[0].type != DataType::INT8_ARRAY) throw std::runtime_error("Expected Int8 Array");
+            if (args.size() < 2) throw std::runtime_error("Expected algorithm");
             Value result;
             result.type = DataType::INT8_ARRAY;
+            std::string alg = Unicode::Lower(args[1].toString());
             const std::vector<int8_t> arr = args[0].getComplexData<std::vector<int8_t>>();
-            std::vector<int8_t> compressed = LZMA::CompressI8(arr);
+            std::vector<int8_t> compressed;
+
+            int lvl = 6;
+            if (args.size() > 2) lvl = static_cast<int>(args[2].toNumber());
+
+            if (alg == "zlib") compressed = ZLIB::CompressI8(arr, lvl);
+            else if (alg == "gzip") compressed = GZIP::CompressI8(arr, lvl);
+            else if (alg == "bzip2") compressed = BZIP2::CompressI8(arr, lvl);
+            else if (alg == "lzma") compressed = LZMA::CompressI8(arr, lvl);
+            else if (alg == "zstd") compressed = ZSTD::CompressI8(arr, lvl);
+            else if (alg == "lz4") compressed = LZ4::CompressI8(arr, lvl);
+            else if (alg == "snappy") compressed = SNAPPY::CompressI8(arr, lvl);
+            else if (alg == "deflate") compressed = DEFLATE::CompressI8(arr, lvl);
+            else throw std::runtime_error("Unknown algorithm \"" + args[1].toString() + "\"");
+
             result.setComplexData(compressed);
             result.name = "Int8 Array";
             return result;
         }
-        if (funcName == "d8") {
-            if (args[0].type != DataType::INT8_ARRAY) throw std::runtime_error("");
+        if (funcName == "Int16Array::compress") {
+            if (args[0].type != DataType::INT16_ARRAY) throw std::runtime_error("Expected Int16 Array");
+            if (args.size() < 2) throw std::runtime_error("Expected algorithm");
+            Value result;
+            result.type = DataType::INT16_ARRAY;
+            std::string alg = Unicode::Lower(args[1].toString());
+            const std::vector<int16_t> arr = args[0].getComplexData<std::vector<int16_t>>();
+            std::vector<int16_t> compressed;
+
+            int lvl = 6;
+            if (args.size() > 2) lvl = static_cast<int>(args[2].toNumber());
+
+            if (alg == "zlib") compressed = ZLIB::CompressI16(arr, lvl);
+            else if (alg == "gzip") compressed = GZIP::CompressI16(arr, lvl);
+            else if (alg == "bzip2") compressed = BZIP2::CompressI16(arr, lvl);
+            else if (alg == "lzma") compressed = LZMA::CompressI16(arr, lvl);
+            else if (alg == "zstd") compressed = ZSTD::CompressI16(arr, lvl);
+            else if (alg == "lz4") compressed = LZ4::CompressI16(arr, lvl);
+            else if (alg == "snappy") compressed = SNAPPY::CompressI16(arr, lvl);
+            else if (alg == "deflate") compressed = DEFLATE::CompressI16(arr, lvl);
+            else throw std::runtime_error("Unknown algorithm \"" + args[1].toString() + "\"");
+
+            result.setComplexData(compressed);
+            result.name = "Int16 Array";
+            return result;
+        }
+        if (funcName == "Int32Array::compress") {
+            if (args[0].type != DataType::INT32_ARRAY) throw std::runtime_error("Expected Int32 Array");
+            if (args.size() < 2) throw std::runtime_error("Expected algorithm");
+            Value result;
+            result.type = DataType::INT32_ARRAY;
+            std::string alg = Unicode::Lower(args[1].toString());
+            const std::vector<int32_t> arr = args[0].getComplexData<std::vector<int32_t>>();
+            std::vector<int32_t> compressed;
+
+            int lvl = 6;
+            if (args.size() > 2) lvl = static_cast<int>(args[2].toNumber());
+
+            if (alg == "zlib") compressed = ZLIB::CompressI32(arr, lvl);
+            else if (alg == "gzip") compressed = GZIP::CompressI32(arr, lvl);
+            else if (alg == "bzip2") compressed = BZIP2::CompressI32(arr, lvl);
+            else if (alg == "lzma") compressed = LZMA::CompressI32(arr, lvl);
+            else if (alg == "zstd") compressed = ZSTD::CompressI32(arr, lvl);
+            else if (alg == "lz4") compressed = LZ4::CompressI32(arr, lvl);
+            else if (alg == "snappy") compressed = SNAPPY::CompressI32(arr, lvl);
+            else if (alg == "deflate") compressed = DEFLATE::CompressI32(arr, lvl);
+            else throw std::runtime_error("Unknown algorithm \"" + args[1].toString() + "\"");
+
+            result.setComplexData(compressed);
+            result.name = "Int32 Array";
+            return result;
+        }
+        if (funcName == "Int64Array::compress") {
+            if (args[0].type != DataType::INT64_ARRAY) throw std::runtime_error("Expected Int64 Array");
+            if (args.size() < 2) throw std::runtime_error("Expected algorithm");
+            Value result;
+            result.type = DataType::INT64_ARRAY;
+            std::string alg = Unicode::Lower(args[1].toString());
+            const std::vector<int64_t> arr = args[0].getComplexData<std::vector<int64_t>>();
+            std::vector<int64_t> compressed;
+
+            int lvl = 6;
+            if (args.size() > 2) lvl = static_cast<int>(args[2].toNumber());
+
+            if (alg == "zlib") compressed = ZLIB::CompressI64(arr, lvl);
+            else if (alg == "gzip") compressed = GZIP::CompressI64(arr, lvl);
+            else if (alg == "bzip2") compressed = BZIP2::CompressI64(arr, lvl);
+            else if (alg == "lzma") compressed = LZMA::CompressI64(arr, lvl);
+            else if (alg == "zstd") compressed = ZSTD::CompressI64(arr, lvl);
+            else if (alg == "lz4") compressed = LZ4::CompressI64(arr, lvl);
+            else if (alg == "snappy") compressed = SNAPPY::CompressI64(arr, lvl);
+            else if (alg == "deflate") compressed = DEFLATE::CompressI64(arr, lvl);
+            else throw std::runtime_error("Unknown algorithm \"" + args[1].toString() + "\"");
+
+            result.setComplexData(compressed);
+            result.name = "Int64 Array";
+            return result;
+        }
+        if (funcName == "Int8Array::decompress") {
+            if (args[0].type != DataType::INT8_ARRAY) throw std::runtime_error("Expected Int8 Array");
+            if (args.size() < 2) throw std::runtime_error("Expected algorithm");
             Value result;
             result.type = DataType::INT8_ARRAY;
+            std::string alg = Unicode::Lower(args[1].toString());
             const std::vector<int8_t> arr = args[0].getComplexData<std::vector<int8_t>>();
-            std::vector<int8_t> decompressed = LZMA::DecompressI8(arr);
+            std::vector<int8_t> decompressed;
+
+            if (alg == "zlib") decompressed = ZLIB::DecompressI8(arr);
+            else if (alg == "gzip") decompressed = GZIP::DecompressI8(arr);
+            else if (alg == "bzip2") decompressed = BZIP2::DecompressI8(arr);
+            else if (alg == "lzma") decompressed = LZMA::DecompressI8(arr);
+            else if (alg == "zstd") decompressed = ZSTD::DecompressI8(arr);
+            else if (alg == "lz4") decompressed = LZ4::DecompressI8(arr);
+            else if (alg == "snappy") decompressed = SNAPPY::DecompressI8(arr);
+            else if (alg == "deflate") decompressed = DEFLATE::DecompressI8(arr);
+            else throw std::runtime_error("Unknown algorithm \"" + args[1].toString() + "\"");
+
             result.setComplexData(decompressed);
             result.name = "Int8 Array";
+            return result;
+        }
+        if (funcName == "Int16Array::decompress") {
+            if (args[0].type != DataType::INT16_ARRAY) throw std::runtime_error("Expected Int16 Array");
+            if (args.size() < 2) throw std::runtime_error("Expected algorithm");
+            Value result;
+            result.type = DataType::INT16_ARRAY;
+            std::string alg = Unicode::Lower(args[1].toString());
+            const std::vector<int16_t> arr = args[0].getComplexData<std::vector<int16_t>>();
+            std::vector<int16_t> decompressed;
+
+            if (alg == "zlib") decompressed = ZLIB::DecompressI16(arr);
+            else if (alg == "gzip") decompressed = GZIP::DecompressI16(arr);
+            else if (alg == "bzip2") decompressed = BZIP2::DecompressI16(arr);
+            else if (alg == "lzma") decompressed = LZMA::DecompressI16(arr);
+            else if (alg == "zstd") decompressed = ZSTD::DecompressI16(arr);
+            else if (alg == "lz4") decompressed = LZ4::DecompressI16(arr);
+            else if (alg == "snappy") decompressed = SNAPPY::DecompressI16(arr);
+            else if (alg == "deflate") decompressed = DEFLATE::DecompressI16(arr);
+            else throw std::runtime_error("Unknown algorithm \"" + args[1].toString() + "\"");
+
+            result.setComplexData(decompressed);
+            result.name = "Int16 Array";
+            return result;
+        }
+        if (funcName == "Int32Array::decompress") {
+            if (args[0].type != DataType::INT32_ARRAY) throw std::runtime_error("Expected Int32 Array");
+            if (args.size() < 2) throw std::runtime_error("Expected algorithm");
+            Value result;
+            result.type = DataType::INT32_ARRAY;
+            std::string alg = Unicode::Lower(args[1].toString());
+            const std::vector<int32_t> arr = args[0].getComplexData<std::vector<int32_t>>();
+            std::vector<int32_t> decompressed;
+
+            if (alg == "zlib") decompressed = ZLIB::DecompressI32(arr);
+            else if (alg == "gzip") decompressed = GZIP::DecompressI32(arr);
+            else if (alg == "bzip2") decompressed = BZIP2::DecompressI32(arr);
+            else if (alg == "lzma") decompressed = LZMA::DecompressI32(arr);
+            else if (alg == "zstd") decompressed = ZSTD::DecompressI32(arr);
+            else if (alg == "lz4") decompressed = LZ4::DecompressI32(arr);
+            else if (alg == "snappy") decompressed = SNAPPY::DecompressI32(arr);
+            else if (alg == "deflate") decompressed = DEFLATE::DecompressI32(arr);
+            else throw std::runtime_error("Unknown algorithm \"" + args[1].toString() + "\"");
+
+            result.setComplexData(decompressed);
+            result.name = "Int32 Array";
+            return result;
+        }
+        if (funcName == "Int64Array::decompress") {
+            if (args[0].type != DataType::INT64_ARRAY) throw std::runtime_error("Expected Int64 Array");
+            if (args.size() < 2) throw std::runtime_error("Expected algorithm");
+            Value result;
+            result.type = DataType::INT64_ARRAY;
+            std::string alg = Unicode::Lower(args[1].toString());
+            const std::vector<int64_t> arr = args[0].getComplexData<std::vector<int64_t>>();
+            std::vector<int64_t> decompressed;
+
+            if (alg == "zlib") decompressed = ZLIB::DecompressI64(arr);
+            else if (alg == "gzip") decompressed = GZIP::DecompressI64(arr);
+            else if (alg == "bzip2") decompressed = BZIP2::DecompressI64(arr);
+            else if (alg == "lzma") decompressed = LZMA::DecompressI64(arr);
+            else if (alg == "zstd") decompressed = ZSTD::DecompressI64(arr);
+            else if (alg == "lz4") decompressed = LZ4::DecompressI64(arr);
+            else if (alg == "snappy") decompressed = SNAPPY::DecompressI64(arr);
+            else if (alg == "deflate") decompressed = DEFLATE::DecompressI64(arr);
+            else throw std::runtime_error("Unknown algorithm \"" + args[1].toString() + "\"");
+
+            result.setComplexData(decompressed);
+            result.name = "Int64 Array";
             return result;
         }
     } catch (const std::exception& e) {

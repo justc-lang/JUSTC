@@ -52,7 +52,7 @@ const monacoJUSTClang = {
 
         escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
 
-        builtinFunctions: /\b(echo|log|logfile|valueof|String(::(((grapheme|codePoint|byte)(Reverse|Slice|Length)|(reverse|slice|length))|trim|repeat|(start|end)sWith|size|lower|upper|normalizeNF(K|)(C|D)|equalsIgnoreCase|isWhitespace)|)|Number|Link|Binary(::((to|from)(Text|DataURL))|)|Octal|Hexadecimal|typeid|typeof|JSON(\.(parse|stringify)|)|file|size|env|config|parseInt|JUSTC(\.(parse(r|)|execute|stringify|version|lexer)|)|TIME|PI|backslash|version|HTTP\.(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)|math\.(a(bs|cos|sin|tan(2|))|ceil|cos|clamp|cube|double|exp|factorial|floor|hypot|isPrime|lerp|log(10|)|max|min|pow|random|round|sign|sin|sqrt|square|tan|to(Degrees|Radians))|parse(Num|Int)|Data|JavaScript(\.(execute|isAllowed)|)|Luau(\.(execute|compile|isAllowed)|)|JUSTO(\.(parse|stringify|version)|)|Array::(join|includes|indexOf|lastIndexOf|reverse|forEach|push|unshift))\b/i,
+        builtinFunctions: /\b(echo|log|logfile|valueof|String(::(((grapheme|codePoint|byte)(Reverse|Slice|Length)|(reverse|slice|length))|trim|repeat|(start|end)sWith|size|lower|upper|normalize|equalsIgnoreCase|isWhitespace)|)|Number|Link|Binary(::((to|from)(Text|DataURL))|)|Octal|Hexadecimal|typeid|typeof|JSON(\.(parse|stringify)|)|file|size|env|config|parseInt|JUSTC(\.(parse(r|)|execute|stringify|version|lexer)|)|TIME|PI|backslash|version|HTTP\.(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)|math\.(a(bs|cos|sin|tan(2|))|ceil|cos|clamp|cube|double|exp|factorial|floor|hypot|isPrime|lerp|log(10|)|max|min|pow|random|round|sign|sin|sqrt|square|tan|to(Degrees|Radians))|parse(Num|Int)|Data|JavaScript(\.(execute|isAllowed)|)|Luau(\.(execute|compile|isAllowed)|)|JUSTO(\.(parse|stringify|version)|)|Array::(join|includes|indexOf|lastIndexOf|reverse|forEach|push|unshift))\b/i,
 
         constants: /\b(True|TRUE|False|FALSE|Yes|YES|No|NO|Y|N|Null|NULL|Nil|NIL|Infinity|NaN|undefined)\b/,
 
@@ -284,17 +284,8 @@ monacoScript.onload = function() {
             "String::upper": {
                 text: "String::upper(${1:str})"
             },
-            "String::normalizeNFC": {
-                text: "String::normalizeNFC(${1:str})"
-            },
-            "String::normalizeNFD": {
-                text: "String::normalizeNFD(${1:str})"
-            },
-            "String::normalizeNFKC": {
-                text: "String::normalizeNFKC(${1:str})"
-            },
-            "String::normalizeNFKD": {
-                text: "String::normalizeNFKD(${1:str})"
+            "String::normalize": {
+                text: "String::normalizeNFC(${1:str}, ${2:form})"
             },
             "String::equalsIgnoreCase": {
                 text: "String::equalsIgnoreCase(${1:a}, ${2:b})"
