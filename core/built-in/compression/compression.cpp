@@ -75,7 +75,35 @@ std::vector<T> COMPRESSION::CompressGeneric(
     
     size_t originalSize = bytes.size();
     
-    std::vector<uint8_t> compressed = JustbLoader::compressData(bytes, algorithm, level);
+    std::vector<uint8_t> compressed;
+    switch (algorithm) {
+        case CompressionAlgorithm::ZLIB:
+            compressed = JustbCompiler::compressZlib(bytes, level);
+            break;
+        case CompressionAlgorithm::GZIP:
+            compressed = JustbCompiler::compressGzip(bytes, level);
+            break;
+        case CompressionAlgorithm::BZIP2:
+            compressed = JustbCompiler::compressBzip2(bytes, level);
+            break;
+        case CompressionAlgorithm::LZMA:
+            compressed = JustbCompiler::compressLzma(bytes, level);
+            break;
+        case CompressionAlgorithm::ZSTD:
+            compressed = JustbCompiler::compressZstd(bytes, level);
+            break;
+        case CompressionAlgorithm::LZ4:
+            compressed = JustbCompiler::compressLz4(bytes);
+            break;
+        case CompressionAlgorithm::SNAPPY:
+            compressed = JustbCompiler::compressSnappy(bytes);
+            break;
+        case CompressionAlgorithm::DEFLATE:
+            compressed = JustbCompiler::compressDeflate(bytes, level);
+            break;
+        default:
+            throw std::runtime_error("Unsupported compression algorithm");
+    }
     
     std::vector<uint8_t> sizeBytes = shrinkToBytes(Size(originalSize));
     
