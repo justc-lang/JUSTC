@@ -4176,6 +4176,26 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             if (!getEnv.first) return Value::createNull();
             return Value::createString(getEnv.second);
         }
+        if (funcName == "c8") {
+            if (args[0].type != DataType::INT8_ARRAY) throw std::runtime_error("");
+            Value result;
+            result.type = DataType::INT8_ARRAY;
+            const std::vector<int8_t> arr = args[0].getComplexData<std::vector<int8_t>>();
+            std::vector<int8_t> compressed = LZMA::CompressI8(arr);
+            result.setComplexData(compressed);
+            result.name = "Int8 Array";
+            return result;
+        }
+        if (funcName == "d8") {
+            if (args[0].type != DataType::INT8_ARRAY) throw std::runtime_error("");
+            Value result;
+            result.type = DataType::INT8_ARRAY;
+            const std::vector<int8_t> arr = args[0].getComplexData<std::vector<int8_t>>();
+            std::vector<int8_t> decompressed = LZMA::DecompressI8(arr);
+            result.setComplexData(decompressed);
+            result.name = "Int8 Array";
+            return result;
+        }
     } catch (const std::exception& e) {
         throw std::runtime_error(std::string(e.what()) + " at " + Utility::position(startPos, input) + ".");
     }

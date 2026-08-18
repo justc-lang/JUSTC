@@ -36,6 +36,9 @@ SOFTWARE.
 #include <unordered_map>
 #include <iostream>
 #include <cstdint>
+#include <vector>
+#include <algorithm>
+#include <type_traits>
 #ifdef __EMSCRIPTEN__
 #include "utility.emscripten.h"
 #endif
@@ -758,3 +761,232 @@ std::string Utility::hashString(const Value::Property& val) {
     ss << hashString(val.value);
     return ss.str();
 }
+
+namespace {
+    template<typename From, typename To>
+    static inline To bit_cast(const From& from) {
+        static_assert(sizeof(From) == sizeof(To), "Sizes must match for bit_cast");
+        To to;
+        std::memcpy(&to, &from, sizeof(To));
+        return to;
+    }
+
+    template<typename T>
+    static constexpr bool is_integral_v = std::is_integral_v<T>;
+}
+
+template<typename To, typename From>
+To Utility::bitCast(const From& from) {
+    return bit_cast<From, To>(from);
+}
+
+template<typename To, typename From>
+std::vector<To> Utility::expandVector(const std::vector<From>& input) {
+    static_assert(is_integral_v<From> && is_integral_v<To>, 
+                  "Integral types required");
+    static_assert(sizeof(To) >= sizeof(From), "To must be larger or equal");
+    
+    constexpr size_t N = sizeof(To) / sizeof(From);
+    static_assert(N >= 1, "N must be >= 1");
+    
+    if (input.size() % N != 0) {
+        throw std::invalid_argument("Input size must be multiple of " + std::to_string(N));
+    }
+    
+    std::vector<To> result;
+    result.reserve(input.size() / N);
+    
+    if constexpr (N == 1) {
+        for (const auto& val : input) {
+            result.push_back(bit_cast<From, To>(val));
+        }
+    } else {
+        for (size_t i = 0; i < input.size(); i += N) {
+            To value = 0;
+            for (size_t j = 0; j < N; ++j) {
+                const size_t shift = j * 8 * sizeof(From);
+                using UnsignedFrom = std::make_unsigned_t<From>;
+                const auto unsigned_val = static_cast<UnsignedFrom>(input[i + j]);
+                value |= (static_cast<To>(unsigned_val) << shift);
+            }
+            result.push_back(value);
+        }
+    }
+    
+    return result;
+}
+
+template<typename To, typename From>
+std::vector<To> Utility::shrinkVector(const std::vector<From>& input) {
+    static_assert(is_integral_v<From> && is_integral_v<To>, "Integral types required");
+    static_assert(sizeof(From) >= sizeof(To), "From must be larger or equal");
+    
+    constexpr size_t N = sizeof(From) / sizeof(To);
+    static_assert(N >= 1, "N must be >= 1");
+    
+    std::vector<To> result;
+    result.reserve(input.size() * N);
+    
+    if constexpr (N == 1) {
+        for (const auto& val : input) {
+            result.push_back(bit_cast<From, To>(val));
+        }
+    } else {
+        for (const auto& val : input) {
+            using UnsignedFrom = std::make_unsigned_t<From>;
+            const auto unsigned_val = static_cast<UnsignedFrom>(val);
+            constexpr auto mask = static_cast<UnsignedFrom>(std::numeric_limits<To>::max());
+            
+            for (size_t j = 0; j < N; ++j) {
+                const size_t shift = j * 8 * sizeof(To);
+                const To part = static_cast<To>((unsigned_val >> shift) & mask);
+                result.push_back(part);
+            }
+        }
+    }
+    
+    return result;
+}
+
+template<typename To, typename From>
+std::vector<To> Utility::reinterpretSign(const std::vector<From>& input) {
+    static_assert(is_integral_v<From> && is_integral_v<To>, "Integral types required");
+    static_assert(sizeof(From) == sizeof(To), "Sizes must match for sign conversion");
+    
+    std::vector<To> result;
+    result.reserve(input.size());
+    
+    for (const auto& val : input) {
+        result.push_back(bit_cast<From, To>(val));
+    }
+    
+    return result;
+}
+
+template<typename To, typename From>
+std::vector<To> Utility::convertVector(const std::vector<From>& input) {
+    static_assert(is_integral_v<From> && is_integral_v<To>, "Integral types required");
+    
+    constexpr size_t from_size = sizeof(From);
+    constexpr size_t to_size = sizeof(To);
+    
+    if constexpr (from_size == to_size) {
+        return reinterpretSign<To, From>(input);
+    } else if constexpr (from_size < to_size) {
+        return expandVector<To, From>(input);
+    } else {
+        return shrinkVector<To, From>(input);
+    }
+}
+
+std::vector<uint8_t> Utility::toUint8(const std::vector<int8_t>& input) {
+    return reinterpretSign<uint8_t, int8_t>(input);
+}
+
+std::vector<uint16_t> Utility::toUint16(const std::vector<int16_t>& input) {
+    return reinterpretSign<uint16_t, int16_t>(input);
+}
+
+std::vector<uint32_t> Utility::toUint32(const std::vector<int32_t>& input) {
+    return reinterpretSign<uint32_t, int32_t>(input);
+}
+
+std::vector<uint64_t> Utility::toUint64(const std::vector<int64_t>& input) {
+    return reinterpretSign<uint64_t, int64_t>(input);
+}
+
+std::vector<int8_t> Utility::toInt8(const std::vector<uint8_t>& input) {
+    return reinterpretSign<int8_t, uint8_t>(input);
+}
+
+std::vector<int16_t> Utility::toInt16(const std::vector<uint16_t>& input) {
+    return reinterpretSign<int16_t, uint16_t>(input);
+}
+
+std::vector<int32_t> Utility::toInt32(const std::vector<uint32_t>& input) {
+    return reinterpretSign<int32_t, uint32_t>(input);
+}
+
+std::vector<int64_t> Utility::toInt64(const std::vector<uint64_t>& input) {
+    return reinterpretSign<int64_t, uint64_t>(input);
+}
+
+#define INSTANTIATE_VECTOR_CONVERSION(To, From) \
+    template std::vector<To> Utility::convertVector<To, From>(const std::vector<From>&); \
+    template std::vector<To> Utility::expandVector<To, From>(const std::vector<From>&); \
+    template std::vector<To> Utility::shrinkVector<To, From>(const std::vector<From>&); \
+    template std::vector<To> Utility::reinterpretSign<To, From>(const std::vector<From>&);
+
+INSTANTIATE_VECTOR_CONVERSION(uint8_t,  int8_t)
+INSTANTIATE_VECTOR_CONVERSION(uint8_t,  uint8_t)
+INSTANTIATE_VECTOR_CONVERSION(uint8_t,  int16_t)
+INSTANTIATE_VECTOR_CONVERSION(uint8_t,  uint16_t)
+INSTANTIATE_VECTOR_CONVERSION(uint8_t,  int32_t)
+INSTANTIATE_VECTOR_CONVERSION(uint8_t,  uint32_t)
+INSTANTIATE_VECTOR_CONVERSION(uint8_t,  int64_t)
+INSTANTIATE_VECTOR_CONVERSION(uint8_t,  uint64_t)
+
+INSTANTIATE_VECTOR_CONVERSION(uint16_t, int8_t)
+INSTANTIATE_VECTOR_CONVERSION(uint16_t, uint8_t)
+INSTANTIATE_VECTOR_CONVERSION(uint16_t, int16_t)
+INSTANTIATE_VECTOR_CONVERSION(uint16_t, uint16_t)
+INSTANTIATE_VECTOR_CONVERSION(uint16_t, int32_t)
+INSTANTIATE_VECTOR_CONVERSION(uint16_t, uint32_t)
+INSTANTIATE_VECTOR_CONVERSION(uint16_t, int64_t)
+INSTANTIATE_VECTOR_CONVERSION(uint16_t, uint64_t)
+
+INSTANTIATE_VECTOR_CONVERSION(uint32_t, int8_t)
+INSTANTIATE_VECTOR_CONVERSION(uint32_t, uint8_t)
+INSTANTIATE_VECTOR_CONVERSION(uint32_t, int16_t)
+INSTANTIATE_VECTOR_CONVERSION(uint32_t, uint16_t)
+INSTANTIATE_VECTOR_CONVERSION(uint32_t, int32_t)
+INSTANTIATE_VECTOR_CONVERSION(uint32_t, uint32_t)
+INSTANTIATE_VECTOR_CONVERSION(uint32_t, int64_t)
+INSTANTIATE_VECTOR_CONVERSION(uint32_t, uint64_t)
+
+INSTANTIATE_VECTOR_CONVERSION(uint64_t, int8_t)
+INSTANTIATE_VECTOR_CONVERSION(uint64_t, uint8_t)
+INSTANTIATE_VECTOR_CONVERSION(uint64_t, int16_t)
+INSTANTIATE_VECTOR_CONVERSION(uint64_t, uint16_t)
+INSTANTIATE_VECTOR_CONVERSION(uint64_t, int32_t)
+INSTANTIATE_VECTOR_CONVERSION(uint64_t, uint32_t)
+INSTANTIATE_VECTOR_CONVERSION(uint64_t, int64_t)
+INSTANTIATE_VECTOR_CONVERSION(uint64_t, uint64_t)
+
+INSTANTIATE_VECTOR_CONVERSION(int8_t,   uint8_t)
+INSTANTIATE_VECTOR_CONVERSION(int8_t,   int8_t)
+INSTANTIATE_VECTOR_CONVERSION(int8_t,   uint16_t)
+INSTANTIATE_VECTOR_CONVERSION(int8_t,   int16_t)
+INSTANTIATE_VECTOR_CONVERSION(int8_t,   uint32_t)
+INSTANTIATE_VECTOR_CONVERSION(int8_t,   int32_t)
+INSTANTIATE_VECTOR_CONVERSION(int8_t,   uint64_t)
+INSTANTIATE_VECTOR_CONVERSION(int8_t,   int64_t)
+
+INSTANTIATE_VECTOR_CONVERSION(int16_t,  uint8_t)
+INSTANTIATE_VECTOR_CONVERSION(int16_t,  int8_t)
+INSTANTIATE_VECTOR_CONVERSION(int16_t,  uint16_t)
+INSTANTIATE_VECTOR_CONVERSION(int16_t,  int16_t)
+INSTANTIATE_VECTOR_CONVERSION(int16_t,  uint32_t)
+INSTANTIATE_VECTOR_CONVERSION(int16_t,  int32_t)
+INSTANTIATE_VECTOR_CONVERSION(int16_t,  uint64_t)
+INSTANTIATE_VECTOR_CONVERSION(int16_t,  int64_t)
+
+INSTANTIATE_VECTOR_CONVERSION(int32_t,  uint8_t)
+INSTANTIATE_VECTOR_CONVERSION(int32_t,  int8_t)
+INSTANTIATE_VECTOR_CONVERSION(int32_t,  uint16_t)
+INSTANTIATE_VECTOR_CONVERSION(int32_t,  int16_t)
+INSTANTIATE_VECTOR_CONVERSION(int32_t,  uint32_t)
+INSTANTIATE_VECTOR_CONVERSION(int32_t,  int32_t)
+INSTANTIATE_VECTOR_CONVERSION(int32_t,  uint64_t)
+INSTANTIATE_VECTOR_CONVERSION(int32_t,  int64_t)
+
+INSTANTIATE_VECTOR_CONVERSION(int64_t,  uint8_t)
+INSTANTIATE_VECTOR_CONVERSION(int64_t,  int8_t)
+INSTANTIATE_VECTOR_CONVERSION(int64_t,  uint16_t)
+INSTANTIATE_VECTOR_CONVERSION(int64_t,  int16_t)
+INSTANTIATE_VECTOR_CONVERSION(int64_t,  uint32_t)
+INSTANTIATE_VECTOR_CONVERSION(int64_t,  int32_t)
+INSTANTIATE_VECTOR_CONVERSION(int64_t,  uint64_t)
+INSTANTIATE_VECTOR_CONVERSION(int64_t,  int64_t)
+
+#undef INSTANTIATE_VECTOR_CONVERSION

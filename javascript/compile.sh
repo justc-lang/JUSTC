@@ -169,7 +169,7 @@ fi
 SOURCE_FILES="core/entry/jsapi.cpp core/lexer.cpp core/parser.cpp core/parser/json.cpp core/serializer/json.cpp core/keywords.cpp \
 core/fetch.cpp core/serializer/xml.cpp core/serializer/yaml.cpp core/utility.cpp core/import.cpp core/built-in/http/http.cpp \
 core/built-in/math/math.cpp core/built-in/binary/binary.cpp core/built-in/string/string.cpp core/unicode.cpp core/builtins.cpp core/serializer/justo.cpp \
-core/parser/justo.cpp core/cpptypes.cpp core/justb.cpp core/compiler/justb.cpp core/loader/justb.cpp"
+core/parser/justo.cpp core/cpptypes.cpp core/justb.cpp core/compiler/justb.cpp core/loader/justb.cpp core/built-in/compression/compression.cpp"
 
 LUAU_FILES="luau/Ast/src/Ast.cpp luau/Ast/src/Confusables.cpp luau/Ast/src/Lexer.cpp luau/Ast/src/Location.cpp luau/Ast/src/Parser.cpp \
 luau/Common/src/StringUtils.cpp luau/Ast/src/TimeTrace.cpp luau/Compiler/src/Builtins.cpp luau/Compiler/src/BuiltinFolding.cpp \
@@ -401,7 +401,8 @@ core/serializer/xml.hpp core/serializer/yaml.hpp core/utility.h core/import.hpp 
 core/built-in/http/http.hpp core/utility.emscripten.h core/built-in/math/math.hpp core/built-in/binary/binary.hpp core/built-in/s.hpp core/lexer.emscripten.h \
 core/entry/lib.cpp core/entry/lib.hpp LICENSE README.md core/built-in/string/string.hpp core/unicode.hpp core/unicode.emscripten.h core/builtins.h core/global.h \
 core/justo.hpp core/entry/types.hpp core/entry/impl.hpp core/serializer/justo.hpp core/parser/justo.hpp core/cpptypes.h core/justb.hpp core/compiler/justb.hpp \
-core/loader/justb.hpp javascript/core.js javascript/core.d.ts core/just.config.js core/cli.js core/lang/luau.cpp core/built-in/window/window.cpp core/built-in/window/window.hpp"
+core/loader/justb.hpp javascript/core.js javascript/core.d.ts core/just.config.js core/cli.js core/lang/luau.cpp core/built-in/window/window.cpp core/built-in/window/window.hpp \
+core/built-in/compression/compression.hpp"
 
 OUTPUT_URL="https://just.js.org/justc/$SAFE_DIR"
 

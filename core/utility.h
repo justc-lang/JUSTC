@@ -37,6 +37,9 @@ SOFTWARE.
 #include <cmath>
 #include <sstream>
 #include <iomanip>
+#include <vector>
+#include <cstring>
+#include <type_traits>
 
 class Utility {
 private:
@@ -251,6 +254,30 @@ public:
     static std::string hashString(const Value::Property& val);
 
     static std::pair<bool, std::string> env(const std::string& name);
+
+    template<typename To, typename From>
+    static std::vector<To> convertVector(const std::vector<From>& input);
+
+    template<typename To, typename From>
+    static std::vector<To> expandVector(const std::vector<From>& input);
+
+    template<typename To, typename From>
+    static std::vector<To> shrinkVector(const std::vector<From>& input);
+
+    template<typename To, typename From>
+    static std::vector<To> reinterpretSign(const std::vector<From>& input);
+
+    static std::vector<uint8_t>  toUint8(const std::vector<int8_t>& input);
+    static std::vector<uint16_t> toUint16(const std::vector<int16_t>& input);
+    static std::vector<uint32_t> toUint32(const std::vector<int32_t>& input);
+    static std::vector<uint64_t> toUint64(const std::vector<int64_t>& input);
+    static std::vector<int8_t>   toInt8(const std::vector<uint8_t>& input);
+    static std::vector<int16_t>  toInt16(const std::vector<uint16_t>& input);
+    static std::vector<int32_t>  toInt32(const std::vector<uint32_t>& input);
+    static std::vector<int64_t>  toInt64(const std::vector<uint64_t>& input);
+
+    template<typename To, typename From>
+    static To bitCast(const From& from);
 };
 class UnicodeUtility {
 public:

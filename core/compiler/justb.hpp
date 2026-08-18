@@ -54,11 +54,6 @@ public:
     static void setMinCompressionRatio(double ratio) { minCompressionRatio = std::max(0.0, std::min(1.0, ratio)); }
     static double getMinCompressionRatio() { return minCompressionRatio; }
 
-private:
-    static int compressionLevel;
-    static bool autoSelect;
-    static double minCompressionRatio;
-
     static std::vector<uint8_t> compressNone(const std::vector<uint8_t>& data);
     static std::vector<uint8_t> compressZlib(const std::vector<uint8_t>& data, int level);
     static std::vector<uint8_t> compressGzip(const std::vector<uint8_t>& data, int level);
@@ -68,6 +63,11 @@ private:
     static std::vector<uint8_t> compressLz4(const std::vector<uint8_t>& data);
     static std::vector<uint8_t> compressSnappy(const std::vector<uint8_t>& data);
     static std::vector<uint8_t> compressDeflate(const std::vector<uint8_t>& data, int level);
+
+private:
+    static int compressionLevel;
+    static bool autoSelect;
+    static double minCompressionRatio;
 
     static CompressionResult tryCompression(const std::vector<uint8_t>& data, CompressionAlgorithm algorithm, int level = -1);
     static CompressionResult selectBestCompression(const std::vector<uint8_t>& data);

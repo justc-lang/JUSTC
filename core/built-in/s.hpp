@@ -28,6 +28,7 @@ SOFTWARE.
 #include "http/http.hpp"
 #include "math/math.hpp"
 #include "string/string.hpp"
+#include "compression/compression.hpp"
 
 #ifndef __EMSCRIPTEN__
     #include "window/window.hpp"
