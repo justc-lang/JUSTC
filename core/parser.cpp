@@ -827,223 +827,308 @@ Parser::Parser(
     // built-in spaces / type methods
 
     typeMethods[DataType::JUSTC_OBJECT] = {
-        {"ToString", "String"},
-        {"ToNumber", "Number"},
-        {"ToInt", "ParseInt"},
-        {"ToLink", "Link"},
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
     };
     typeMethods[DataType::NUMBER] = {
-        {"ToString", "String"},
-        {"ToNumber", "Number"},
-        {"ToInt", "ParseInt"},
-        {"ToLink", "Link"},
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
     };
     typeMethods[DataType::STRING] = {
-        {"ToString", "String"},
-        {"ToNumber", "Number"},
-        {"ToInt", "ParseInt"},
-        {"ToLink", "Link"},
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
 
-        {"Reverse", "String::Reverse"},
-        {"GraphemeReverse", "String::GraphemeReverse"},
-        {"CodePointReverse", "String::CodePointReverse"},
-        {"ByteReverse", "String::ByteReverse"},
-        {"Trim", "String::Trim"},
-        {"Repeat", "String::Repeat"},
-        {"Slice", "String::Slice"},
-        {"GraphemeSlice", "String::GraphemeSlice"},
-        {"CodePointSlice", "String::CodePointSlice"},
-        {"ByteSlice", "String::ByteSlice"},
-        {"Lower", "String::Lower"},
-        {"Upper", "String::Upper"},
-        {"NormalizeNFC", "String::NormalizeNFC"},
-        {"NormalizeNFD", "String::NormalizeNFD"},
-        {"NormalizeNFKC", "String::NormalizeNFKC"},
-        {"NormalizeNFKD", "String::NormalizeNFKD"},
-        {"Length", "String::Length"},
-        {"GraphemeLength", "String::GraphemeLength"},
-        {"CodePointLength", "String::CodePointLength"},
-        {"ByteLength", "String::ByteLength"},
-        {"Size", "String::Size"},
-        {"EqualsIgnoreCase", "String::EqualsIgnoreCase"},
-        {"IsWhitespace", "String::IsWhitespace"},
-        {"StartsWith", "String::StartsWith"},
-        {"EndsWith", "String::EndsWith"},
-        {"Split", "String::Split"}
+        {"reverse", "String::reverse"},
+        {"graphemeReverse", "String::graphemeReverse"},
+        {"codePointReverse", "String::codePointReverse"},
+        {"byteReverse", "String::byteReverse"},
+        {"trim", "String::trim"},
+        {"repeat", "String::repeat"},
+        {"slice", "String::slice"},
+        {"graphemeSlice", "String::graphemeSlice"},
+        {"codePointSlice", "String::codePointSlice"},
+        {"byteSlice", "String::byteSlice"},
+        {"lower", "String::lower"},
+        {"upper", "String::upper"},
+        {"normalizeNFC", "String::normalizeNFC"},
+        {"normalizeNFD", "String::normalizeNFD"},
+        {"normalizeNFKC", "String::normalizeNFKC"},
+        {"normalizeNFKD", "String::normalizeNFKD"},
+        {"length", "String::length"},
+        {"graphemeLength", "String::graphemeLength"},
+        {"codePointLength", "String::codePointLength"},
+        {"byteLength", "String::byteLength"},
+        {"size", "String::size"},
+        {"equalsIgnoreCase", "String::equalsIgnoreCase"},
+        {"isWhitespace", "String::isWhitespace"},
+        {"startsWith", "String::startsWith"},
+        {"endsWith", "String::endsWith"},
+        {"split", "String::split"}
     };
     typeMethods[DataType::LINK] = {
-        {"ToString", "String"},
-        {"ToNumber", "Number"},
-        {"ToInt", "ParseInt"},
-        {"ToLink", "Link"},
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
     };
     typeMethods[DataType::BOOLEAN] = {
-        {"ToString", "String"},
-        {"ToNumber", "Number"},
-        {"ToInt", "ParseInt"},
-        {"ToLink", "Link"},
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
     };
     typeMethods[DataType::JSON_OBJECT] = {
-        {"ToString", "String"},
-        {"ToNumber", "Number"},
-        {"ToInt", "ParseInt"},
-        {"ToLink", "Link"},
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
     };
     typeMethods[DataType::JSON_ARRAY] = {
-        {"ToString", "String"},
-        {"ToNumber", "Number"},
-        {"ToInt", "ParseInt"},
-        {"ToLink", "Link"},
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
 
-        {"Join", "Array::Join"},
-        {"Includes", "Array::Includes"},
-        {"IndexOf", "Array::IndexOf"},
-        {"LastIndexOf", "Array::LastIndexOf"},
-        {"Reverse", "Array::Reverse"},
-        {"ForEach", "Array::ForEach"},
-        {"Push", "Array::Push"},
-        {"Unshift", "Array::Unshift"}
+        {"join", "Array::join"},
+        {"includes", "Array::includes"},
+        {"indexOf", "Array::indexOf"},
+        {"lastIndexOf", "Array::lastIndexOf"},
+        {"reverse", "Array::reverse"},
+        {"forEach", "Array::forEach"},
+        {"push", "Array::push"},
+        {"unshift", "Array::unshift"}
     };
     typeMethods[DataType::NULL_TYPE] = {
-        {"ToString", "String"},
-        {"ToNumber", "Number"},
-        {"ToInt", "ParseInt"},
-        {"ToLink", "Link"},
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
     };
     typeMethods[DataType::FUNCTION] = {
-        {"ToString", "String"},
-        {"ToNumber", "Number"},
-        {"ToInt", "ParseInt"},
-        {"ToLink", "Link"},
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
     };
     typeMethods[DataType::NOT_A_NUMBER] = {
-        {"ToString", "String"},
-        {"ToNumber", "Number"},
-        {"ToInt", "ParseInt"},
-        {"ToLink", "Link"},
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
     };
     typeMethods[DataType::INFINITE] = {
-        {"ToString", "String"},
-        {"ToNumber", "Number"},
-        {"ToInt", "ParseInt"},
-        {"ToLink", "Link"},
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
     };
     typeMethods[DataType::STRUCT] = {
-        {"ToString", "String"},
-        {"ToNumber", "Number"},
-        {"ToInt", "ParseInt"},
-        {"ToLink", "Link"},
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
     };
     typeMethods[DataType::JSX_ELEMENT] = {
-        {"ToString", "String"},
-        {"ToNumber", "Number"},
-        {"ToInt", "ParseInt"},
-        {"ToLink", "Link"},
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
 
-        {"Render", "Element::Render"}
+        {"render", "Element::render"}
     };
     typeMethods[DataType::MAP] = {
-        {"ToString", "String"},
-        {"ToNumber", "Number"},
-        {"ToInt", "ParseInt"},
-        {"ToLink", "Link"},
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
     };
     typeMethods[DataType::SET] = {
-        {"ToString", "String"},
-        {"ToNumber", "Number"},
-        {"ToInt", "ParseInt"},
-        {"ToLink", "Link"},
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
+    };
+    
+    typeMethods[DataType::INT8_ARRAY] = {
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
+    };
+    typeMethods[DataType::INT16_ARRAY] = {
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
+    };
+    typeMethods[DataType::INT32_ARRAY] = {
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
+    };
+    typeMethods[DataType::INT64_ARRAY] = {
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
+    };
+    typeMethods[DataType::UINT8_ARRAY] = {
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
+    };
+    typeMethods[DataType::UINT16_ARRAY] = {
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
+    };
+    typeMethods[DataType::UINT32_ARRAY] = {
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
+    };
+    typeMethods[DataType::UINT64_ARRAY] = {
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
+    };
+    typeMethods[DataType::CUINT8_ARRAY] = {
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
+    };
+    typeMethods[DataType::CUINT16_ARRAY] = {
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
+    };
+    typeMethods[DataType::CUINT32_ARRAY] = {
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
+    };
+    typeMethods[DataType::CUINT64_ARRAY] = {
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
+    };
+    typeMethods[DataType::FLOAT32_ARRAY] = {
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
+    };
+    typeMethods[DataType::FLOAT64_ARRAY] = {
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
     };
 
     // built-in variables
 
     std::unordered_map<std::string, Value> justcProperties;
-    justcProperties["Version"] = Value::createString(JUSTC_VERSION);
-    justcProperties["Parse"] = builtinObjectFunction("JUSTC.Parse");
-    justcProperties["Execute"] = builtinObjectFunction("JUSTC.Execute");
-    justcProperties["Stringify"] = builtinObjectFunction("JUSTC.Stringify");
-    justcProperties["Parser"] = builtinObjectFunction("JUSTC.Parser");
-    justcProperties["Lexer"] = builtinObjectFunction("JUSTC.Lexer");
+    justcProperties["version"] = Value::createString(JUSTC_VERSION);
+    justcProperties["parse"] = builtinObjectFunction("JUSTC.parse");
+    justcProperties["execute"] = builtinObjectFunction("JUSTC.execute");
+    justcProperties["stringify"] = builtinObjectFunction("JUSTC.stringify");
+    justcProperties["parser"] = builtinObjectFunction("JUSTC.parser");
+    justcProperties["lexer"] = builtinObjectFunction("JUSTC.lexer");
     builtinObject("JUSTC", justcProperties);
 
     std::unordered_map<std::string, Value> jsonProperties;
-    jsonProperties["Parse"] = builtinObjectFunction("JSON.Parse");
-    jsonProperties["Stringify"] = builtinObjectFunction("JSON.Stringify");
+    jsonProperties["parse"] = builtinObjectFunction("JSON.parse");
+    jsonProperties["stringify"] = builtinObjectFunction("JSON.stringify");
     builtinObject("JSON", jsonProperties);
 
     std::unordered_map<std::string, Value> jsProperties;
-    jsProperties["Execute"] = builtinObjectFunction("JavaScript.Execute");
-    jsProperties["Available"] = booleanToValue(
+    jsProperties["execute"] = builtinObjectFunction("JavaScript.execute");
+    jsProperties["available"] = booleanToValue(
         #ifdef _MSC_VER
             false
         #else
             doExecute
         #endif
     );
-    jsProperties["IsAllowed"] = builtinObjectFunction("JavaScript.IsAllowed");
-    jsProperties["CanAllow"] = booleanToValue(canAllowJS);
+    jsProperties["isAllowed"] = builtinObjectFunction("JavaScript.isAllowed");
+    jsProperties["canAllow"] = booleanToValue(canAllowJS);
     builtinObject("JavaScript", jsProperties);
 
     std::unordered_map<std::string, Value> luauProperties;
-    luauProperties["Execute"] = builtinObjectFunction("Luau.Execute");
-    luauProperties["Compile"] = builtinObjectFunction("Luau.Compile");
-    luauProperties["Available"] = booleanToValue(
+    luauProperties["execute"] = builtinObjectFunction("Luau.execute");
+    luauProperties["compile"] = builtinObjectFunction("Luau.compile");
+    luauProperties["available"] = booleanToValue(
         #ifdef JUSTC_NOLUAU
             false
         #else
             doExecute
         #endif
     );
-    luauProperties["IsAllowed"] = builtinObjectFunction("Luau.IsAllowed");
-    luauProperties["CanAllow"] = booleanToValue(canAllowLuau);
+    luauProperties["isAllowed"] = builtinObjectFunction("Luau.isAllowed");
+    luauProperties["canAllow"] = booleanToValue(canAllowLuau);
     builtinObject("Luau", luauProperties);
 
     std::unordered_map<std::string, Value> justoProperties;
-    justoProperties["Version"] = Value::createString(JUSTC_VERSION);
-    justoProperties["Parse"] = builtinObjectFunction("JUSTO.Parse");
-    justoProperties["Stringify"] = builtinObjectFunction("JUSTO.Stringify");
+    justoProperties["version"] = Value::createString(JUSTC_VERSION);
+    justoProperties["parse"] = builtinObjectFunction("JUSTO.parse");
+    justoProperties["stringify"] = builtinObjectFunction("JUSTO.stringify");
     builtinObject("JUSTO", justoProperties);
 
     std::unordered_map<std::string, Value> mathProperties;
-    mathProperties["Abs"]       = builtinObjectFunction("Math.Abs");
-    mathProperties["Acos"]      = builtinObjectFunction("Math.Acos");
-    mathProperties["Asin"]      = builtinObjectFunction("Math.Asin");
-    mathProperties["Atan"]      = builtinObjectFunction("Math.Atan");
-    mathProperties["Atan2"]     = builtinObjectFunction("Math.Atan2");
-    mathProperties["Ceil"]      = builtinObjectFunction("Math.Ceil");
-    mathProperties["Cos"]       = builtinObjectFunction("Math.Cos");
-    mathProperties["Clamp"]     = builtinObjectFunction("Math.Clamp");
-    mathProperties["Cube"]      = builtinObjectFunction("Math.Cube");
-    mathProperties["Double"]    = builtinObjectFunction("Math.Double");
-    mathProperties["E"]         = numberToValue(Math::E);
-    mathProperties["Exp"]       = builtinObjectFunction("Math.Exp");
-    mathProperties["Factorial"] = builtinObjectFunction("Math.Factorial");
-    mathProperties["Floor"]     = builtinObjectFunction("Math.Floor");
-    mathProperties["Hypot"]     = builtinObjectFunction("Math.Hypot");
-    mathProperties["IsPrime"]   = builtinObjectFunction("Math.IsPrime");
-    mathProperties["Lerp"]      = builtinObjectFunction("Math.Lerp");
-    mathProperties["LN2"]       = numberToValue(Math::LN2);
-    mathProperties["LN10"]      = numberToValue(Math::LN10);
-    mathProperties["Log"]       = builtinObjectFunction("Math.Log");
-    mathProperties["Log10"]     = builtinObjectFunction("Math.Log10");
-    mathProperties["LOG2E"]     = numberToValue(Math::LOG2E);
-    mathProperties["LOG10E"]    = numberToValue(Math::LOG10E);
-    mathProperties["Max"]       = builtinObjectFunction("Math.Max");
-    mathProperties["Min"]       = builtinObjectFunction("Math.Min");
-    mathProperties["PI"]        = numberToValue(Math::PI);
-    mathProperties["Pow"]       = builtinObjectFunction("Math.Pow");
-    mathProperties["Random"]    = builtinObjectFunction("Math.Random");
-    mathProperties["Round"]     = builtinObjectFunction("Math.Round");
-    mathProperties["Sign"]      = builtinObjectFunction("Math.Sign");
-    mathProperties["Sin"]       = builtinObjectFunction("Math.Sin");
-    mathProperties["Sqrt"]      = builtinObjectFunction("Math.Sqrt");
-    mathProperties["SQRT1_2"]   = numberToValue(Math::SQRT1_2);
-    mathProperties["SQRT2"]     = numberToValue(Math::SQRT2);
-    mathProperties["Square"]    = builtinObjectFunction("Math.Square");
-    mathProperties["Tan"]       = builtinObjectFunction("Math.Tan");
-    mathProperties["ToDegrees"] = builtinObjectFunction("Math.ToDegrees");
-    mathProperties["ToRadians"] = builtinObjectFunction("Math.ToRadians");
-    builtinObject("Math", mathProperties);
+    mathProperties["abs"]       = builtinObjectFunction("math.abs");
+    mathProperties["acos"]      = builtinObjectFunction("math.acos");
+    mathProperties["asin"]      = builtinObjectFunction("math.asin");
+    mathProperties["atan"]      = builtinObjectFunction("math.atan");
+    mathProperties["atan2"]     = builtinObjectFunction("math.atan2");
+    mathProperties["ceil"]      = builtinObjectFunction("math.ceil");
+    mathProperties["cos"]       = builtinObjectFunction("math.cos");
+    mathProperties["clamp"]     = builtinObjectFunction("math.clamp");
+    mathProperties["cube"]      = builtinObjectFunction("math.cube");
+    mathProperties["double"]    = builtinObjectFunction("math.double");
+    mathProperties["e"]         = numberToValue(Math::E);
+    mathProperties["exp"]       = builtinObjectFunction("math.exp");
+    mathProperties["factorial"] = builtinObjectFunction("math.factorial");
+    mathProperties["floor"]     = builtinObjectFunction("math.floor");
+    mathProperties["hypot"]     = builtinObjectFunction("math.hypot");
+    mathProperties["isPrime"]   = builtinObjectFunction("math.isPrime");
+    mathProperties["lerp"]      = builtinObjectFunction("math.lerp");
+    mathProperties["ln2"]       = numberToValue(Math::LN2);
+    mathProperties["ln10"]      = numberToValue(Math::LN10);
+    mathProperties["log"]       = builtinObjectFunction("math.log");
+    mathProperties["log10"]     = builtinObjectFunction("math.log10");
+    mathProperties["log2e"]     = numberToValue(Math::LOG2E);
+    mathProperties["log10e"]    = numberToValue(Math::LOG10E);
+    mathProperties["max"]       = builtinObjectFunction("math.max");
+    mathProperties["min"]       = builtinObjectFunction("math.min");
+    mathProperties["pi"]        = numberToValue(Math::PI);
+    mathProperties["pow"]       = builtinObjectFunction("math.pow");
+    mathProperties["random"]    = builtinObjectFunction("math.random");
+    mathProperties["round"]     = builtinObjectFunction("math.round");
+    mathProperties["sign"]      = builtinObjectFunction("math.sign");
+    mathProperties["sin"]       = builtinObjectFunction("math.sin");
+    mathProperties["sqrt"]      = builtinObjectFunction("math.sqrt");
+    mathProperties["sqrt1_2"]   = numberToValue(Math::SQRT1_2);
+    mathProperties["sqrt2"]     = numberToValue(Math::SQRT2);
+    mathProperties["square"]    = builtinObjectFunction("math.square");
+    mathProperties["tan"]       = builtinObjectFunction("math.tan");
+    mathProperties["toDegrees"] = builtinObjectFunction("math.toDegrees");
+    mathProperties["toRadians"] = builtinObjectFunction("math.toRadians");
+    builtinObject("math", mathProperties);
 
     std::unordered_map<std::string, Value> httpProperties;
     httpProperties["GET"]     = builtinObjectFunction("HTTP.GET");
@@ -1056,8 +1141,8 @@ Parser::Parser(
     builtinObject("HTTP", httpProperties);
 
     std::unordered_map<std::string, Value> scriptProperties;
-    scriptProperties["Name"] = stringToValue(scriptName);
-    scriptProperties["Type"] = stringToValue(scriptType);
+    scriptProperties["name"] = stringToValue(scriptName);
+    scriptProperties["type"] = stringToValue(scriptType);
     std::string runner =
         #ifdef __EMSCRIPTEN__
             "WebAssembly"
@@ -1094,11 +1179,11 @@ Parser::Parser(
         #elif defined(__arm__) || defined(_M_ARM)
             runner += " ARM";
         #endif
-    scriptProperties["Runner"] = stringToValue(runner);
+    scriptProperties["runner"] = stringToValue(runner);
     scriptProperties["int128"] = booleanToValue(JUSTC_INT128_SUPPORT);
     scriptProperties["uint128"] = booleanToValue(JUSTC_UINT128_SUPPORT);
     scriptProperties["float128"] = booleanToValue(JUSTC_FLOAT128_SUPPORT);
-    builtinObject("Script", scriptProperties);
+    builtinObject("script", scriptProperties);
 
     Value chartypeValue;
     chartypeValue.type = DataType::STRING;
@@ -1113,9 +1198,9 @@ Parser::Parser(
             chartypeValue.string_value = "byte";
             break;
     }
-    chartypeValue.name = "CharType";
-    variables["CharType"] = chartypeValue;
-    constVars["CharType"] = false;
+    chartypeValue.name = "charType";
+    variables["charType"] = chartypeValue;
+    constVars["charType"] = false;
 
     builtinClasses();
 }
@@ -2699,7 +2784,7 @@ Value Parser::evaluateLengthOperator(const Value& value) {
                     length = Unicode::ByteLength(value.string_value);
                     break;
                 default:
-                    throw std::runtime_error("Invalid CharType.");
+                    throw std::runtime_error("Invalid charType.");
             }
             result.number_value = static_cast<double>(length);
             result.name = std::to_string(length);
@@ -3190,34 +3275,34 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
         long timestamp = getCurrentTime();
         return numberToValue(timestamp);
     }
-    else if (funcName == "Math.PI") {
+    else if (funcName == "math.pi") {
         return numberToValue(Math::PI);
     }
-    else if (funcName == "Backslash") {
+    else if (funcName == "backslash") {
         return stringToValue("\\");
     }
-    else if (funcName == "Version" || funcName == "JUSTC.Version" || funcName == "JUSTO.Version") {
+    else if (funcName == "version" || funcName == "JUSTC.version" || funcName == "JUSTO.version") {
         return stringToValue(JUSTC_VERSION);
     }
-    else if (funcName == "Math.E") {
+    else if (funcName == "math.e") {
         return numberToValue(Math::E);
     }
-    else if (funcName == "Math.LN2") {
+    else if (funcName == "math.ln2") {
         return numberToValue(Math::LN2);
     }
-    else if (funcName == "Math.LN10") {
+    else if (funcName == "math.ln10") {
         return numberToValue(Math::LN10);
     }
-    else if (funcName == "Math.SQRT2") {
+    else if (funcName == "math.sqrt2") {
         return numberToValue(Math::SQRT2);
     }
-    else if (funcName == "Math.SQRT1_2") {
+    else if (funcName == "math.sqrt1_2") {
         return numberToValue(Math::SQRT1_2);
     }
-    else if (funcName == "Math.LOG2E") {
+    else if (funcName == "math.log2e") {
         return numberToValue(Math::LOG2E);
     }
-    else if (funcName == "Math.LOG10E") {
+    else if (funcName == "math.log10e") {
         return numberToValue(Math::LOG10E);
     }
 
@@ -3296,140 +3381,140 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
     if (funcName == "size") return functionSTAT(args);
     if (funcName == "config") return functionCONFIG(args);
 
-    if (funcName == "JavaScript.IsAllowed") {
+    if (funcName == "JavaScript.isAllowed") {
         return booleanToValue(allowJavaScript);
     }
-    if (funcName == "Luau.IsAllowed") {
+    if (funcName == "Luau.isAllowed") {
         return booleanToValue(allowLuau);
     }
 
     // math and binary
     if (args.empty() && funcName != "Math.Random" && funcName != "Window") {
-        if (funcName == "JUSTC.Parse" || funcName == "JUSTC.Execute") {
+        if (funcName == "JUSTC.parse" || funcName == "JUSTC.execute") {
             return emptyJUSTC();
         }
-        if (funcName == "JUSTO.Stringify") {
+        if (funcName == "JUSTO.stringify") {
             return stringToValue("");
         }
-        if (funcName == "JUSTC.Stringify") {
+        if (funcName == "JUSTC.stringify") {
             return stringToValue("return.");
         }
         throw std::runtime_error("Expected at least one argument, got 0 at " + Utility::position(startPos, input) + ".");
     }
     double inpnum = args[0].number_value;
     try {
-        if (funcName == "Binary::ToText") {
+        if (funcName == "Binary::toText") {
             return Binary::ToText(args);
         }
-        if (funcName == "Binary::FromText") {
+        if (funcName == "Binary::dromText") {
             return Binary::FromText(args);
         }
-        if (funcName == "Binary::ToDataURL") {
+        if (funcName == "Binary::toDataURL") {
             return Binary::ToDataURL(args);
         }
-        if (funcName == "Binary::FromDataURL") {
+        if (funcName == "Binary::fromDataURL") {
             return Binary::FromDataURL(args);
         }
-        if (funcName == "Binary::Data") {
+        if (funcName == "Binary::data") {
             return Binary::Data(args);
         }
-        if (funcName == "Math.Abs") {
+        if (funcName == "math.abs") {
             return Value::createNumber(Math::Abs(inpnum));
         }
-        if (funcName == "Math.Acos") {
+        if (funcName == "math.acos") {
             return Value::createNumber(Math::Acos(inpnum));
         }
-        if (funcName == "Math.Asin") {
+        if (funcName == "math.asin") {
             return Value::createNumber(Math::Asin(inpnum));
         }
-        if (funcName == "Math.Atan") {
+        if (funcName == "math.atan") {
             return Value::createNumber(Math::Atan(inpnum));
         }
-        if (funcName == "Math.Atan2") {
+        if (funcName == "math.atan2") {
             return Value::createNumber(Math::Atan2(inpnum, args[1].number_value));
         }
-        if (funcName == "Math.Ceil") {
+        if (funcName == "math.ceil") {
             return Value::createNumber(Math::Ceil(inpnum));
         }
-        if (funcName == "Math.Cos") {
+        if (funcName == "math.cos") {
             return Value::createNumber(Math::Cos(inpnum));
         }
-        if (funcName == "Math.Clamp") {
+        if (funcName == "math.clamp") {
             return Value::createNumber(Math::Clamp(inpnum, args[1].number_value, args[2].number_value));
         }
-        if (funcName == "Math.Cube") {
+        if (funcName == "math.cube") {
             return Value::createNumber(inpnum * inpnum * inpnum);
         }
-        if (funcName == "Math.Double") {
+        if (funcName == "math.double") {
             return Value::createNumber(inpnum * 2);
         }
-        if (funcName == "Math.Exp") {
+        if (funcName == "math.exp") {
             return Value::createNumber(Math::Exp(inpnum));
         }
-        if (funcName == "Math.Factorial") {
+        if (funcName == "math.factorial") {
             int intValue = static_cast<int>(std::round(inpnum));
             long long res = Math::Factorial(intValue);
             double outVal = static_cast<double>(res);
             return Value::createNumber(outVal);
         }
-        if (funcName == "Math.Floor") {
+        if (funcName == "math.floor") {
             return Value::createNumber(Math::Floor(inpnum));
         }
-        if (funcName == "Math.Hypot") {
+        if (funcName == "math.hypot") {
             return Value::createNumber(Math::Hypot(inpnum, args[1].number_value));
         }
-        if (funcName == "Math.IsPrime") {
+        if (funcName == "math.isPrime") {
             int intValue = static_cast<int>(std::round(inpnum));
             return Value::createBoolean(Math::IsPrime(intValue));
         }
-        if (funcName == "Math.Lerp") {
+        if (funcName == "math.lerp") {
             return Value::createNumber(Math::Lerp(inpnum, args[1].number_value, args[2].number_value));
         }
-        if (funcName == "Math.Log") {
+        if (funcName == "math.log") {
             return Value::createNumber(Math::Log(inpnum));
         }
-        if (funcName == "Math.Log10") {
+        if (funcName == "math.log10") {
             return Value::createNumber(Math::Log10(inpnum));
         }
-        if (funcName == "Math.Max") {
+        if (funcName == "math.max") {
             return Value::createNumber(Math::Max(values2numbers(args)));
         }
-        if (funcName == "Math.Min") {
+        if (funcName == "math.min") {
             return Value::createNumber(Math::Min(values2numbers(args)));
         }
-        if (funcName == "Math.Pow") {
+        if (funcName == "math.pow") {
             return Value::createNumber(Math::Pow(inpnum, args[1].number_value));
         }
-        if (funcName == "Math.Random") {
+        if (funcName == "math.random") {
             if (args.empty()) return Value::createNumber(Math::Random());
             if (args.size() == 1) return Value::createNumber(Math::Random(0, inpnum));
             return Value::createNumber(Math::Random(inpnum, args[1].number_value));
         }
-        if (funcName == "Math.Round") {
+        if (funcName == "math.round") {
             return Value::createNumber(Math::Round(inpnum));
         }
-        if (funcName == "Math.Sign") {
+        if (funcName == "math.sign") {
             return Value::createNumber(Math::Sign(inpnum));
         }
-        if (funcName == "Math.Sin") {
+        if (funcName == "math.sin") {
             return Value::createNumber(Math::Sin(inpnum));
         }
-        if (funcName == "Math.Sqrt") {
+        if (funcName == "math.sqrt") {
             return Value::createNumber(Math::Sqrt(inpnum));
         }
-        if (funcName == "Math.Square") {
+        if (funcName == "math.square") {
             return Value::createNumber(inpnum * inpnum);
         }
-        if (funcName == "Math.Tan") {
+        if (funcName == "math.tan") {
             return Value::createNumber(Math::Tan(inpnum));
         }
-        if (funcName == "Math.ToDegrees") {
+        if (funcName == "math.toDegrees") {
             return Value::createNumber(Math::ToDegrees(inpnum));
         }
-        if (funcName == "Math.ToRadians") {
+        if (funcName == "math.toRadians") {
             return Value::createNumber(Math::ToRadians(inpnum));
         }
-        if (funcName == "ParseNum" || funcName == "ParseInt") {
+        if (funcName == "parseNum" || funcName == "parseInt") {
             std::string str = args[0].toString();
             int radix = 10;
 
@@ -3441,27 +3526,27 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             }
 
             if (radix == 10) return numberToValue(
-                funcName == "ParseNum" ? args[0].toNumber() : static_cast<double>(static_cast<int>(args[0].toNumber()))
+                funcName == "parseNum" ? args[0].toNumber() : static_cast<double>(static_cast<int>(args[0].toNumber()))
             );
 
             try {
                 double result = Math::ParseNum(str, radix);
                 return Value::createNumber(
-                    funcName == "ParseNum" ? result : static_cast<double>(static_cast<int>(result))
+                    funcName == "parseNum" ? result : static_cast<double>(static_cast<int>(result))
                 );
             } catch (const std::exception& e) {
                 throw std::runtime_error(funcName + ": " + std::string(e.what()));
             }
         }
-        if (funcName == "String::GraphemeReverse" || (
-            chartype == CharType::GRAPHEME && funcName == "String::Reverse"
+        if (funcName == "String::graphemeReverse" || (
+            chartype == CharType::GRAPHEME && funcName == "String::reverse"
         )) {
             return stringToValue(Unicode::GraphemeReverse(args[0].toString()));
         }
-        if (funcName == "String::Trim") {
+        if (funcName == "String::trim") {
             return stringToValue(String::Trim(args[0].toString()));
         }
-        if (funcName == "String::Repeat") {
+        if (funcName == "String::repeat") {
             size_t count = 1;
             if (args.size() > 1) {
                 count = static_cast<size_t>(args[1].toNumber());
@@ -3469,8 +3554,8 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
 
             return stringToValue(String::Repeat(args[0].toString(), count));
         }
-        if (funcName == "String::GraphemeSlice" || (
-            chartype == CharType::GRAPHEME && funcName == "String::Slice"
+        if (funcName == "String::graphemeSlice" || (
+            chartype == CharType::GRAPHEME && funcName == "String::slice"
         )) {
             std::string str = args[0].toString();
             int64_t start = 0;
@@ -3485,28 +3570,28 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
 
             return stringToValue(Unicode::GraphemeSlice(str, start, end));
         }
-        if (funcName == "String::StartsWith") {
+        if (funcName == "String::startsWith") {
             if (args.size() < 2) {
                 return booleanToValue(false);
             }
             return booleanToValue(String::StartsWith(args[0].toString(), args[1].toString()));
         }
-        if (funcName == "String::EndsWith") {
+        if (funcName == "String::endsWith") {
             if (args.size() < 2) {
                 return booleanToValue(false);
             }
             return booleanToValue(String::EndsWith(args[0].toString(), args[1].toString()));
         }
-        if (funcName == "String::Split") {
+        if (funcName == "String::split") {
             if (args.size() < 2) {
                 std::vector<std::string> result( {args[0].toString()} );
                 return stringArray(result);
             }
             if (args[1].toString() == "") {
-                size_t len = static_cast<size_t>(executeFunction("String::Length", {args[0]}, startPos).toNumber());
+                size_t len = static_cast<size_t>(executeFunction("String::length", {args[0]}, startPos).toNumber());
                 std::vector<std::string> result;
                 for (size_t i = 0; i < len; i++) {
-                    result.push_back(executeFunction("String::Slice", {
+                    result.push_back(executeFunction("String::slice", {
                         args[0],
                         numberToValue(static_cast<double>(i)),
                         numberToValue(static_cast<double>(i + 1))
@@ -3516,18 +3601,18 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             }
             return stringArray(String::Split(args[0].toString(), args[1].toString()));
         }
-        if (funcName == "String::CodePointReverse" || (
-            chartype == CharType::CODEPOINT && funcName == "String::Reverse"
+        if (funcName == "String::codePointReverse" || (
+            chartype == CharType::CODEPOINT && funcName == "String::reverse"
         )) {
             return stringToValue(Unicode::CodePointReverse(args[0].toString()));
         }
-        if (funcName == "String::ByteReverse" || (
-            chartype == CharType::BYTE && funcName == "String::Reverse"
+        if (funcName == "String::byteReverse" || (
+            chartype == CharType::BYTE && funcName == "String::reverse"
         )) {
             return stringToValue(Unicode::ByteReverse(args[0].toString()));
         }
-        if (funcName == "String::CodePointSlice" || (
-            chartype == CharType::CODEPOINT && funcName == "String::Slice"
+        if (funcName == "String::codePointSlice" || (
+            chartype == CharType::CODEPOINT && funcName == "String::slice"
         )) {
             std::string str = args[0].toString();
             int64_t start = 0;
@@ -3542,8 +3627,8 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
 
             return stringToValue(Unicode::CodePointSlice(str, start, end));
         }
-        if (funcName == "String::ByteSlice" || (
-            chartype == CharType::BYTE && funcName == "String::Slice"
+        if (funcName == "String::byteSlice" || (
+            chartype == CharType::BYTE && funcName == "String::slice"
         )) {
             std::string str = args[0].toString();
             int64_t start = 0;
@@ -3558,40 +3643,40 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
 
             return stringToValue(Unicode::ByteSlice(str, start, end));
         }
-        if (funcName == "String::Lower") {
+        if (funcName == "String::lower") {
             return stringToValue(Unicode::Lower(args[0].toString()));
         }
-        if (funcName == "String::Upper") {
+        if (funcName == "String::upper") {
             return stringToValue(Unicode::Upper(args[0].toString()));
         }
-        if (funcName == "String::NormalizeNFC") {
+        if (funcName == "String::normalizeNFC") {
             return stringToValue(Unicode::NormalizeNFC(args[0].toString()));
         }
-        if (funcName == "String::NormalizeNFD") {
+        if (funcName == "String::normalizeNFD") {
             return stringToValue(Unicode::NormalizeNFD(args[0].toString()));
         }
-        if (funcName == "String::NormalizeNFKC") {
+        if (funcName == "String::normalizeNFKC") {
             return stringToValue(Unicode::NormalizeNFKC(args[0].toString()));
         }
-        if (funcName == "String::NormalizeNFKD") {
+        if (funcName == "String::normalizeNFKD") {
             return stringToValue(Unicode::NormalizeNFKD(args[0].toString()));
         }
-        if (funcName == "String::GraphemeLength" || (
-            chartype == CharType::GRAPHEME && funcName == "String::Length"
+        if (funcName == "String::graphemeLength" || (
+            chartype == CharType::GRAPHEME && funcName == "String::length"
         )) {
             return Value::createNumber(static_cast<double>(Unicode::GraphemeLength(args[0].toString())));
         }
-        if (funcName == "String::CodePointLength" || (
-            chartype == CharType::CODEPOINT && funcName == "String::Length"
+        if (funcName == "String::codePointLength" || (
+            chartype == CharType::CODEPOINT && funcName == "String::length"
         )) {
             return Value::createNumber(static_cast<double>(Unicode::CodePointLength(args[0].toString())));
         }
-        if (funcName == "String::Size" || funcName == "String::ByteLength" || (
-            chartype == CharType::BYTE && funcName == "String::Length"
+        if (funcName == "String::size" || funcName == "String::byteLength" || (
+            chartype == CharType::BYTE && funcName == "String::length"
         )) {
             return Value::createNumber(static_cast<double>(Unicode::ByteLength(args[0].toString())));
         }
-        if (funcName == "String::EqualsIgnoreCase") {
+        if (funcName == "String::equalsIgnoreCase") {
             std::string right;
             if (args.size() < 2) {
                 right = "";
@@ -3600,19 +3685,19 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             }
             return booleanToValue(Unicode::EqualsIgnoreCase(args[0].toString(), right));
         }
-        if (funcName == "String::IsWhitespace") {
+        if (funcName == "String::isWhitespace") {
             return booleanToValue(Unicode::IsWhitespace(args[0].toString()));
         }
-        if (funcName == "JUSTC.Parse") {
+        if (funcName == "JUSTC.parse") {
             return functionJUSTC2(args[0].toString(), false, startPos);
         }
-        if (funcName == "JUSTC.Execute") {
+        if (funcName == "JUSTC.execute") {
             return functionJUSTC2(args[0].toString(), true, startPos);
         }
-        if (funcName == "JSON.Parse") {
+        if (funcName == "JSON.parse") {
             return functionJSON(args);
         }
-        if (funcName == "JavaScript" || funcName == "JavaScript.Execute") {
+        if (funcName == "JavaScript" || funcName == "JavaScript.execute") {
             if (allowJavaScript) {
                 #ifdef __EMSCRIPTEN__
 
@@ -3642,7 +3727,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
                 throw std::runtime_error("JavaScript disallowed - Cannot run JavaScript \"" + args[0].toString() + "\"");
             }
         }
-        if (funcName == "Luau" || funcName == "Luau.Execute") {
+        if (funcName == "Luau" || funcName == "Luau.execute") {
             #ifndef JUSTC_NOLUAU
                 if (allowLuau) {
                     std::pair<std::string, int> luauresult = RunLuau::runScriptWithResult(args[0].toString());
@@ -3681,18 +3766,18 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
                 throw std::runtime_error("To run Luau, use the standard JUSTC build. The current build excludes Luau.");
             #endif
         }
-        if (funcName == "JUSTO" || funcName == "JUSTO.Parse") {
+        if (funcName == "JUSTO" || funcName == "JUSTO.parse") {
             return functionJUSTO(args);
         }
-        if (funcName == "JUSTO.Stringify") {
+        if (funcName == "JUSTO.stringify") {
             return toJUSTO(args);
         }
-        if (funcName == "JUSTC.Stringify") {
+        if (funcName == "JUSTC.stringify") {
             Value result = stringToValue(Utility::stringifyValue(args[0]));
             result.type = DataType::STRING;
             return result;
         }
-        if (funcName == "Luau.Compile") {
+        if (funcName == "Luau.compile") {
             #ifndef JUSTC_NOLUAU
                 if (allowLuau) {
                     std::string error;
@@ -3704,7 +3789,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
                 throw std::runtime_error("To run Luau, use the standard JUSTC build. The current build excludes Luau.");
             #endif
         }
-        if (funcName == "Array::Join") {
+        if (funcName == "Array::join") {
             std::stringstream ss;
             std::string sep = ",";
             if (args.size() > 1) sep = args[1].toString();
@@ -3716,7 +3801,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             }
             return stringToValue(ss.str());
         }
-        if (funcName == "Array::Includes") {
+        if (funcName == "Array::includes") {
             if (args.size() < 2) return booleanToValue(false);
             bool includes = false;
             for (Value val : args[0].array_elements) {
@@ -3725,21 +3810,21 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             }
             return booleanToValue(includes);
         }
-        if (funcName == "Array::IndexOf") {
+        if (funcName == "Array::indexOf") {
             if (args.size() < 2) throw std::runtime_error("Expected value");
             for (size_t i = 0; i < args[0].array_elements.size(); i++) {
                 if (Utility::compareValues(args[0].array_elements[i], args[1])) return Value::createNumber(static_cast<double>(i));
             }
             throw std::runtime_error("Value not found in array");
         }
-        if (funcName == "Array::LastIndexOf") {
+        if (funcName == "Array::lastIndexOf") {
             if (args.size() < 2) throw std::runtime_error("Expected value");
             for (size_t i = args[0].array_elements.size() - 1; i >= 0; i--) {
                 if (Utility::compareValues(args[0].array_elements[i], args[1])) return Value::createNumber(static_cast<double>(i));
             }
             throw std::runtime_error("Value not found in array");
         }
-        if (funcName == "Array::Reverse") {
+        if (funcName == "Array::reverse") {
             std::vector<Value> arr = args[0].array_elements;
             std::reverse(arr.begin(), arr.end());
 
@@ -3747,7 +3832,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             result.name = "Array";
             return result;
         }
-        if (funcName == "Array::ForEach") {
+        if (funcName == "Array::forEach") {
             if (args.size() < 2 || args[1].type != DataType::FUNCTION) throw std::runtime_error("Expected function");
             Value lastResult = Value::createNull();
             lastResult.type = DataType::NULL_TYPE;
@@ -3762,7 +3847,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
 
             return lastResult;
         }
-        if (funcName == "Array::Filter") {
+        if (funcName == "Array::filter") {
             if (args.size() < 2 || args[1].type != DataType::FUNCTION) throw std::runtime_error("Expected function");
             std::vector<Value> arr;
             
@@ -3778,7 +3863,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             result.name = "Array";
             return result;
         }
-        if (funcName == "Array::Push") {
+        if (funcName == "Array::push") {
             if (args.size() < 2) throw std::runtime_error("Expected value");
             if (args[0].type != DataType::JSON_ARRAY) throw std::runtime_error("Expected array");
 
@@ -3805,7 +3890,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
                 return result;
             }
         }
-        if (funcName == "Array::Unshift") {
+        if (funcName == "Array::unshift") {
             if (args.size() < 2) throw std::runtime_error("Expected value");
             if (args[0].type != DataType::JSON_ARRAY) throw std::runtime_error("Expected array");
 
@@ -3828,7 +3913,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
                 return result;
             }
         }
-        if (funcName == "Element::Render") {
+        if (funcName == "Element::render") {
             return Value::createString(renderJSX(args[0]));
         }
         if (funcName == "Window") {
@@ -3837,20 +3922,20 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
                 std::unordered_map<std::string, Value> obj;
                 obj["_handle"] = windowHandle;
                 
-                obj["Show"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                obj["show"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
                     bool success = JUSTCWindow::showWindow(windowHandle.getNumericValue<uint64_t>());
                     return Value::createBoolean(success);
-                }, "Window.Show");
+                }, "Window.show");
                 
-                obj["Hide"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                obj["hide"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
                     bool success = JUSTCWindow::hideWindow(windowHandle.getNumericValue<uint64_t>());
                     return Value::createBoolean(success);
-                }, "Window.Hide");
+                }, "Window.hide");
                 
-                obj["Close"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                obj["close"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
                     bool success = JUSTCWindow::closeWindow(windowHandle.getNumericValue<uint64_t>());
                     return Value::createBoolean(success);
-                }, "Window.Close");
+                }, "Window.close");
                 
                 obj["getTitle"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
                     try {
@@ -6819,7 +6904,7 @@ bool Parser::isBuiltinVariable(const std::string& name) const {
     return std::find(builtins.begin(), builtins.end(), name) != builtins.end();
 }
 void Parser::handleBuiltinVariableAssignment(const std::string& name, const Value& value, size_t startPos) {
-    if (name == "CharType") {
+    if (name == "charType") {
         updateCharType(value.toString(), startPos);
     } else if (name == "JUSTC") {
         throw std::runtime_error("Attempt to redefine readonly built-in variable \"" + name + "\" at " + Utility::position(startPos, input) + ".");

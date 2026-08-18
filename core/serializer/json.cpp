@@ -130,6 +130,120 @@ std::string JsonSerializer::valueToJson(const Value& value) {
             ss << "]";
             return ss.str();
         }
+        case DataType::INT8_ARRAY: {
+            std::stringstream ss;
+            ss << "[";
+            std::vector<int8_t> arr = value.getComplexData<std::vector<int8_t>>();
+            for (size_t i = 0; i < arr.size(); i++) {
+                if (i > 0) ss << ",";
+                ss << "\"" << +arr[i] << "\"";
+            }
+            ss << "]";
+            return ss.str();
+        }
+        case DataType::INT16_ARRAY: {
+            std::stringstream ss;
+            ss << "[";
+            std::vector<int16_t> arr = value.getComplexData<std::vector<int16_t>>();
+            for (size_t i = 0; i < arr.size(); i++) {
+                if (i > 0) ss << ",";
+                ss << "\"" << arr[i] << "\"";
+            }
+            ss << "]";
+            return ss.str();
+        }
+        case DataType::INT32_ARRAY: {
+            std::stringstream ss;
+            ss << "[";
+            std::vector<int32_t> arr = value.getComplexData<std::vector<int32_t>>();
+            for (size_t i = 0; i < arr.size(); i++) {
+                if (i > 0) ss << ",";
+                ss << "\"" << arr[i] << "\"";
+            }
+            ss << "]";
+            return ss.str();
+        }
+        case DataType::INT64_ARRAY: {
+            std::stringstream ss;
+            ss << "[";
+            std::vector<int64_t> arr = value.getComplexData<std::vector<int64_t>>();
+            for (size_t i = 0; i < arr.size(); i++) {
+                if (i > 0) ss << ",";
+                ss << "\"" << arr[i] << "\"";
+            }
+            ss << "]";
+            return ss.str();
+        }
+        case DataType::UINT8_ARRAY: case DataType::CUINT8_ARRAY: {
+            std::stringstream ss;
+            ss << "[";
+            std::vector<uint8_t> arr = value.getComplexData<std::vector<uint8_t>>();
+            for (size_t i = 0; i < arr.size(); i++) {
+                if (i > 0) ss << ",";
+                ss << "\"" << +arr[i] << "\"";
+            }
+            ss << "]";
+            return ss.str();
+        }
+        case DataType::UINT16_ARRAY: case DataType::CUINT16_ARRAY: {
+            std::stringstream ss;
+            ss << "[";
+            std::vector<uint16_t> arr = value.getComplexData<std::vector<uint16_t>>();
+            for (size_t i = 0; i < arr.size(); i++) {
+                if (i > 0) ss << ",";
+                ss << "\"" << arr[i] << "\"";
+            }
+            ss << "]";
+            return ss.str();
+        }
+        case DataType::UINT32_ARRAY: case DataType::CUINT32_ARRAY: {
+            std::stringstream ss;
+            ss << "[";
+            std::vector<uint32_t> arr = value.getComplexData<std::vector<uint32_t>>();
+            for (size_t i = 0; i < arr.size(); i++) {
+                if (i > 0) ss << ",";
+                ss << "\"" << arr[i] << "\"";
+            }
+            ss << "]";
+            return ss.str();
+        }
+        case DataType::UINT64_ARRAY: case DataType::CUINT64_ARRAY: {
+            std::stringstream ss;
+            ss << "[";
+            std::vector<uint64_t> arr = value.getComplexData<std::vector<uint64_t>>();
+            for (size_t i = 0; i < arr.size(); i++) {
+                if (i > 0) ss << ",";
+                ss << "\"" << arr[i] << "\"";
+            }
+            ss << "]";
+            return ss.str();
+        }
+        case DataType::FLOAT32_ARRAY: {
+            std::stringstream ss;
+            ss << "[";
+            std::vector<float> arr = value.getComplexData<std::vector<float>>();
+            for (size_t i = 0; i < arr.size(); i++) {
+                if (i > 0) ss << ",";
+                std::stringstream numstr;
+                numstr << std::setprecision(std::numeric_limits<float>::max_digits10) << arr[i];
+                ss << "\"" << numstr.str() << "\"";
+            }
+            ss << "]";
+            return ss.str();
+        }
+        case DataType::FLOAT64_ARRAY: {
+            std::stringstream ss;
+            ss << "[";
+            std::vector<double> arr = value.getComplexData<std::vector<double>>();
+            for (size_t i = 0; i < arr.size(); i++) {
+                if (i > 0) ss << ",";
+                std::stringstream numstr;
+                numstr << std::setprecision(std::numeric_limits<double>::max_digits10) << arr[i];
+                ss << "\"" << numstr.str() << "\"";
+            }
+            ss << "]";
+            return ss.str();
+        }
         default:
             return "\"" + escapeJsonString(value.toString()) + "\"";
     }
