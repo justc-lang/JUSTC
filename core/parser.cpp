@@ -1469,6 +1469,7 @@ ParseResult Parser::parse(bool doExecute) {
 
                             std::vector<Value> args = {var};
                             std::vector<Value> additionalArgs = parseArguments(doExecute);
+                            args.reserve(args.size() + additionalArgs.size());
                             args.insert(args.end(), additionalArgs.begin(), additionalArgs.end());
                             Value result = executeFunction(typeMethods[var.type][funcName], args, currentToken().start);
 
@@ -5380,6 +5381,7 @@ Value Parser::evaluateExpression(const Value& left, const std::string& op, const
 
         if (match("(")) {
             std::vector<Value> additionalArgs = parseArguments(doExecute);
+            args.reserve(args.size() + additionalArgs.size());
             args.insert(args.end(), additionalArgs.begin(), additionalArgs.end());
         }
 
@@ -5420,6 +5422,7 @@ Value Parser::evaluateExpression(const Value& left, const std::string& op, const
                     if (match("(")) {
                         std::vector<Value> args = {left};
                         std::vector<Value> additionalArgs = parseArguments(doExecute);
+                        args.reserve(args.size() + additionalArgs.size());
                         args.insert(args.end(), additionalArgs.begin(), additionalArgs.end());
                         result = executeFunction(typeMethods[left.type][funcName], args, currentToken().start);
                     }
@@ -5524,6 +5527,7 @@ Value Parser::evaluateExpression(const Value& left, const std::string& op, const
                 if (match("(")) {
                     std::vector<Value> args = {left};
                     std::vector<Value> additionalArgs = parseArguments(doExecute);
+                    args.reserve(args.size() + additionalArgs.size());
                     args.insert(args.end(), additionalArgs.begin(), additionalArgs.end());
                     result = executeFunction(typeMethods[left.type][funcName], args, currentToken().start);
                 }
@@ -7537,6 +7541,7 @@ Value Parser::parseObjectPropertyAccess(bool doExecute, bool set) {
                     if (match("(")) {
                         std::vector<Value> args = {currentValue};
                         std::vector<Value> additionalArgs = parseArguments(doExecute);
+                        args.reserve(args.size() + additionalArgs.size());
                         args.insert(args.end(), additionalArgs.begin(), additionalArgs.end());
                         return executeFunction(typeMethods[currentValue.type][funcName], args, currentToken().start);
                     } else {
@@ -7614,12 +7619,35 @@ std::pair<Value, Value::Property> Parser::accessProperty(const Value& obj, const
             return {val, empty};
         }
 
+        auto itM = typeMethods[DataType::JUSTC_OBJECT].find(propName);
+        if (itM != typeMethods[DataType::JUSTC_OBJECT].end()) {
+            const size_t currPos = currentToken().start;
+            return createFunction([obj, propName, currPos](const std::vector<Value>& args) -> Value {
+                const std::vector<Value> additionalArgs = {obj};
+                additionalArgs.reserve(additionalArgs.size() + args.size());
+                additionalArgs.insert(additionalArgs.end(), args.begin(), args.end());
+                return executeFunction(typeMethods[DataType::JUSTC_OBJECT][propName], additionalArgs, currPos);
+            }, typeMethods[DataType::JUSTC_OBJECT][propName]);
+        }
+
         throw std::runtime_error("Property '" + propName + "' not found in object at " + Utility::position(currentToken().start, input) + ".");
     } else if (Utility::checkObject(obj)) {
         auto it = obj.properties.find(propName);
         if (it != obj.properties.end()) {
             return vp(it->second, requestAccess);
         }
+
+        auto itM = typeMethods[obj.type].find(propName);
+        if (itM != typeMethods[obj.type].end()) {
+            const size_t currPos = currentToken().start;
+            return createFunction([obj, propName, currPos](const std::vector<Value>& args) -> Value {
+                const std::vector<Value> additionalArgs = {obj};
+                additionalArgs.reserve(additionalArgs.size() + args.size());
+                additionalArgs.insert(additionalArgs.end(), args.begin(), args.end());
+                return executeFunction(typeMethods[obj.type][propName], additionalArgs, currPos);
+            }, typeMethods[obj.type][propName]);
+        }
+
         throw std::runtime_error("Property '" + propName + "' not found in object at " + Utility::position(currentToken().start, input) + ".");
     } else if (Utility::checkArray(obj)) {
         throw std::runtime_error("Cannot access property '" + propName + "' on array at " + Utility::position(currentToken().start, input) + ".");
