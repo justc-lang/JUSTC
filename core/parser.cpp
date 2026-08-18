@@ -4751,15 +4751,30 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             if (args[0].type != DataType::MAP) throw std::runtime_error("Expected map");
 
             if (args[0].isVariable) {
-                std::unordered_map<Value, Value> map = variables[args[0].variable].getComplexData<std::unordered_map<Value, Value>>();
+                std::unordered_map<Value, Value> map;
+                if (args[0].complex_value) {
+                    try {
+                        map = args[0].getComplexData<std::unordered_map<Value, Value>>();
+                    } catch (...) {
+                        map = std::unordered_map<Value, Value>();
+                    }
+                }
                 map[args[1].toPrimitive()] = args[2];
                 variables[args[0].variable].setComplexData(map);
                 return variables[args[0].variable];
             } else {
-                std::unordered_map<Value, Value> map = args[0].getComplexData<std::unordered_map<Value, Value>>();
+                std::unordered_map<Value, Value> map;
+                if (args[0].complex_value) {
+                    try {
+                        map = args[0].getComplexData<std::unordered_map<Value, Value>>();
+                    } catch (...) {
+                        map = std::unordered_map<Value, Value>();
+                    }
+                }
                 map[args[1].toPrimitive()] = args[2];
-                args[0].setComplexData(map);
-                return args[0];
+                Value result = args[0];
+                result.setComplexData(map);
+                return result;
             }
         }
         if (funcName == "Map::get") {
@@ -4808,8 +4823,9 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             } else {
                 std::unordered_map<Value, Value> map = args[0].getComplexData<std::unordered_map<Value, Value>>();
                 map.erase(args[1].toPrimitive());
-                args[0].setComplexData(map);
-                return args[0];
+                Value result = args[0];
+                result.setComplexData(map);
+                return result;
             }
         }
         if (funcName == "Map::clear") {
@@ -4820,8 +4836,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
                 variables[args[0].variable].setComplexData(map);
                 return variables[args[0].variable];
             } else {
-                Value result;
-                result.type = DataType::MAP;
+                Value result = args[0];
                 result.setComplexData(map);
                 result.name = "Map";
                 return result;
@@ -4832,15 +4847,30 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             if (args[0].type != DataType::SET) throw std::runtime_error("Expected set");
 
             if (args[0].isVariable) {
-                std::unordered_set<Value> set = variables[args[0].variable].getComplexData<std::unordered_set<Value>>();
+                std::unordered_set<Value> set;
+                if (args[0].complex_value) {
+                    try {
+                        set = args[0].getComplexData<std::unordered_set<Value>>();
+                    } catch (...) {
+                        set = std::unordered_set<Value>();
+                    }
+                }
                 set.insert(args[1].toPrimitive());
                 variables[args[0].variable].setComplexData(set);
                 return variables[args[0].variable];
             } else {
-                std::unordered_set<Value> set = args[0].getComplexData<std::unordered_set<Value>>();
+                std::unordered_set<Value> set;
+                if (args[0].complex_value) {
+                    try {
+                        set = args[0].getComplexData<std::unordered_set<Value>>();
+                    } catch (...) {
+                        set = std::unordered_set<Value>();
+                    }
+                }
                 set.insert(args[1].toPrimitive());
-                args[0].setComplexData(set);
-                return args[0];
+                Value result = args[0];
+                result.setComplexData(set);
+                return result;
             }
         }
         if (funcName == "Set::has") {
@@ -4872,8 +4902,9 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             } else {
                 std::unordered_set<Value> set = args[0].getComplexData<std::unordered_set<Value>>();
                 set.erase(args[1].toPrimitive());
-                args[0].setComplexData(set);
-                return args[0];
+                Value result = args[0];
+                result.setComplexData(set);
+                return result;
             }
         }
         if (funcName == "Set::clear") {
@@ -4884,8 +4915,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
                 variables[args[0].variable].setComplexData(set);
                 return variables[args[0].variable];
             } else {
-                Value result;
-                result.type = DataType::SET;
+                Value result = args[0];
                 result.setComplexData(set);
                 result.name = "Set";
                 return result;
@@ -4899,10 +4929,64 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             uint64_t size = static_cast<uint64_t>(args[0].array_elements.size());
             return Value::createNumberWithType(size, NumericType::UINT64);
         }
-        if (funcName == "Map::size" || funcName == "Set::size" || funcName == "Int8Array::size" || funcName == "Int16Array::size" || funcName == "Int32Array::size" || funcName == "Int64Array::size" || funcName == "UInt8Array::size" || funcName == "UInt16Array::size" || funcName == "UInt32Array::size" || funcName == "UInt64Array::size" || funcName == "CUInt8Array::size" || funcName == "CUInt16Array::size" || funcName == "CUInt32Array::size" || funcName == "CUInt64Array::size") {
-            auto data = *args[0].complex_value;
-            uint64_t size = static_cast<uint64_t>(data.size());
-            return Value::createNumberWithType(size, NumericType::UINT64);
+        if (funcName == "Map::size" || funcName == "Set::size") {
+            if (args[0].complex_value) {
+                if (funcName == "Map::size") {
+                    auto map = args[0].getComplexData<std::unordered_map<Value, Value>>();
+                    return Value::createNumberWithType(static_cast<uint64_t>(map.size()), NumericType::UINT64);
+                } else {
+                    auto set = args[0].getComplexData<std::unordered_set<Value>>();
+                    return Value::createNumberWithType(static_cast<uint64_t>(set.size()), NumericType::UINT64);
+                }
+            }
+            return Value::createNumberWithType(static_cast<uint64_t>(0), NumericType::UINT64);
+        }
+        if (funcName == "Int8Array::size" || funcName == "Int16Array::size" || 
+            funcName == "Int32Array::size" || funcName == "Int64Array::size" ||
+            funcName == "UInt8Array::size" || funcName == "UInt16Array::size" || 
+            funcName == "UInt32Array::size" || funcName == "UInt64Array::size" ||
+            funcName == "CUInt8Array::size" || funcName == "CUInt16Array::size" || 
+            funcName == "CUInt32Array::size" || funcName == "CUInt64Array::size" ||
+            funcName == "Float32Array::size" || funcName == "Float64Array::size"
+        ) {
+            if (args[0].complex_value) {
+                try {
+                    if (args[0].type == DataType::INT8_ARRAY) {
+                        auto vec = args[0].getComplexData<std::vector<int8_t>>();
+                        return Value::createNumberWithType(static_cast<uint64_t>(vec.size()), NumericType::UINT64);
+                    } else if (args[0].type == DataType::INT16_ARRAY) {
+                        auto vec = args[0].getComplexData<std::vector<int16_t>>();
+                        return Value::createNumberWithType(static_cast<uint64_t>(vec.size()), NumericType::UINT64);
+                    } else if (args[0].type == DataType::INT32_ARRAY) {
+                        auto vec = args[0].getComplexData<std::vector<int32_t>>();
+                        return Value::createNumberWithType(static_cast<uint64_t>(vec.size()), NumericType::UINT64);
+                    } else if (args[0].type == DataType::INT64_ARRAY) {
+                        auto vec = args[0].getComplexData<std::vector<int64_t>>();
+                        return Value::createNumberWithType(static_cast<uint64_t>(vec.size()), NumericType::UINT64);
+                    } else if (args[0].type == DataType::UINT8_ARRAY || args[0].type == DataType::CUINT8_ARRAY) {
+                        auto vec = args[0].getComplexData<std::vector<uint8_t>>();
+                        return Value::createNumberWithType(static_cast<uint64_t>(vec.size()), NumericType::UINT64);
+                    } else if (args[0].type == DataType::UINT16_ARRAY || args[0].type == DataType::CUINT16_ARRAY) {
+                        auto vec = args[0].getComplexData<std::vector<uint16_t>>();
+                        return Value::createNumberWithType(static_cast<uint64_t>(vec.size()), NumericType::UINT64);
+                    } else if (args[0].type == DataType::UINT32_ARRAY || args[0].type == DataType::CUINT32_ARRAY) {
+                        auto vec = args[0].getComplexData<std::vector<uint32_t>>();
+                        return Value::createNumberWithType(static_cast<uint64_t>(vec.size()), NumericType::UINT64);
+                    } else if (args[0].type == DataType::UINT64_ARRAY || args[0].type == DataType::CUINT64_ARRAY) {
+                        auto vec = args[0].getComplexData<std::vector<uint64_t>>();
+                        return Value::createNumberWithType(static_cast<uint64_t>(vec.size()), NumericType::UINT64);
+                    } else if (args[0].type == DataType::FLOAT32_ARRAY) {
+                        auto vec = args[0].getComplexData<std::vector<float>>();
+                        return Value::createNumberWithType(static_cast<uint64_t>(vec.size()), NumericType::UINT64);
+                    } else if (args[0].type == DataType::FLOAT64_ARRAY) {
+                        auto vec = args[0].getComplexData<std::vector<double>>();
+                        return Value::createNumberWithType(static_cast<uint64_t>(vec.size()), NumericType::UINT64);
+                    }
+                } catch (...) {
+                    return Value::createNumberWithType(static_cast<uint64_t>(0), NumericType::UINT64);
+                }
+            }
+            return Value::createNumberWithType(static_cast<uint64_t>(0), NumericType::UINT64);
         }
     } catch (const std::exception& e) {
         throw std::runtime_error(std::string(e.what()) + " at " + Utility::position(startPos, input) + ".");
