@@ -3397,7 +3397,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
     }
 
     // math and binary
-    if (args.empty() && funcName != "Math.Random" && funcName != "Window") {
+    if (args.empty() && funcName != "math.random" && funcName != "Window") {
         if (funcName == "JUSTC.parse" || funcName == "JUSTC.execute") {
             return emptyJUSTC();
         }
