@@ -98,6 +98,20 @@ jobs:
             libgl1-mesa-dev libglu1-mesa-dev libzstd-dev liblz4-dev
             libsnappy-dev libbz2-dev liblzma-dev zlib1g-dev
           version: 1.0
+      - name: Cache apt packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-${{ hashFiles('linux/compile.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-apt-
+      - name: Cache Boost
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/boost
+          key: ${{ runner.os }}-boost-${{ hashFiles('linux/compile.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-boost-
       - name: Build
         run: bash linux/compile.sh "-DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install_root"
       - name: Upload CLI
