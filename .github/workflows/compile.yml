@@ -106,7 +106,6 @@ jobs:
           packages: |
             libcurl4-openssl-dev cmake build-essential pkg-config zip
             libboost-all-dev libicu-dev libidn2-dev
-            libluau-dev libluau0
             libx11-dev libx11-xcb-dev libxcb1-dev libxcb-util-dev
             libxcb-util0-dev libxcb-icccm4-dev libxcb-keysyms1-dev
             libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
