@@ -112,6 +112,8 @@ jobs:
           key: ${{ runner.os }}-boost-${{ hashFiles('linux/compile.sh') }}
           restore-keys: |
             ${{ runner.os }}-boost-
+      - name: Configure APT mirror
+        uses: vegardit/fast-apt-mirror.sh@v1
       - name: Build
         run: bash linux/compile.sh "-DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install_root"
       - name: Upload CLI
