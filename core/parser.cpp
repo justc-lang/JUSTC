@@ -138,6 +138,8 @@ SOFTWARE.
     #include "lang/js.hpp"
 #endif
 
+#include <thread>
+#include <chrono>
 #include "promise-cpp/promise.hpp"
 using namespace promise;
 
@@ -5008,38 +5010,61 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
         if (funcName == "Promise") {
             Value result;
             result.type = DataType::PROMISE;
-            result.setComplexData<Promise>(newPromise([args, startPos](Defer d) {
-                std::thread([args, d, startPos]() {
-                    Value output = Value::undefined();
+            result.setComplexData<Promise>(newPromise([this, args, startPos, doExecute](Defer d) {
+                std::thread([this, args, d, startPos, doExecute]() {
+                    Value output = Value::createNull();
+                    bool rejected = false;
+                    bool done = false;
+                    
                     try {
-                        bool rejected = false;
-                        bool done = false;
-                        switch(args[0].type) {
-                            case DataType::FUNCTION: {
-                                Value resolve = Value::createFunction([done, output](const std::vector<Value>& args) -> Value {
+                        if (args[0].type == DataType::FUNCTION) {
+                            Value resolve = createFunction(
+                                [&done, &output](const std::vector<Value>& args) -> Value {
                                     if (!done) {
                                         done = true;
-                                        output = args[0];
+                                        if (!args.empty()) {
+                                            output = args[0];
+                                        }
                                     }
-                                }, "resolve");
-                                Value reject = Value::createFunction([done, ouput, rejected](const std::vector<Value>& args) -> Value {
+                                    return Value::createNull();
+                                },
+                                "resolve"
+                            );
+                            
+                            Value reject = createFunction(
+                                [&done, &output, &rejected](const std::vector<Value>& args) -> Value {
                                     if (!done) {
                                         done = true;
                                         rejected = true;
-                                        output = args[0];
+                                        if (!args.empty()) {
+                                            output = args[0];
+                                        }
                                     }
-                                }, "reject");
-                                Value funcResult = callFunction(args[0], {resolve, reject}, startPos, doExecute);
-                                break;
+                                    return Value::createNull();
+                                },
+                                "reject"
+                            );
+                            
+                            Value funcResult = callFunction(args[0], {resolve, reject}, startPos, doExecute);
+                            
+                            if (funcResult.type != DataType::NULL_TYPE && !done) {
+                                done = true;
+                                output = funcResult;
                             }
-                            default:
-                                output = args[0];
-                                break;
+                        } else {
+                            output = args[0];
+                            done = true;
                         }
-                        if (rejected) d.reject(output);
-                        d.resolve(output);
+                        
+                        if (rejected) {
+                            d.reject(output);
+                        } else if (done) {
+                            d.resolve(output);
+                        }
+                    } catch (const std::exception& e) {
+                        d.reject(Value::createString(std::string(e.what())));
                     } catch (...) {
-                        d.reject(output);
+                        d.reject(Value::createString(std::string("Unknown error in Promise")));
                     }
                 }).detach();
             }));
