@@ -4169,9 +4169,9 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
                     }
                 }, "Window.isVisible");
 
-                obj["RunMessageLoop"] = createFunction([](const std::vector<Value>& args) -> Value {
+                obj["runMessageLoop"] = createFunction([](const std::vector<Value>& args) -> Value {
                     return JUSTCWindow::RunMessageLoop(args);
-                }, "Window.RunMessageLoop");
+                }, "Window.runMessageLoop");
 
                 Value result = Value::createJsonObject(obj);
                 result.name = "Window";
