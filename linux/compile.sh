@@ -27,7 +27,8 @@ OPTIONS="${1:-""}"
 g++ --version
 
 sudo apt-get update
-sudo apt-get install -y libcurl4-openssl-dev cmake build-essential pkg-config zip libboost-all-dev libicu-dev libidn2-dev
+sudo apt-get install -y --no-download libboost-all-dev
+sudo apt-get install -y libcurl4-openssl-dev cmake build-essential pkg-config zip libicu-dev libidn2-dev
 
 sudo apt-get install -y libluau-dev libluau0 || echo "Luau not available in packages, will build from source"
 
