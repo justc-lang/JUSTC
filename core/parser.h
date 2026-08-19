@@ -123,6 +123,7 @@ enum class DataType : int8_t {
     STRUCT       = 29,
     MAP          = 30,
     SET          = 31,
+    PROMISE      = 32,
 
     INT8_ARRAY   =-2,
     INT16_ARRAY  =-3,
@@ -173,6 +174,7 @@ inline std::string dataTypeToString(DataType type) {
         case DataType::STRUCT:       return "Struct";
         case DataType::MAP:          return "Map";
         case DataType::SET:          return "Set";
+        case DataType::PROMISE:      return "Promise";
 
         case DataType::INT8_ARRAY:   return "Int8 Array";
         case DataType::INT16_ARRAY:  return "Int16 Array";

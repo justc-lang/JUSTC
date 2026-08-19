@@ -138,6 +138,9 @@ SOFTWARE.
     #include "lang/js.hpp"
 #endif
 
+#include "promise-cpp/promise.hpp"
+using namespace promise;
+
 #ifndef DEFAULT_CPP_TYPE
 #define DEFAULT_CPP_TYPE "_"
 #endif
@@ -242,6 +245,8 @@ std::string Value::toString() const {
             return "[map " + name + "]";
         case DataType::SET:
             return "[set " + name + "]";
+        case DataType::PROMISE:
+            return "[promise " + name + "]";
         default:
             return "unknown";
     }
@@ -277,6 +282,7 @@ std::string Value::toIdentifier() const {
         case DataType::CUINT64_ARRAY:
         case DataType::FLOAT32_ARRAY:
         case DataType::FLOAT64_ARRAY:
+        case DataType::PROMISE:
             return name;
         default:
             return toString();
@@ -349,6 +355,7 @@ bool Value::toBoolean() const {
         case DataType::CUINT64_ARRAY:
         case DataType::FLOAT32_ARRAY:
         case DataType::FLOAT64_ARRAY:
+        case DataType::PROMISE:
             return true;
         default:
             return false;
@@ -1104,6 +1111,12 @@ Parser::Parser(
         {"toLink", "Link"},
         
         {"size", "Float64Array::size"},
+    };
+    typeMethods[DataType::PROMISE] = {
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
     };
 
     // built-in variables
@@ -4989,6 +5002,50 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             }
             return Value::createNumberWithType(static_cast<uint64_t>(0), NumericType::UINT64);
         }
+        if (funcName == "sleep") {
+            std::this_thread::sleep_for(std::chrono::milliseconds(args[0].toNumber()));
+        }
+        if (funcName == "Promise") {
+            Value result;
+            result.type = DataType::PROMISE;
+            result.setComplexData<Promise>(newPromise([args, startPos](Defer d) {
+                std::thread([args, d, startPos]() {
+                    Value output = Value::undefined();
+                    try {
+                        bool rejected = false;
+                        bool done = false;
+                        switch(args[0].type) {
+                            case DataType::FUNCTION: {
+                                Value resolve = Value::createFunction([done, output](const std::vector<Value>& args) -> Value {
+                                    if (!done) {
+                                        done = true;
+                                        output = args[0];
+                                    }
+                                }, "resolve");
+                                Value reject = Value::createFunction([done, ouput, rejected](const std::vector<Value>& args) -> Value {
+                                    if (!done) {
+                                        done = true;
+                                        rejected = true;
+                                        output = args[0];
+                                    }
+                                }, "reject");
+                                Value funcResult = callFunction(args[0], {resolve, reject}, startPos, doExecute);
+                                break;
+                            }
+                            default:
+                                output = args[0];
+                                break;
+                        }
+                        if (rejected) d.reject(output);
+                        d.resolve(output);
+                    } catch (...) {
+                        d.reject(output);
+                    }
+                }).detach();
+            }));
+            result.name = "Promise";
+            return result;
+        }
     } catch (const std::exception& e) {
         throw std::runtime_error(std::string(e.what()) + " at " + Utility::position(startPos, input) + ".");
     }
@@ -8736,6 +8793,7 @@ void Parser::builtinClasses() {
     if (!getBIC()) {
         #ifndef __EMSCRIPTEN__
             BIM["Window"] = builtinClass("Window");
+            BIM["Promise"] = builtinClass("Promise");
         #endif
         setBIM(BIM);
         setBIC(true);
@@ -8744,6 +8802,7 @@ void Parser::builtinClasses() {
         #ifndef __EMSCRIPTEN__
             fromBIM(BIM, "Window");
         #endif
+        fromBIM(BIM, "Promise");
     }
 }
 void Parser::fromBIM(const std::unordered_map<std::string, uint64_t>& BIM, const std::string& name) {
