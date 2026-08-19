@@ -5009,11 +5009,13 @@ Value Parser::doubleDot(const Value& left, const Value& right) {
     } else if (Utility::checkStrings(left, right)) {
         result = stringToValue(Utility::value2string(left) + Utility::value2string(right)); // ""abc" .. "def"" = ""abcdef"".
     } else if (left.type == DataType::JSON_ARRAY && right.type == DataType::JSON_ARRAY) {
-        std::vector<Value> concatenated;
-
         const auto& leftArr = left.array_elements;
-        concatenated.insert(concatenated.end(), leftArr.begin(), leftArr.end());
         const auto& rightArr = right.array_elements;
+
+        std::vector<Value> concatenated;
+        concatenated.reserve(leftArr.size() + rightArr.size());
+
+        concatenated.insert(concatenated.end(), leftArr.begin(), leftArr.end());
         concatenated.insert(concatenated.end(), rightArr.begin(), rightArr.end());
 
         Value result = Value::createJsonArray(concatenated);
@@ -7623,11 +7625,14 @@ std::pair<Value, Value::Property> Parser::accessProperty(const Value& obj, const
         if (itM != typeMethods[DataType::JUSTC_OBJECT].end()) {
             const size_t currPos = currentToken().start;
             Value funcVal = createFunction([this, obj, propName, currPos](const std::vector<Value>& args) -> Value {
-                std::vector<Value> additionalArgs;
-                additionalArgs.reserve(1 + args.size());
-                additionalArgs.push_back(obj);
-                additionalArgs.insert(additionalArgs.end(), args.begin(), args.end());
-                return this->executeFunction(typeMethods[DataType::JUSTC_OBJECT][propName], additionalArgs, currPos);
+                auto itM2 = typeMethods[DataType::JUSTC_OBJECT].find(propName);
+                if (itM2 != typeMethods[DataType::JUSTC_OBJECT].end()) {
+                    std::vector<Value> additionalArgs;
+                    additionalArgs.reserve(1 + args.size());
+                    additionalArgs.push_back(obj);
+                    additionalArgs.insert(additionalArgs.end(), args.begin(), args.end());
+                    return this->executeFunction(typeMethods[DataType::JUSTC_OBJECT][propName], additionalArgs, currPos);
+                } else throw std::runtime_error("\"" + propName + "\" is not a function.");
             }, typeMethods[DataType::JUSTC_OBJECT][propName]);
             Value::Property prop(funcVal, Access::READ_ONLY);
             return {funcVal, prop};
@@ -7644,11 +7649,14 @@ std::pair<Value, Value::Property> Parser::accessProperty(const Value& obj, const
         if (itM != typeMethods[obj.type].end()) {
             const size_t currPos = currentToken().start;
             Value funcVal = createFunction([this, obj, propName, currPos](const std::vector<Value>& args) -> Value {
-                std::vector<Value> additionalArgs;
-                additionalArgs.reserve(1 + args.size());
-                additionalArgs.push_back(obj);
-                additionalArgs.insert(additionalArgs.end(), args.begin(), args.end());
-                return this->executeFunction(typeMethods[obj.type][propName], additionalArgs, currPos);
+                auto itM2 = typeMethods[obj.type].find(propName);
+                if (itM2 != typeMethods[obj.type].end()) {
+                    std::vector<Value> additionalArgs;
+                    additionalArgs.reserve(1 + args.size());
+                    additionalArgs.push_back(obj);
+                    additionalArgs.insert(additionalArgs.end(), args.begin(), args.end());
+                    return this->executeFunction(typeMethods[obj.type][propName], additionalArgs, currPos);
+                } else throw std::runtime_error("\"" + propName + "\" is not a function.");
             }, typeMethods[obj.type][propName]);
             Value::Property prop(funcVal, Access::READ_ONLY);
             return {funcVal, prop};
