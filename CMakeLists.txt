@@ -61,6 +61,8 @@ if(JUSTC_NOLUAU)
     add_compile_definitions(JUSTC_NOLUAU)
 endif()
 
+add_compile_definitions(PROMISE_HEADONLY)
+
 include(CheckIPOSupported)
 check_ipo_supported(RESULT ipo_supported)
 if(ipo_supported)
@@ -226,6 +228,13 @@ endif()
 
 find_package(ICU REQUIRED COMPONENTS uc i18n)
 
+FetchContent_Declare(
+    promise_cpp
+    GIT_REPOSITORY https://github.com/xhawk18/promise-cpp.git
+    GIT_TAG master
+)
+FetchContent_MakeAvailable(promise_cpp)
+
 include_directories(third-party)
 
 set(CORE_SOURCES
@@ -289,6 +298,7 @@ else()
 endif()
 target_include_directories(justc_core SYSTEM PRIVATE ${Boost_INCLUDE_DIRS})
 target_link_libraries(justc_core PRIVATE ICU::uc ICU::i18n)
+target_link_libraries(justc_core PRIVATE promise-cpp)
 
 if(UNIX AND NOT APPLE)
     find_package(X11 REQUIRED)

@@ -166,6 +166,16 @@ else
     echo "::warning::LZMA not found"
 fi
 
+if [ ! -f "third-party/promise-cpp/include/promise-cpp/promise.hpp" ]; then
+    echo "::group::Downloading promise-cpp..."
+    mkdir -p third-party
+    git clone https://github.com/xhawk18/promise-cpp.git third-party/promise-cpp
+    cd third-party/promise-cpp
+    git checkout 556dce7183dc76a229e5f6f82bd5e7ef1203bbfd
+    cd ../..
+    echo "::endgroup::"
+fi
+
 SOURCE_FILES="core/entry/jsapi.cpp core/lexer.cpp core/parser.cpp core/parser/json.cpp core/serializer/json.cpp core/keywords.cpp \
 core/fetch.cpp core/serializer/xml.cpp core/serializer/yaml.cpp core/utility.cpp core/import.cpp core/built-in/http/http.cpp \
 core/built-in/math/math.cpp core/built-in/binary/binary.cpp core/built-in/string/string.cpp core/unicode.cpp core/builtins.cpp core/serializer/justo.cpp \
@@ -206,7 +216,11 @@ COMMON_FLAGS="-s EXPORTED_FUNCTIONS=[\"_malloc\",\"_free\",\"_registerFunction\"
 -s DEMANGLE_SUPPORT=0 \
 -I./third-party \
 $LUAU_INCLUDE $CEREAL_INCLUDE \
-$COMPRESSION_FLAGS"
+$COMPRESSION_FLAGS \
+-I./third-party/promise-cpp/include \
+-DPROMISE_HEADONLY \
+-DPROMISE_MULTITHREAD=0 \
+-s USE_BOOST_HEADERS=1"
 
 WEB_FLAGS="-s ENVIRONMENT=web,worker \
 -s ASYNCIFY_IMPORTS=['fetch','emscripten_fetch','emscripten_fetch_close','use_luau']"

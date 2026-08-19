@@ -198,6 +198,9 @@ jobs:
           ./vcpkg/vcpkg install snappy:x64-windows-static --recurse
           ./vcpkg/vcpkg install bzip2:x64-windows-static --recurse
           ./vcpkg/vcpkg install liblzma:x64-windows-static --recurse
+          ./vcpkg/vcpkg install boost-asio:x64-windows-static --recurse
+          ./vcpkg/vcpkg install boost-system:x64-windows-static --recurse
+          ./vcpkg/vcpkg install boost-thread:x64-windows-static --recurse
       
       - name: Clean build directory
         shell: pwsh
