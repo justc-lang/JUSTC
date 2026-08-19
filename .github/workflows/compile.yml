@@ -86,20 +86,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Cache vcpkg
-        uses: actions/cache@v4
-        with:
-          path: |
-            vcpkg
-            build/vcpkg_installed
-            build/_deps
-            vcpkg/downloads
-            vcpkg/packages
-            vcpkg/installed
-            vcpkg_cache
-          key: ${{ runner.os }}-vcpkg-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
-          restore-keys: |
-            ${{ runner.os }}-vcpkg-
       - name: Cache apt packages
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
@@ -112,15 +98,6 @@ jobs:
             libgl1-mesa-dev libglu1-mesa-dev libzstd-dev liblz4-dev
             libsnappy-dev libbz2-dev liblzma-dev zlib1g-dev
           version: 1.0
-      - name: Setup vcpkg
-        run: |
-          if [ ! -d "vcpkg" ]; then
-            git clone --depth=1 https://github.com/microsoft/vcpkg.git
-          fi
-          ./vcpkg/bootstrap-vcpkg.sh
-      - name: Install vcpkg dependencies
-        run: |
-          ./vcpkg/vcpkg install cpr libidn2 icu boost-multiprecision boost-serialization zlib zstd lz4 snappy bzip2 liblzma
       - name: Build
         run: bash linux/compile.sh "-DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install_root"
       - name: Upload CLI
