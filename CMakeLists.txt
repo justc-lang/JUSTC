@@ -228,12 +228,18 @@ endif()
 
 find_package(ICU REQUIRED COMPONENTS uc i18n)
 
+message(STATUS "Downloading promise-cpp...")
 FetchContent_Declare(
     promise_cpp
     GIT_REPOSITORY https://github.com/xhawk18/promise-cpp.git
-    GIT_TAG master
+    GIT_TAG 556dce7183dc76a229e5f6f82bd5e7ef1203bbfd
 )
-FetchContent_MakeAvailable(promise_cpp)
+FetchContent_GetProperties(promise_cpp)
+if(NOT promise_cpp_POPULATED)
+    FetchContent_Populate(promise_cpp)
+    set(PROMISE_CPP_INCLUDE_DIR ${promise_cpp_SOURCE_DIR}/include)
+endif()
+message(STATUS "promise-cpp downloaded to: ${PROMISE_CPP_INCLUDE_DIR}")
 
 include_directories(third-party)
 
@@ -298,7 +304,7 @@ else()
 endif()
 target_include_directories(justc_core SYSTEM PRIVATE ${Boost_INCLUDE_DIRS})
 target_link_libraries(justc_core PRIVATE ICU::uc ICU::i18n)
-target_link_libraries(justc_core PRIVATE promise-cpp)
+target_include_directories(justc_core PRIVATE ${PROMISE_CPP_INCLUDE_DIR})
 
 if(UNIX AND NOT APPLE)
     find_package(X11 REQUIRED)
