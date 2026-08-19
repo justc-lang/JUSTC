@@ -7622,12 +7622,15 @@ std::pair<Value, Value::Property> Parser::accessProperty(const Value& obj, const
         auto itM = typeMethods[DataType::JUSTC_OBJECT].find(propName);
         if (itM != typeMethods[DataType::JUSTC_OBJECT].end()) {
             const size_t currPos = currentToken().start;
-            return createFunction([obj, propName, currPos](const std::vector<Value>& args) -> Value {
-                const std::vector<Value> additionalArgs = {obj};
-                additionalArgs.reserve(additionalArgs.size() + args.size());
+            Value funcVal = createFunction([this, obj, propName, currPos](const std::vector<Value>& args) -> Value {
+                std::vector<Value> additionalArgs;
+                additionalArgs.reserve(1 + args.size());
+                additionalArgs.push_back(obj);
                 additionalArgs.insert(additionalArgs.end(), args.begin(), args.end());
-                return executeFunction(typeMethods[DataType::JUSTC_OBJECT][propName], additionalArgs, currPos);
+                return this->executeFunction(typeMethods[DataType::JUSTC_OBJECT][propName], additionalArgs, currPos);
             }, typeMethods[DataType::JUSTC_OBJECT][propName]);
+            Value::Property prop(funcVal, Access::READ_ONLY);
+            return {funcVal, prop};
         }
 
         throw std::runtime_error("Property '" + propName + "' not found in object at " + Utility::position(currentToken().start, input) + ".");
@@ -7640,12 +7643,15 @@ std::pair<Value, Value::Property> Parser::accessProperty(const Value& obj, const
         auto itM = typeMethods[obj.type].find(propName);
         if (itM != typeMethods[obj.type].end()) {
             const size_t currPos = currentToken().start;
-            return createFunction([obj, propName, currPos](const std::vector<Value>& args) -> Value {
-                const std::vector<Value> additionalArgs = {obj};
-                additionalArgs.reserve(additionalArgs.size() + args.size());
+            Value funcVal = createFunction([this, obj, propName, currPos](const std::vector<Value>& args) -> Value {
+                std::vector<Value> additionalArgs;
+                additionalArgs.reserve(1 + args.size());
+                additionalArgs.push_back(obj);
                 additionalArgs.insert(additionalArgs.end(), args.begin(), args.end());
-                return executeFunction(typeMethods[obj.type][propName], additionalArgs, currPos);
+                return this->executeFunction(typeMethods[obj.type][propName], additionalArgs, currPos);
             }, typeMethods[obj.type][propName]);
+            Value::Property prop(funcVal, Access::READ_ONLY);
+            return {funcVal, prop};
         }
 
         throw std::runtime_error("Property '" + propName + "' not found in object at " + Utility::position(currentToken().start, input) + ".");
