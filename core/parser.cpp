@@ -1283,6 +1283,16 @@ Parser::Parser(
     variables["charType"] = chartypeValue;
     constVars["charType"] = false;
 
+    std::unordered_map<std::string, Value> taskProperties;
+    taskProperties["sleep"] = builtinObjectFunction("task.sleep");
+    taskProperties["wait"] = builtinObjectFunction("task.wait");
+    taskProperties["race"] = builtinObjectFunction("task.race");
+    builtinObject("task", taskProperties);
+
+    std::unordered_map<std::string, Value> systemProperties;
+    systemProperties["env"] = builtinObjectFunction("system.env");
+    builtinObject("system", systemProperties);
+
     builtinClasses();
 }
 
@@ -3010,6 +3020,17 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
             return result;
         }
     }
+    else if (match("keyword", "await")) {
+        advance();
+        Value val = parseExpression(doExecute, false, doFunctionCall);
+        if (val.type != DataType::PROMISE) return val;
+        Value result = Value::createNull();
+        Promise prom = val.getComplexData<Promise>();
+        prom.then([&result](Value output) {
+            result = output;
+        });
+        return result;
+    }
     else if (match("keyword") && peekToken().type == "(") {
         return parseFunctionCall(doExecute, doFunctionCall);
     }
@@ -3388,7 +3409,6 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
         return numberToValue(Math::LOG10E);
     }
 
-    // built-in
     if (funcName == "valueof") return functionVALUE(args);
     if (funcName == "String") return functionSTRING(args);
     if (funcName == "Link") return functionLINK(args);
@@ -3470,8 +3490,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
         return booleanToValue(allowLuau);
     }
 
-    // math and binary
-    if (args.empty() && funcName != "math.random" && funcName != "Window") {
+    if (args.empty() && funcName != "math.random" && funcName != "Window" && funcName != "task.wait") {
         if (funcName == "JUSTC.parse" || funcName == "JUSTC.execute") {
             return emptyJUSTC();
         }
@@ -4340,7 +4359,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             uint64_t hash = static_cast<uint64_t>(hasher(args[0]));
             return Value::createNumberWithType(hash, NumericType::UINT64);
         }
-        if (funcName == "env") {
+        if (funcName == "system.env") {
             const std::pair<bool, std::string> getEnv = Utility::env(args[0].toString());
             if (!getEnv.first) return Value::createNull();
             return Value::createString(getEnv.second);
@@ -5004,7 +5023,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             }
             return Value::createNumberWithType(static_cast<uint64_t>(0), NumericType::UINT64);
         }
-        if (funcName == "sleep") {
+        if (funcName == "task.sleep") {
             std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<long long>(args[0].toNumber())));
             return Value::createNull();
         }
@@ -5071,7 +5090,54 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
                 }).detach();
             }));
             result.name = "Promise";
+            promises.push_back(result);
             return result;
+        }
+        if (funcName == "task.wait") {
+            std::vector<Promise> proms;
+            if (args.empty()) {
+                proms.reserve(promises.size());
+                for (const Value& prom : promises) {
+                    if (prom.type != DataType::PROMISE) throw std::runtime_error("Promise registry has been corrupted. A non-promise value has been found.");
+                    proms.push_back(prom.getComplexData<Promise>());
+                }
+                promises.clear();
+            } else if (args.size() == 1 && args[0].type == DataType::JSON_ARRAY) {
+                proms.reserve(args[0].array_elements.size());
+                for (const Value& prom : args[0].array_elements) {
+                    if (prom.type != DataType::PROMISE) throw std::runtime_error("Expected promise, got " + dataTypeToString(prom.type) + ".");
+                    proms.push_back(prom.getComplexData<Promise>());
+                }
+            } else {
+                proms.reserve(args.size());
+                for (const Value& prom : args) {
+                    if (prom.type != DataType::PROMISE) throw std::runtime_error("Expected promise, got " + dataTypeToString(prom.type) + ".");
+                    proms.push_back(prom.getComplexData<Promise>());
+                }
+            }
+            all(proms).then([](std::vector<Promise> results) {});
+            return Value::createNull();
+        }
+        if (funcName == "task.race") {
+            std::vector<Promise> proms;
+            if (args.size() == 1 && args[0].type == DataType::JSON_ARRAY) {
+                proms.reserve(args[0].array_elements.size());
+                for (const Value& prom : args[0].array_elements) {
+                    if (prom.type != DataType::PROMISE) throw std::runtime_error("Expected promise, got " + dataTypeToString(prom.type) + ".");
+                    proms.push_back(prom.getComplexData<Promise>());
+                }
+            } else {
+                proms.reserve(args.size());
+                for (const Value& prom : args) {
+                    if (prom.type != DataType::PROMISE) throw std::runtime_error("Expected promise, got " + dataTypeToString(prom.type) + ".");
+                    proms.push_back(prom.getComplexData<Promise>());
+                }
+            }
+            int32_t resultID = -1;
+            race(proms).then([&resultID](int result) {
+                resultID = static_cast<int32_t>(result);
+            });
+            return Value::createNumberWithType(resultID, NumericType::INT32);
         }
     } catch (const std::exception& e) {
         throw std::runtime_error(std::string(e.what()) + " at " + Utility::position(startPos, input) + ".");
