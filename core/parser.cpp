@@ -5005,13 +5005,15 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             return Value::createNumberWithType(static_cast<uint64_t>(0), NumericType::UINT64);
         }
         if (funcName == "sleep") {
-            std::this_thread::sleep_for(std::chrono::milliseconds(args[0].toNumber()));
+            std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<long long>(args[0].toNumber())));
+            return Value::createNull();
         }
         if (funcName == "Promise") {
+            bool doExec = doExecute;
             Value result;
             result.type = DataType::PROMISE;
-            result.setComplexData<Promise>(newPromise([this, args, startPos, doExecute](Defer d) {
-                std::thread([this, args, d, startPos, doExecute]() {
+            result.setComplexData<Promise>(newPromise([this, args, startPos, doExec](Defer d) {
+                std::thread([this, args, d, startPos, doExec]() {
                     Value output = Value::createNull();
                     bool rejected = false;
                     bool done = false;
@@ -5045,7 +5047,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
                                 "reject"
                             );
                             
-                            Value funcResult = callFunction(args[0], {resolve, reject}, startPos, doExecute);
+                            Value funcResult = callFunction(args[0], {resolve, reject}, startPos, doExec);
                             
                             if (funcResult.type != DataType::NULL_TYPE && !done) {
                                 done = true;
