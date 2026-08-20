@@ -8820,8 +8820,8 @@ void Parser::builtinClasses() {
     if (!getBIC()) {
         #ifndef __EMSCRIPTEN__
             BIM["Window"] = builtinClass("Window");
-            BIM["Promise"] = builtinClass("Promise");
         #endif
+        BIM["Promise"] = builtinClass("Promise");
         setBIM(BIM);
         setBIC(true);
     } else {
