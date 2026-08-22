@@ -124,6 +124,7 @@ enum class DataType : int8_t {
     MAP          = 30,
     SET          = 31,
     PROMISE      = 32,
+    ENUM         = 33,
 
     INT8_ARRAY   =-2,
     INT16_ARRAY  =-3,
@@ -175,6 +176,7 @@ inline std::string dataTypeToString(DataType type) {
         case DataType::MAP:          return "Map";
         case DataType::SET:          return "Set";
         case DataType::PROMISE:      return "Promise";
+        case DataType::ENUM:         return "Enum";
 
         case DataType::INT8_ARRAY:   return "Int8 Array";
         case DataType::INT16_ARRAY:  return "Int16 Array";
@@ -825,6 +827,7 @@ enum class ParserType : uint8_t {
     SCRIPT = 0,
     STRUCT = 1,
     CLASS = 2,
+    ENUM = 3,
 };
 
 struct PropertyPathNode {
@@ -930,6 +933,8 @@ private:
     std::vector<std::string> outputExcludeVariables;
 
     std::vector<Value> promises;
+
+    size_t nextIndex;
 
     // logs
     void addLog(const std::string& type, const std::string& message, size_t position = 0);

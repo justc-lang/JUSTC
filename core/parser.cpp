@@ -249,6 +249,8 @@ std::string Value::toString() const {
             return "[set " + name + "]";
         case DataType::PROMISE:
             return "[promise " + name + "]";
+        case DataType::ENUM:
+            return "[enum " + name + "]";
         default:
             return "unknown";
     }
@@ -285,6 +287,7 @@ std::string Value::toIdentifier() const {
         case DataType::FLOAT32_ARRAY:
         case DataType::FLOAT64_ARRAY:
         case DataType::PROMISE:
+        case DataType::ENUM:
             return name;
         default:
             return toString();
@@ -358,6 +361,7 @@ bool Value::toBoolean() const {
         case DataType::FLOAT32_ARRAY:
         case DataType::FLOAT64_ARRAY:
         case DataType::PROMISE:
+        case DataType::ENUM:
             return true;
         default:
             return false;
@@ -811,7 +815,7 @@ Parser::Parser(
     strictMode(false), hasLogFile(false), allowLuau(allowLuau), canAllowLuau(canAllowLuau), doExecute(doExecute), runAsync(runAsync),
     canAllowJS(allowJavaScript ? true : canAllowJS), scriptName(scriptName), scriptType(scriptType), asJSON(false), isJSONArray(false),
     endOfScript("."), returnValue(DataType::UNKNOWN), isFunction(isFunction), chartype(chartype), currentScope(0), rootIndex(0),
-    parsertype(parsertype), nextStructConstructor(0)
+    parsertype(parsertype), nextStructConstructor(0), nextIndex(0)
 {
     initializeCPPTypes();
     initializeBuiltIns();
@@ -827,7 +831,7 @@ Parser::Parser(
             variables[key] = value;
             constVars[key] = false;
             setLocal(rootIndex, key, value, false);
-            if (parsertype == ParserType::STRUCT || parsertype == ParserType::CLASS) outputExcludeVariables.push_back(key);
+            if (parsertype == ParserType::STRUCT || parsertype == ParserType::CLASS || parsertype == ParserType::ENUM) outputExcludeVariables.push_back(key);
             if (value.type == DataType::STRUCT) structures[key] = value;
             if (value.type == DataType::CLASS) classes[key] = value;
         }
@@ -2165,7 +2169,7 @@ ASTNode Parser::parseStatement(bool doExecute) {
         constVars[funcValue.name] = true;
 
         return node;
-    } else if (keyword == "struct" || keyword == "class") {
+    } else if (keyword == "struct" || keyword == "class" || keyword == "enum") {
         Value structVal = parseStructDeclaration(doExecute);
 
         ASTNode node("VARIABLE_DECLARATION", structVal.name, currentToken().start);
@@ -2178,8 +2182,10 @@ ASTNode Parser::parseStatement(bool doExecute) {
         return node;
     } else if (keyword == "echo" || keyword == "log" || keyword == "logfile") {
         return parseCommand(doExecute);
-    } else if ((match("identifier") || match("string") || isCPPType() || isStruct(currentToken().value).first) && !isJSONArray) {
+    } else if ((((match("identifier") || match("string")) && (parsertype != ParserType::STRUCT && parsertype != ParserType::ENUM)) || isCPPType() || isStruct(currentToken().value).first) && !isJSONArray) {
         return parseVariableDeclaration(doExecute);
+    } else if ((match("identifier") || match("string")) && (parsertype == ParserType::STRUCT || parsertype == ParserType::ENUM)) {
+        return parseVariableDeclaration(doExecute, true, true);
     } else if (match("keyword", "const") && !isJSONArray) {
         advance();
         bool isLocal = false;
@@ -2238,7 +2244,7 @@ ASTNode Parser::parseGlobal(bool doExecute, bool constant) {
         global.value = funcValue;
         global.identifier = funcValue.name;
         global.constant = constant;
-    } else if (match("keyword", "struct") || match("keyword", "class")) {
+    } else if (match("keyword", "struct") || match("keyword", "class") || match("keyword", "enum")) {
         Value structVal = parseStructDeclaration(doExecute);
         global.value = structVal;
         global.identifier = structVal.name;
@@ -2433,7 +2439,7 @@ ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool loc
         if (isEnd()) {
             throw std::runtime_error("Expected assignment operator at " + Utility::position(currentToken().start, input) + ", got EOF.");
         } else if (CanIgnoreNoAssignmentOperator()) {
-            Value exprValue = applyCPPTypeDeclaration(parseExpression(doExecute), cpptype, node.typeDeclaration, doExecute, true);
+            Value exprValue = parsertype == ParserType::ENUM ? Value::createNumber(static_cast<double>(nextIndex++)) : applyCPPTypeDeclaration(parseExpression(doExecute), cpptype, node.typeDeclaration, doExecute, true);
             node.value = exprValue;
             extractReferences(exprValue, node.references);
         } else throw std::runtime_error("Expected assignment operator at " + Utility::position(currentToken().start, input) + ", got \"" + currentToken().value +"\".");
@@ -2494,7 +2500,7 @@ Value Parser::parseExpression(bool doExecute, bool identifierMode, bool doFuncti
             }
             ++offset;
         }
-        if (match("keyword", "struct") || match("keyword", "class")) return parseStructDeclaration(doExecute, funcName, false);
+        if (match("keyword", "struct") || match("keyword", "class") || match("keyword", "enum")) return parseStructDeclaration(doExecute, funcName, false);
         return parseFunctionDeclaration(doExecute, funcName, false);
     }
     Value result = parseConditional(doExecute, identifierMode, doFunctionCall, ignoreColon);
@@ -5655,6 +5661,7 @@ Value Parser::evaluateExpression(const Value& left, const std::string& op, const
                 }
                 case DataType::JSON_OBJECT:
                 case DataType::JUSTC_OBJECT:
+                case DataType::ENUM:
                     result = accessProperty(left, right.toString()).first;
                     break;
                 case DataType::MAP: {
@@ -7049,7 +7056,7 @@ Value Parser::parseFunctionDeclaration(bool doExecute, std::string funcName, boo
 }
 
 Value Parser::callFunction(const Value& function, const std::vector<Value>& args, size_t startPos, bool doExecute) {
-    if (function.type != DataType::FUNCTION && function.type != DataType::STRUCT && function.type != DataType::CLASS) {
+    if (function.type != DataType::FUNCTION && function.type != DataType::STRUCT && function.type != DataType::CLASS && function.type != DataType::ENUM) {
         throw std::runtime_error("Cannot call non-function value at " + Utility::position(startPos, input));
     } else if (!doExecute) {
         return onExecDisabled(startPos, function.name);
@@ -7108,6 +7115,9 @@ Value Parser::callFunction(const Value& function, const std::vector<Value>& args
             break;
         case DataType::CLASS:
             ptype = ParserType::CLASS;
+            break;
+        case DataType::ENUM:
+            ptype = ParserType::ENUM;
             break;
         default: break;
     }
@@ -8478,12 +8488,13 @@ std::unordered_map<std::string, Value::Property> Parser::pmap(const std::unorder
 }
 
 Value Parser::parseStructDeclaration(bool doExecute, std::string structName, bool requireName) {
-    if (!match("keyword", "struct") && !match("keyword", "class")) {
-        throw std::runtime_error("Expected \"struct\"/\"class\" keyword at " + Utility::position(currentToken().start, input));
+    if (!match("keyword", "struct") && !match("keyword", "class") && !match("keyword", "enum")) {
+        throw std::runtime_error("Expected \"struct\"/\"class\"/\"enum\" keyword at " + Utility::position(currentToken().start, input));
     }
     bool isStruct_ = match("keyword", "struct");
-    std::string typeStr = isStruct_ ? "Struct" : "Class";
-    std::string typeStrL= isStruct_ ? "struct" : "class";
+    bool isEnum_ = match("keyword", "enum");
+    std::string typeStr = isStruct_ ? "Struct" : isEnum_ ? "Enum" : "Class";
+    std::string typeStrL= isStruct_ ? "struct" : isEnum_ ? "enum" : "class";
     advance();
 
     if (requireName) {
@@ -8500,10 +8511,10 @@ Value Parser::parseStructDeclaration(bool doExecute, std::string structName, boo
     }
 
     Value result;
-    result.type = isStruct_ ? DataType::STRUCT : DataType::CLASS;
+    result.type = isStruct_ ? DataType::STRUCT : isEnum_ ? DataType::ENUM : DataType::CLASS;
     result.name = structName;
 
-    if (match("keyword", "extends")) {
+    if (match("keyword", "extends") && !isEnum_) {
         advance();
         Value extends = parseExpression(doExecute, true);
         switch (extends.type) {
@@ -8587,6 +8598,7 @@ Value Parser::parseStructDeclaration(bool doExecute, std::string structName, boo
     closureContext->allowLuau = this->allowLuau;
     result.closure_context = closureContext;
     
+    if (isEnum_) return parseEnumDeclaration(result, doExecute, structName);
     if (!isStruct_) return parseClassDeclaration(result, doExecute, structName);
 
     structures[structName] = result;
@@ -8600,6 +8612,12 @@ Value Parser::parseClassDeclaration(const Value& value, bool doExecute, std::str
     cls.instanceObject = accessProperty(body, "instance").first.properties;
     cls.staticObject = accessProperty(body, "static").first.properties;
     return createClass(cls, true, className);
+}
+Value Parser::parseEnumDeclaration(const Value& value, bool doExecute, std::string enumName) {
+    Value result = callFunction(value, {}, currentToken().start, doExecute);
+    result.type = DataType::ENUM;
+    result.name = "Enum";
+    return result;
 }
 
 std::pair<bool, Value> Parser::isStruct(const std::string& name) {

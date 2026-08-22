@@ -113,6 +113,7 @@ bool Utility::checkObject(const Value& val) {
     switch (val.type) {
         case DataType::JSON_OBJECT:
         case DataType::JUSTC_OBJECT:
+        case DataType::ENUM:
             return true;
         default:
             return false;
@@ -320,7 +321,8 @@ std::string Utility::_stringifyValue(const Value& value, int indentLevel) {
             return "Infinity";
 
         case DataType::JUSTC_OBJECT:
-        case DataType::JSON_OBJECT: {
+        case DataType::JSON_OBJECT:
+        case DataType::ENUM: {
             std::string result = "{" + nextIndent;
             bool first = true;
 
@@ -656,6 +658,9 @@ bool Utility::compareValues(const Value& left, const Value& right) {
 
         case DataType::JUSTC_OBJECT:
         case DataType::JSON_OBJECT:
+        case DataType::ENUM:
+            if (left.type == DataType::ENUM && right.type != DataType::ENUM) return false;
+            if (right.type == DataType::ENUM && left.type != DataType::ENUM) return false;
             if (left.properties.size() != right.properties.size()) return false;
             for (const auto& [key, val] : left.properties) {
                 auto it = right.properties.find(key);

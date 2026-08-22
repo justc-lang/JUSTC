@@ -55,7 +55,7 @@ const std::vector<std::string> keywords = {
     "new", "lgt", "goto", "isolated", "if",
     "for", "while", "lambda", "from", "options",
     "struct", "set", "to", "extends", "await",
-    "async", "try", "catch", "finally",
+    "async", "try", "catch", "finally", "enum",
 
     // cpp type keywords
     "int8", "int16", "int32", "int64", "int128",
