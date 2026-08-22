@@ -228,8 +228,7 @@ WEB_OUTPUT="javascript/$SAFE_DIR/justc.core.js"
 WEB_OUTPUT_EXCLUDE_LUAU="javascript/$SAFE_DIR/justc_noluau.core.js"
 
 NODE_FLAGS="-s ENVIRONMENT=node \
--s ASYNCIFY_IMPORTS=['fetch','emscripten_fetch','emscripten_fetch_close'] \
--s NODE_ENV_ALLOW_ALL=1"
+-s ASYNCIFY_IMPORTS=['fetch','emscripten_fetch','emscripten_fetch_close']"
 NODE_OUTPUT="javascript_output/$SAFE_DIR/justc.node.js"
 NODE_OUTPUT_EXCLUDE_LUAU="javascript_output/$SAFE_DIR/justc_noluau.node.js"
 
