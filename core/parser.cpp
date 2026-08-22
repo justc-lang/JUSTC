@@ -151,6 +151,7 @@ using namespace promise;
 #endif
 
 std::string Value::toString() const {
+    std::string valname = isVariable ? variable : name;
     switch (type) {
         case DataType::STRING:
         case DataType::LINK:
@@ -186,7 +187,7 @@ std::string Value::toString() const {
             return "Infinity";
         case DataType::JUSTC_OBJECT:
         case DataType::JSON_OBJECT:
-            return "[object " + name + "]";
+            return "[object " + valname + "]";
         case DataType::JSON_ARRAY:
         case DataType::INT8_ARRAY:
         case DataType::INT16_ARRAY:
@@ -202,11 +203,11 @@ std::string Value::toString() const {
         case DataType::CUINT64_ARRAY:
         case DataType::FLOAT32_ARRAY:
         case DataType::FLOAT64_ARRAY:
-            return "[array " + name + "]";
+            return "[array " + valname + "]";
         case DataType::CLASS:
-            return "[class " + name + "]";
+            return "[class " + valname + "]";
         case DataType::SPACE:
-            return "[space " + name + "]";
+            return "[space " + valname + "]";
         case DataType::FUNCTION: {
             std::stringstream ae;
             bool first = true;
@@ -235,22 +236,22 @@ std::string Value::toString() const {
 
             return std::string(
                 function_info.isIsolated ? "isolated " : ""
-            ) + "function " + name + (
+            ) + "function " + valname + (
                 array_elements.size() > 0 ? " [" + ae.str() + "] " : ""
             ) + "(" + args.str() + ") {" + string_value + "}";
         }
         case DataType::STRUCT: 
-            return "[struct " + name + "]";
+            return "[struct " + valname + "]";
         case DataType::JSX_ELEMENT:
-            return "[element " + name + "]";
+            return "[element " + valname + "]";
         case DataType::MAP:
-            return "[map " + name + "]";
+            return "[map " + valname + "]";
         case DataType::SET:
-            return "[set " + name + "]";
+            return "[set " + valname + "]";
         case DataType::PROMISE:
-            return "[promise " + name + "]";
+            return "[promise " + valname + "]";
         case DataType::ENUM:
-            return "[enum " + name + "]";
+            return "[enum " + valname + "]";
         default:
             return "unknown";
     }
@@ -288,7 +289,7 @@ std::string Value::toIdentifier() const {
         case DataType::FLOAT64_ARRAY:
         case DataType::PROMISE:
         case DataType::ENUM:
-            return name;
+            return isVariable ? variable : name;
         default:
             return toString();
     }
@@ -8616,7 +8617,7 @@ Value Parser::parseClassDeclaration(const Value& value, bool doExecute, std::str
 Value Parser::parseEnumDeclaration(const Value& value, bool doExecute, std::string enumName) {
     Value result = callFunction(value, {}, currentToken().start, doExecute);
     result.type = DataType::ENUM;
-    result.name = "Enum";
+    result.name = enumName;
     return result;
 }
 

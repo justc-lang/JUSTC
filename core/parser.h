@@ -538,7 +538,8 @@ struct Value {
     bool isObject() const {
         return type == DataType::JUSTC_OBJECT ||
                type == DataType::JSON_OBJECT ||
-               type == DataType::JSON_ARRAY;
+               type == DataType::JSON_ARRAY ||
+               type == DataType::ENUM;
     }
     Property* getProperty(const std::string& name);
     Value* getArrayElement(size_t index);
