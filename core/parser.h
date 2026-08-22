@@ -1175,6 +1175,7 @@ private:
     void builtinClasses();
     Value addClass(const uint64_t& classID, bool hasName = false, std::string className = "");
     void fromBIM(const std::unordered_map<std::string, uint64_t>& BIM, const std::string& name);
+    Value parseEnumDeclaration(const Value& value, bool doExecute, std::string enumName);
 
 public:
     static std::string getCurrentTimestamp();
