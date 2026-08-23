@@ -482,7 +482,7 @@ int freePointer(const char* raw_pointer_str) {
     return 1;
 }
 
-void clearPointers() {
+void clearJUSTCPointers() {
     std::lock_guard<std::mutex> lock(globalParserMutex);
     ensureGlobalParser();
     globalParser->clearPointers();

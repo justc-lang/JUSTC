@@ -1061,7 +1061,7 @@ SOFTWARE.
             },
             clear: function() {
                 JUSTC.CheckWASM();
-                JUSTC.WASM.ccall('clearPointers', null, [], []);
+                JUSTC.WASM.ccall('clearJUSTCPointers', null, [], []);
             }
         },
         cleanup: function() {
