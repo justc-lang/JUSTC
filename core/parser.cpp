@@ -7059,7 +7059,7 @@ Value Parser::parseCondition(bool doExecute, bool wasIsolated) {
                 }
                 if (braceCount4 != 0) throw std::runtime_error(unclosedBody);
 
-                result = shared(catchbody, doExecute, startPos, &catchContext, "'catch' body at " + Utility::position(currentToken().start, input), !isIsolated);
+                result = shared(catchbody.str(), doExecute, startPos, &catchContext, "'catch' body at " + Utility::position(currentToken().start, input), !isIsolated);
             }
             if (match("keyword", "finally")) {
                 advance();
@@ -7087,7 +7087,7 @@ Value Parser::parseCondition(bool doExecute, bool wasIsolated) {
                 }
                 if (braceCount4 != 0) throw std::runtime_error(unclosedBody);
 
-                result = shared(finallybody, doExecute, startPos, &finallyContext, "'finally' body at " + Utility::position(currentToken().start, input), !isIsolated);
+                result = shared(finallybody.str(), doExecute, startPos, &finallyContext, "'finally' body at " + Utility::position(currentToken().start, input), !isIsolated);
             }
             return result;
         } default:
