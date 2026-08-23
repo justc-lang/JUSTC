@@ -3038,6 +3038,32 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
         });
         return result;
     }
+    else if (match("keyword", "new")) {
+        advance();
+        Value val = parseExpression(doExecute, false, doFunctionCall);
+        switch (val.type) {
+            case DataType::STRUCT: {
+                std::string structID = Utility::uint64ToHexString(nextStructConstructor++);
+                structConstructors[structID] = val;
+                Value result = applyCPPTypeDeclaration(Value::createNull(), structID, DataType::UNKNOWN, doExecute, true, 1);
+                structConstructors.erase(structID);
+                return result;
+            }
+            case DataType::CLASS: {
+                std::vector<Value> args = parseArguments(doExecute);
+                uint64_t classID = val.getNumericValue<uint64_t>();
+                Class cls = getClass(classID);
+                Value result = callFunction(cls.constructor, args, currentToken().start, doExecute);
+                if (result.type != DataType::JSON_OBJECT && result.type != DataType::JUSTC_OBJECT)
+                    throw std::runtime_error("Constructor for class " + Utility::uint64ToHexString(classID) + " returned a non-object value.");
+                Value instanceObject = Value::createJsonObject({});
+                instanceObject.properties = cls.instanceObject;
+                result = doubleDot(instanceObject, result);
+                return result;
+            }
+            default: throw std::runtime_error("Expected struct or class after \"new\" keyword at " + Utility::position(currentToken().start, input) + ".");
+        }
+    }
     else if (match("keyword") && peekToken().type == "(") {
         return parseFunctionCall(doExecute, doFunctionCall);
     }
@@ -7911,6 +7937,7 @@ Value Parser::accessIndex(const Value& arr, size_t index) {
 }
 std::vector<Value> Parser::parseArguments(bool doExecute) {
     std::vector<Value> args;
+    if (!match("(")) throw std::runtime_error("Expected '(' for function arguments at " + Utility::position(currentToken().start, input) + ".");
     advance();
 
     while (!match(")") && !isEnd()) {
