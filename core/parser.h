@@ -125,6 +125,7 @@ enum class DataType : int8_t {
     SET          = 31,
     PROMISE      = 32,
     ENUM         = 33,
+    POINTER      = 34,
 
     INT8_ARRAY   =-2,
     INT16_ARRAY  =-3,
@@ -177,6 +178,7 @@ inline std::string dataTypeToString(DataType type) {
         case DataType::SET:          return "Set";
         case DataType::PROMISE:      return "Promise";
         case DataType::ENUM:         return "Enum";
+        case DataType::POINTER:      return "Pointer";
 
         case DataType::INT8_ARRAY:   return "Int8 Array";
         case DataType::INT16_ARRAY:  return "Int16 Array";
@@ -1098,6 +1100,9 @@ private:
     void parseAllowCommandError();
 
     Value evaluateLengthOperator(const Value& value);
+    Value evaluateNameOperator(const Value& value);
+    Value evaluateAddressOfOperator(const Value& value);
+    Value evaluateDereferenceOperator(const Value& value);
 
     static std::vector<double> values2numbers(const std::vector<Value>& values) {
         std::vector<double> result;
@@ -1228,6 +1233,19 @@ public:
     bool isFunctionValue(const Value& value) const;
     bool isFunctionId(const std::string& name) const;
     uint64_t extractFunctionId(const std::string& name) const;
+
+    uint64_t setPointer(const Value& value);
+    Value getPointer(const uint64_t& pointer);
+    void freePointer(const uint64_t& pointer);
+    void clearPointers();
+    bool hasPointer(const uint64_t& pointer);
+    uint64_t setPointer(const uint64_t& pointer, const Value& value);
+    Value makePointer(const Value& value);
+    void updatePointer(const Value& pointer, const Value& value);
+    Value getPointer(const Value& pointer);
+    void freePointer(const Value& pointer);
+
+    void cleanup();
 };
 
 #endif

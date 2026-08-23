@@ -52,6 +52,7 @@ private:
     size_t position;
     std::vector<ParserToken> tokens;
     bool requireDot;
+    bool useDollarBefore;
 
     std::vector<std::string> keywords;
     std::unordered_map<std::string, std::string> smallkeywords;
@@ -76,7 +77,7 @@ private:
     void readComment();
     void readMultiLineComment();
     ParserToken readString(char quote, bool raw = false);
-    ParserToken readLink();
+    ParserToken readLink(bool isType = false);
     ParserToken readNumber();
     ParserToken readIdentifier();
     void tokenize();
@@ -95,7 +96,7 @@ private:
     void skipWhitespace();
 
 public:
-    Lexer(const std::string& input, const bool& warn, const bool& requireDot = false);
+    Lexer(const std::string& input, const bool& warn, const bool& requireDot = false, const bool& useDollarBefore = false);
     std::vector<ParserToken> getTokens() const;
     static std::pair<std::string, std::vector<ParserToken>> parse(const std::string& input, const bool& warn = false);
 

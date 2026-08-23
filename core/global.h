@@ -56,13 +56,16 @@ SOFTWARE.
         std::unordered_map<uint64_t, std::function<Value(const std::vector<Value>&)>> m_functions;
         uint64_t m_nextFunctionId = 0;
 
+        std::unordered_map<uint64_t, Value> m_pointers;
+        uint64_t m_nextPointer = 0;
+
     public:
         static GlobalContext& getInstance() {
             static GlobalContext instance;
             return instance;
         }
 
-        void set(const std::string& name, const Value& value, bool isConst = false, bool isJUSTC = false) {
+        void set(const std::string& name, const Value& value, const bool& isConst = false, const bool& isJUSTC = false) {
             m_variables[name] = value;
             m_constVars[name] = isConst;
             m_JUSTCVars[name] = isJUSTC;
@@ -144,27 +147,62 @@ SOFTWARE.
             return m_builtinClassMap;
         }
 
-        uint64_t registerFunction(std::function<Value(const std::vector<Value>&)> func) {
+        uint64_t registerFunction(const std::function<Value(const std::vector<Value>&)>& func) {
             uint64_t id = m_nextFunctionId++;
             m_functions[id] = func;
             return id;
         }
-        std::function<Value(const std::vector<Value>&)> getFunction(uint64_t id, const std::string& name) const {
+        std::function<Value(const std::vector<Value>&)> getFunction(const uint64_t& id, const std::string& name) const {
             auto it = m_functions.find(id);
             if (it == m_functions.end()) {
                 throw std::runtime_error("Function registry has been corrupted. Failed to access function " + name + ".");
             }
             return it->second;
         }
-        void removeFunction(uint64_t id) {
+        void removeFunction(const uint64_t& id) {
             m_functions.erase(id);
         }
         void clearFunctions() {
             m_functions.clear();
             m_nextFunctionId = 0;
         }
-        bool hasFunction(uint64_t id) const {
+        bool hasFunction(const uint64_t& id) const {
             return m_functions.find(id) != m_functions.end();
+        }
+
+        uint64_t setPointer(const Value& value) {
+            uint64_t id = m_nextPointer++;
+            m_pointers[id] = value;
+            return id;
+        }
+        Value getPointer(const uint64_t& id, const std::string& name) const {
+            auto it = m_pointers.find(id);
+            if (it == m_pointers.end()) {
+                throw std::runtime_error("Pointer " + name + " does not exist.");
+            }
+            return it->second;
+        }
+        void freePointer(const uint64_t& id) {
+            m_pointers.erase(id);
+        }
+        void clearPointers() {
+            m_pointers.clear();
+            m_nextPointer = 0;
+        }
+        bool hasPointer(const uint64_t& id) const  {
+            return m_pointers.find(id) != m_pointers.end();
+        }
+        uint64_t setPointer(const uint64_t& id, const std::string& name, const Value& value) {
+            auto it = m_pointers.find(id);
+            if (it == m_pointers.end()) {
+                throw std::runtime_error("Pointer " + name + " does not exist.");
+            }
+            m_pointers[id] = value;
+            return id;
+        }
+
+        void resetRootCounter() {
+            m_rootCounter = 0;
         }
     };
 #else
@@ -186,13 +224,16 @@ SOFTWARE.
         std::unordered_map<uint64_t, std::function<Value(const std::vector<Value>&)>> m_functions;
         uint64_t m_nextFunctionId = 0;
 
+        std::unordered_map<uint64_t, Value> m_pointers;
+        uint64_t m_nextPointer = 0;
+
     public:
         static GlobalContext& getInstance() {
             static GlobalContext instance;
             return instance;
         }
 
-        void set(const std::string& name, const Value& value, bool isConst = false, bool isJUSTC = false) {
+        void set(const std::string& name, const Value& value, const bool& isConst = false, const bool& isJUSTC = false) {
             std::unique_lock<std::shared_mutex> lock(m_mutex);
             m_variables[name] = value;
             m_constVars[name] = isConst;
@@ -292,13 +333,13 @@ SOFTWARE.
             return m_builtinClassMap;
         }
 
-        uint64_t registerFunction(std::function<Value(const std::vector<Value>&)> func) {
+        uint64_t registerFunction(const std::function<Value(const std::vector<Value>&)>& func) {
             std::unique_lock<std::shared_mutex> lock(m_mutex);
             uint64_t id = m_nextFunctionId++;
             m_functions[id] = func;
             return id;
         }
-        std::function<Value(const std::vector<Value>&)> getFunction(uint64_t id, const std::string& name) const {
+        std::function<Value(const std::vector<Value>&)> getFunction(const uint64_t& id, const std::string& name) const {
             std::shared_lock<std::shared_mutex> lock(m_mutex);
             auto it = m_functions.find(id);
             if (it == m_functions.end()) {
@@ -306,7 +347,7 @@ SOFTWARE.
             }
             return it->second;
         }
-        void removeFunction(uint64_t id) {
+        void removeFunction(const uint64_t& id) {
             std::unique_lock<std::shared_mutex> lock(m_mutex);
             m_functions.erase(id);
         }
@@ -315,14 +356,56 @@ SOFTWARE.
             m_functions.clear();
             m_nextFunctionId = 0;
         }
-        bool hasFunction(uint64_t id) const {
+        bool hasFunction(const uint64_t& id) const {
             std::shared_lock<std::shared_mutex> lock(m_mutex);
             return m_functions.find(id) != m_functions.end();
+        }
+
+        uint64_t setPointer(const Value& value) {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            uint64_t id = m_nextPointer++;
+            m_pointers[id] = value;
+            return id;
+        }
+        Value getPointer(const uint64_t& id, const std::string& name) const {
+            std::shared_lock<std::shared_mutex> lock(m_mutex);
+            auto it = m_pointers.find(id);
+            if (it == m_pointers.end()) {
+                throw std::runtime_error("Pointer " + name + " does not exist.");
+            }
+            return it->second;
+        }
+        void freePointer(const uint64_t& id) {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            m_pointers.erase(id);
+        }
+        void clearPointers() {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            m_pointers.clear();
+            m_nextPointer = 0;
+        }
+        bool hasPointer(const uint64_t& id) const  {
+            std::shared_lock<std::shared_mutex> lock(m_mutex);
+            return m_pointers.find(id) != m_pointers.end();
+        }
+        uint64_t setPointer(const uint64_t& id, const std::string& name, const Value& value) {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            auto it = m_pointers.find(id);
+            if (it == m_pointers.end()) {
+                throw std::runtime_error("Pointer " + name + " does not exist.");
+            }
+            m_pointers[id] = value;
+            return id;
+        }
+
+        void resetRootCounter() {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            m_rootCounter = 0;
         }
     };
 #endif
 
-inline void setGlobal(const std::string& name, const Value& value, bool isConst = false, bool isJUSTC = false) {
+inline void setGlobal(const std::string& name, const Value& value, const bool& isConst = false, const bool& isJUSTC = false) {
     GlobalContext::getInstance().set(name, value, isConst, isJUSTC);
 }
 
@@ -393,15 +476,19 @@ inline void setBIM(const std::unordered_map<std::string, uint64_t>& map) {
     GlobalContext::getInstance().setBIM(map);
 }
 
-inline uint64_t registerFunction(std::function<Value(const std::vector<Value>&)> func) {
-    return GlobalContext::getInstance().registerFunction(func);
+inline uint64_t registerFunction(const std::function<Value(const std::vector<Value>&)>& func) {
+    try {
+        return GlobalContext::getInstance().registerFunction(func);
+    } catch (const std::bad_alloc& e) {
+        throw std::runtime_error("Out of memory: Function registry is full.");
+    }
 }
 
-inline std::function<Value(const std::vector<Value>&)> getFunction(uint64_t id, const std::string& name) {
+inline std::function<Value(const std::vector<Value>&)> getFunction(const uint64_t& id, const std::string& name) {
     return GlobalContext::getInstance().getFunction(id, name);
 }
 
-inline void removeFunction(uint64_t id) {
+inline void removeFunction(const uint64_t& id) {
     GlobalContext::getInstance().removeFunction(id);
 }
 
@@ -409,8 +496,50 @@ inline void clearFunctions_() {
     GlobalContext::getInstance().clearFunctions();
 }
 
-inline bool hasFunction(uint64_t id) {
+inline bool hasFunction(const uint64_t& id) {
     return GlobalContext::getInstance().hasFunction(id);
+}
+
+inline uint64_t setPointer_(const Value& value) {
+    try {
+        return GlobalContext::getInstance().setPointer(value);
+    } catch (const std::bad_alloc& e) {
+        throw std::runtime_error("Out of memory: Pointer registry is full.");
+    }
+}
+
+inline Value getPointer_(const uint64_t& pointer, const std::string& pointerHex = "(unknown)") {
+    return GlobalContext::getInstance().getPointer(pointer, pointerHex);
+}
+
+inline void freePointer_(const uint64_t& pointer) {
+    GlobalContext::getInstance().freePointer(pointer);
+}
+
+inline void clearPointers_() {
+    GlobalContext::getInstance().clearPointers();
+}
+
+inline bool hasPointer_(const uint64_t& id) {
+    return GlobalContext::getInstance().hasPointer(id);
+}
+
+inline uint64_t setPointer_(const uint64_t& id, const std::string& name, const Value& value) {
+    try {
+        return GlobalContext::getInstance().setPointer(id, name, value);
+    } catch (const std::bad_alloc& e) {
+        throw std::runtime_error("Out of memory: Pointer registry is full.");
+    }
+}
+
+inline void cleanupGlobal() {
+    clearGlobals_();
+    GlobalContext::getInstance().resetRootCounter();
+    clearClasses_();
+    setBIC(false);
+    setBIM({});
+    clearFunctions_();
+    clearPointers_();
 }
 
 #endif

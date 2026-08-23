@@ -1024,3 +1024,8 @@ INSTANTIATE_BIT_CAST(int64_t,  uint64_t)
 INSTANTIATE_BIT_CAST(int64_t,  int64_t)
 
 #undef INSTANTIATE_BIT_CAST
+
+static uint64_t Utility::checkPointer(const Value& val) {
+    if (val.type != DataType::POINTER) throw std::runtime_error("Expected pointer.");
+    return val.getNumericValue<uint64_t>();
+}

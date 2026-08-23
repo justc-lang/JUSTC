@@ -47,7 +47,7 @@ namespace {
     std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
 }
 
-Lexer::Lexer(const std::string& input, const bool& warn, const bool& requireDot) : input(input), warn(warn), position(0), dollarBefore(false), requireDot(requireDot) {
+Lexer::Lexer(const std::string& input, const bool& warn, const bool& requireDot, const bool& useDollarBefore) : input(input), warn(warn), position(0), dollarBefore(false), requireDot(requireDot), useDollarBefore(useDollarBefore) {
     if (input.empty()) {
         throw std::invalid_argument("Invalid Input.");
     }
@@ -193,14 +193,14 @@ ParserToken Lexer::readString(char quote, bool raw) {
     return ParserToken{"string", value, start};
 }
 
-ParserToken Lexer::readLink() {
+ParserToken Lexer::readLink(bool isType) {
     size_t start = ++position;
     std::string value = "";
     while (position < input.length() && input[position] != '>') {
         value += input[position++];
     }
     position++;
-    return ParserToken{"link", value, start};
+    return ParserToken{isType ? "type" : "link", value, start};
 }
 
 ParserToken Lexer::readNumber() {
@@ -570,7 +570,7 @@ ParserToken Lexer::readJSX() {
     position++;
     
     if (position >= input.length()) {
-        return ParserToken("error", "", start);
+        throw std::runtime_error("Unexpected EOF at Element at " + Utility::position(position, input) + ".");
     }
     
     if (input[position] == '/') {
@@ -672,7 +672,7 @@ void Lexer::tokenize() {
 
         if (ch == '<' && peek() != '<' && peek() != '=') {
             addDollarBefore();
-            tokens.push_back(readJSX());
+            tokens.push_back((position - 1) < 0 || ((position - 1) >= 0 && input[position - 1] == '(') ? readJSX() : readLink(true));
             continue;
         }
 
@@ -680,6 +680,18 @@ void Lexer::tokenize() {
             addDollarBefore();
             position++;
             tokens.push_back(readLink());
+            continue;
+        }
+        if (ch == 't' && peek() == '<') {
+            addDollarBefore();
+            position++;
+            tokens.push_back(readLink(true));
+            continue;
+        }
+        if (ch == 'e' && peek() == '<') {
+            addDollarBefore();
+            position++;
+            tokens.push_back(readJSX());
             continue;
         }
 
@@ -913,7 +925,7 @@ void Lexer::tokenize() {
             continue;
         }
 
-        if (ch == '$') {
+        if (ch == '$' && useDollarBefore) {
             dollarBefore = true;
             position++;
             continue;

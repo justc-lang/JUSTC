@@ -252,6 +252,8 @@ std::string Value::toString() const {
             return "[promise " + valname + "]";
         case DataType::ENUM:
             return "[enum " + valname + "]";
+        case DataType::POINTER:
+            return "[pointer " + Utility::uint64ToHexString(getNumericValue<uint64_t>()) + "]";
         default:
             return "unknown";
     }
@@ -1449,9 +1451,9 @@ ParseResult Parser::parse(bool doExecute) {
                     ast.push_back(parseAllowCommand());
                 } else if (keyword == "import") {
                     ast.push_back(parseImportCommand());
-                } else if (keyword == "if" || keyword == "while" || keyword == "for" || (
+                } else if (keyword == "if" || keyword == "while" || keyword == "for" || keyword == "try" || (
                     keyword == "isolated" && peekToken().type == "keyword" && (
-                        peekToken().value == "if" || peekToken().value == "while" || peekToken().value == "for"
+                        peekToken().value == "if" || peekToken().value == "while" || peekToken().value == "for" || peekToken().value == "try"
                     )
                 )) {
                     Value result = parseCondition(doExecute);
@@ -2408,7 +2410,7 @@ ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool loc
         position -= 2;
         parseCommand(doExecute);
     }
-    else if (match("--") || match("++") || match("#") || match("!") || match("~")) { // unary assignment
+    else if (match("--") || match("++") || match("#") || match("!") || match("~") || match("$")) { // unary assignment
         Value var = resolveVariableValue(identifier, false);
         if (var.type == DataType::UNKNOWN) throw std::runtime_error("Assignment to undefined variable at " + Utility::position(currentToken().start, input) + ".");
         
@@ -2430,6 +2432,8 @@ ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool loc
             } else {
                 throw std::runtime_error("Expected number or string for bitwise NOT operation at " + Utility::position(currentToken().start, input) + ".");
             }
+        } else if (match("$")) {
+            val = evaluateNameOperator(var);
         }
         
         advance();
@@ -2506,7 +2510,7 @@ Value Parser::parseExpression(bool doExecute, bool identifierMode, bool doFuncti
     }
     Value result = parseConditional(doExecute, identifierMode, doFunctionCall, ignoreColon);
 
-    if (match("--") || match("++") || match("#") || match("!") || match("~")) { // unary assignment
+    if (match("--") || match("++") || match("#") || match("!") || match("~") || match("$")) { // unary assignment
         Value val = result;
         if (match("--") || match("++")) {
             val = Value::createNumber(result.toNumber() + (
@@ -2525,6 +2529,8 @@ Value Parser::parseExpression(bool doExecute, bool identifierMode, bool doFuncti
             } else {
                 throw std::runtime_error("Expected number or string for bitwise NOT operation at " + Utility::position(currentToken().start, input) + ".");
             }
+        } else if (match("$")) {
+            val = evaluateNameOperator(result);
         }
         if (result.isVariable) assign(result, val, " at " + Utility::position(currentToken().start, input) + ".");
     }
@@ -2836,7 +2842,7 @@ Value Parser::parsePower(bool doExecute, bool identifierMode, bool doFunctionCal
 
 Value Parser::parseUnary(bool doExecute, bool identifierMode, bool doFunctionCall, bool ignoreColon) {
     if ((match("minus") && !identifierMode) || match("+") || match("!") ||
-        (match("-") && !identifierMode) || match("#")) {
+        (match("-") && !identifierMode) || match("#") || match("$") || match("&") || match("*")) {
         std::string op = currentToken().value;
         advance();
 
@@ -2844,6 +2850,12 @@ Value Parser::parseUnary(bool doExecute, bool identifierMode, bool doFunctionCal
 
         if (op == "#") {
             return evaluateLengthOperator(right);
+        } else if (op == "$") {
+            return evaluateNameOperator(right);
+        } else if (op == "&") {
+            return evaluateAddressOfOperator(right);
+        } else if (op == "*") {
+            return evaluateDereferenceOperator(right);
         }
 
         return evaluateExpression(Value(), op, right, doExecute);
@@ -2925,6 +2937,15 @@ Value Parser::evaluateLengthOperator(const Value& value) {
     }
 
     return result;
+}
+Value Parser::evaluateNameOperator(const Value& value) {
+    return Value::createString(value.isVariable ? value.variable : value.name);
+}
+Value Parser::evaluateAddressOfOperator(const Value& value) {
+    return makePointer(value);
+}
+Value Parser::evaluateDereferenceOperator(const Value& value) {
+    return getPointer(value);
 }
 
 Value Parser::astNodeToValue(const ASTNode& node) {
@@ -3063,6 +3084,23 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
             }
             default: throw std::runtime_error("Expected struct or class after \"new\" keyword at " + Utility::position(currentToken().start, input) + ".");
         }
+    }
+    else if (match("keyword", "try")) {
+        advance();
+        Value result = Value::createNull();
+        try {
+            result = parseExpression(doExecute, false, doFunctionCall);
+        } catch (...) {
+            if (match("keyword", "catch")) {
+                advance();
+                result = parseExpression(doExecute, false, doFunctionCall);
+            }
+            if (match("keyword", "finally")) {
+                advance();
+                result = parseExpression(doExecute, false, doFunctionCall);
+            }
+        }
+        return result;
     }
     else if (match("keyword") && peekToken().type == "(") {
         return parseFunctionCall(doExecute, doFunctionCall);
@@ -6770,8 +6808,8 @@ std::string Parser::t2i(ParserToken toIsolated) { // tokenToIsolated
 
 Value Parser::parseCondition(bool doExecute, bool wasIsolated) {
     size_t startPos = currentToken().start;
-    int conditionType = 0; // 0 = if; 1 = for; 2 = while; 3 = elseif
-    std::string errMsg = "Expected 'if'/'for'/'while' keyword at " + Utility::position(startPos, input) + ".";
+    int conditionType = 0; // 0 = if; 1 = for; 2 = while; 3 = elseif; 4 = try
+    std::string errMsg = "Expected \"if\"/\"for\"/\"while\"/\"try\" keyword at " + Utility::position(startPos, input) + ".";
     bool isIsolated = wasIsolated;
 
     if (match("keyword", "isolated")) {
@@ -6787,6 +6825,8 @@ Value Parser::parseCondition(bool doExecute, bool wasIsolated) {
         conditionType = 2;
     } else if (match("keyword", "elseif")) {
         conditionType = 3;
+    } else if (match("keyword", "try")) {
+        conditionType = 4;
     } else {
         throw std::runtime_error(errMsg);
     }
@@ -6811,25 +6851,27 @@ Value Parser::parseCondition(bool doExecute, bool wasIsolated) {
         conditionBodyContext[importedVar.name] = importedVar;
     }
 
-    if (!match("(")) {
-        std::string currKeyword = "if";
-        switch (conditionType) {
-            case 1:
-                currKeyword = "for";
-                break;
-            case 2:
-                currKeyword = "while";
-                break;
-            case 3:
-                currKeyword = "elseif";
-                break;
-            default:
-                currKeyword = "if";
-                break;
+    if (conditionType != 4) {
+        if (!match("(")) {
+            std::string currKeyword = "if";
+            switch (conditionType) {
+                case 1:
+                    currKeyword = "for";
+                    break;
+                case 2:
+                    currKeyword = "while";
+                    break;
+                case 3:
+                    currKeyword = "elseif";
+                    break;
+                default:
+                    currKeyword = "if";
+                    break;
+            }
+            throw std::runtime_error("Expected '(' after '" + currKeyword + "' at " + Utility::position(currentToken().start, input) + ".");
         }
-        throw std::runtime_error("Expected '(' after '" + currKeyword + "' at " + Utility::position(currentToken().start, input) + ".");
+        advance();
     }
-    advance();
 
     std::stringstream first;
     std::stringstream second;
@@ -6912,7 +6954,15 @@ Value Parser::parseCondition(bool doExecute, bool wasIsolated) {
                 advance();
                 if (peekToken().type == "keyword" && peekToken().value == "if") {
                     return parseCondition(doExecute, isIsolated);
-                } else if (!match("{")) {
+                }
+
+                std::unordered_map<std::string, Value> elseContext = conditionBodyContext;
+                std::vector<Value> importedContext2 = parseLambda(doExecute, currentToken().start);
+                for (Value importedVar : importedContext2) {
+                    elseContext[importedVar.name] = importedVar;
+                }
+                
+                if (!match("{")) {
                     throw std::runtime_error(conditionBodyErr);
                 }
                 advance();
@@ -6931,13 +6981,14 @@ Value Parser::parseCondition(bool doExecute, bool wasIsolated) {
                 }
                 if (braceCount4 != 0) throw std::runtime_error(unclosedBody);
 
-                return shared(elsebody.str(), doExecute, startPos, &conditionBodyContext, "'else' body at " + Utility::position(currentToken().start, input), !isIsolated);
+                return shared(elsebody.str(), doExecute, startPos, &elseContext, "'else' body at " + Utility::position(currentToken().start, input), !isIsolated);
             } else if (match("keyword", "elseif")) {
                 return parseCondition(doExecute, isIsolated);
             } else return Value::createNull();
         } case 2: { // while
             std::string conditionStr = "return " + first.str() + " .";
             bool conditionResult = i2v(isolated(conditionStr, doExecute, startPos, &conditionContext, "'while' condition at " + Utility::position(currentToken().start, input))).toBoolean();
+            exitScope();
             Value lastResult = Value::createNull();
             while (conditionResult) {
                 lastResult = shared(conditionBody, doExecute, startPos, &conditionBodyContext, "'while' body at " + Utility::position(currentToken().start, input), !isIsolated);
@@ -6948,10 +6999,97 @@ Value Parser::parseCondition(bool doExecute, bool wasIsolated) {
                         conditionContext[key] = value;
                     }
                 }
+                enterScope();
                 conditionResult = i2v(isolated(conditionStr, doExecute, startPos, &conditionContext, "'while' condition at " + Utility::position(currentToken().start, input))).toBoolean();
+                exitScope();
             }
-            exitScope();
             return lastResult;
+        } case 4: { // try
+            exitScope();
+            Value result = Value::createNull();
+            bool failed = false;
+            std::string err = "";
+            try {
+                result = shared(conditionBody, doExecute, startPos, &conditionBodyContext, "'try' body at " + Utility::position(currentToken().start, input), !isIsolated);
+            } catch (const std::runtime_error& e) {
+                failed = true;
+                err = std::string(e.what());
+            } catch (const std::exception& e) {
+                failed = true;
+                err = std::string(e.what());
+            } catch (...) {
+                failed = true;
+                err = "Unknown error.";
+            }
+            if (failed && match("keyword", "catch")) {
+                advance();
+
+                std::unordered_map<std::string, Value> catchContext = conditionBodyContext;
+                std::vector<Value> importedContext2 = parseLambda(doExecute, currentToken().start);
+                for (Value importedVar : importedContext2) {
+                    catchContext[importedVar.name] = importedVar;
+                }
+
+                if (match("(")) {
+                    advance();
+                    if (match(")")) {
+                        advance();
+                    } else {
+                        catchContext[currentToken().value] = Value::createString(err);
+                        advance();
+                        if (!match(")")) throw std::runtime_error("Expected \")\" at " + Utility::position(currentToken().start, input) + ".");
+                        advance();
+                    }
+                }
+
+                if (!match("{")) throw std::runtime_error(conditionBodyErr);
+                advance();
+
+                std::stringstream catchbody;
+
+                int braceCount4 = 1;
+                while (!isEnd() && braceCount4 > 0) {
+                    if (match("{")) braceCount4++;
+                    else if (match("}")) braceCount4--;
+
+                    if (braceCount4 > 0) {
+                        catchbody << t2i(currentToken());
+                    }
+                    advance();
+                }
+                if (braceCount4 != 0) throw std::runtime_error(unclosedBody);
+
+                result = shared(catchbody, doExecute, startPos, &catchContext, "'catch' body at " + Utility::position(currentToken().start, input), !isIsolated);
+            }
+            if (match("keyword", "finally")) {
+                advance();
+
+                std::unordered_map<std::string, Value> finallyContext = conditionBodyContext;
+                std::vector<Value> importedContext2 = parseLambda(doExecute, currentToken().start);
+                for (Value importedVar : importedContext2) {
+                    finallyContext[importedVar.name] = importedVar;
+                }
+
+                if (!match("{")) throw std::runtime_error(conditionBodyErr);
+                advance();
+
+                std::stringstream finallybody;
+
+                int braceCount4 = 1;
+                while (!isEnd() && braceCount4 > 0) {
+                    if (match("{")) braceCount4++;
+                    else if (match("}")) braceCount4--;
+
+                    if (braceCount4 > 0) {
+                        finallybody << t2i(currentToken());
+                    }
+                    advance();
+                }
+                if (braceCount4 != 0) throw std::runtime_error(unclosedBody);
+
+                result = shared(finallybody, doExecute, startPos, &finallyContext, "'finally' body at " + Utility::position(currentToken().start, input), !isIsolated);
+            }
+            return result;
         } default:
             throw std::runtime_error(errMsg);
     }
@@ -8674,7 +8812,7 @@ Value Parser::updateObjectProperty(const std::vector<std::variant<std::string, s
     Value setter = Value::createNull();
 
     Access neededAccess = Access::WRITE_ONLY;
-    if (match("--") || match("++") || match("#") || match("!") || match("~")) neededAccess = Access::READ_WRITE;
+    if (match("--") || match("++") || match("#") || match("!") || match("~") || match("$")) neededAccess = Access::READ_WRITE;
 
     std::vector<PropertyPathNode> pathNodes;
     
@@ -8732,7 +8870,7 @@ Value Parser::updateObjectProperty(const std::vector<std::variant<std::string, s
         
         newValue = parseConditional(doExecute);
     }
-    else if (match("--") || match("++") || match("#") || match("!") || match("~")) {
+    else if (match("--") || match("++") || match("#") || match("!") || match("~") || match("$")) {
         std::string unaryOp = currentToken().value;
         advance();
         
@@ -8758,6 +8896,8 @@ Value Parser::updateObjectProperty(const std::vector<std::variant<std::string, s
             } else {
                 throw std::runtime_error("Expected number or string for bitwise NOT operation");
             }
+        } else if (unaryOp == "$") {
+            newValue = evaluateNameOperator(currentVal);
         }
     }
     else {
@@ -9002,6 +9142,48 @@ uint64_t Parser::extractFunctionId(const std::string& name) const {
     }
     std::string hexStr = name.substr(std::string(FUNCTION_PREFIX).length());
     return std::stoull(hexStr);
+}
+
+uint64_t Parser::setPointer(const Value& value) {
+    return setPointer_(value);
+}
+Value Parser::getPointer(const uint64_t& pointer) {
+    return getPointer_(pointer, Utility::uint64ToHexString(pointer));
+}
+void Parser::freePointer(const uint64_t& pointer) {
+    freePointer_(pointer);
+}
+void Parser::clearPointers() {
+    clearPointers_();
+}
+bool Parser::hasPointer(const uint64_t& pointer) {
+    return hasPointer_(pointer);
+}
+uint64_t Parser::setPointer(const uint64_t& pointer, const Value& value) {
+    return setPointer_(pointer, Utility::uint64ToHexString(pointer), value);
+}
+Value Parser::makePointer(const Value& value) {
+    uint64_t id = setPointer(value);
+    Value result = Value::createNumberWithType(id, NumericType::UINT64);
+    result.type = DataType::POINTER;
+    result.name = value.name;
+    return result;
+}
+void Parser::updatePointer(const Value& pointer, const Value& value) {
+    uint64_t id = Utility::checkPointer(pointer);
+    setPointer(id, value);
+}
+Value Parser::getPointer(const Value& pointer) {
+    uint64_t id = Utility::checkPointer(pointer);
+    return getPointer(id);
+}
+void Parser::freePointer(const Value& pointer) {
+    uint64_t id = Utility::checkPointer(pointer);
+    freePointer(id);
+}
+
+void Parser::cleanup() {
+    cleanupGlobal();
 }
 
 ParseResult Parser::parseTokens(const std::vector<ParserToken>& tokens, bool doExecute, bool runAsync, const std::string& input, const bool allowJavaScript, const bool canAllowJS, const std::string scriptName, const std::string scriptType, const bool allowLuau, const bool canAllowLuau) {

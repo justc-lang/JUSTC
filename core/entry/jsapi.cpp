@@ -467,6 +467,33 @@ void clearClasses() {
     globalParser->clearClasses();
 }
 
+int freePointer(const char* raw_pointer_str) {
+    if (raw_pointer_str) return 0;
+
+    std::lock_guard<std::mutex> lock(globalParserMutex);
+    ensureGlobalParser();
+
+    std::string pointer_str = std::string(raw_pointer_str);
+    unsigned long long raw_pointer = std::stoull(pointer_str);
+    uint64_t pointer = raw_pointer;
+
+    globalParser->freePointer(pointer);
+
+    return 1;
+}
+
+void clearPointers() {
+    std::lock_guard<std::mutex> lock(globalParserMutex);
+    ensureGlobalParser();
+    globalParser->clearPointers();
+}
+
+void cleanup() {
+    std::lock_guard<std::mutex> lock(globalParserMutex);
+    ensureGlobalParser();
+    globalParser->cleanup();
+}
+
 }
 
 struct JUSTOInitializer {

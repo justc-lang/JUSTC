@@ -278,6 +278,8 @@ public:
 
     template<typename To, typename From>
     static To bitCast(const From& from);
+
+    static uint64_t checkPointer(const Value& val);
 };
 class UnicodeUtility {
 public:

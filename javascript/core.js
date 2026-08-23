@@ -1045,6 +1045,28 @@ SOFTWARE.
                 JUSTC.CheckWASM();
                 JUSTC.WASM.ccall('clearClasses', null, [], []);
             }
+        },
+        pointers: {
+            free: function(id) {
+                JUSTC.CheckWASM();
+                if (typeof id !== 'number' && typeof id !== 'bigint' && typeof id !== 'string') throw new JUSTC.Error('Pointer must be a BigInt, a number, or a string');
+                if (typeof id == 'string' && !/^\d{1,20}$/.test(id) && !/^0x[0-9a-fA-F]{1,16}$/.test(id)) throw new JUSTC.Error('Invalid Pointer');
+                if (!(BIGINT(id) <= 18446744073709551615n) || id < 0) throw new JUSTC.Error('Pointer must be within UInt64 range');
+                return JUSTC.WASM.ccall(
+                    'freePointer',
+                    'number',
+                    ['string'],
+                    [STRING(id)]
+                ) === 1;
+            },
+            clear: function() {
+                JUSTC.CheckWASM();
+                JUSTC.WASM.ccall('clearPointers', null, [], []);
+            }
+        },
+        cleanup: function() {
+            JUSTC.CheckWASM();
+            JUSTC.WASM.ccall('cleanup', null, [], []);
         }
     };
     JUSTC.Output.compile = isBrowser || !JUSTC.Experiments ? function(code) {
