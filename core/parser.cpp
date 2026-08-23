@@ -5210,6 +5210,12 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             });
             return Value::createNumberWithType(resultID, NumericType::INT32);
         }
+        if (funcName == "free") {
+            for (const Value& ptr : args) {
+                freePointer(ptr);
+            }
+            return Value::createNull();
+        }
     } catch (const std::exception& e) {
         throw std::runtime_error(std::string(e.what()) + " at " + Utility::position(startPos, input) + ".");
     }
