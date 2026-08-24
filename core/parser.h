@@ -1246,6 +1246,8 @@ public:
     void freePointer(const Value& pointer);
 
     void cleanup();
+
+    bool throwError;
 };
 
 #endif

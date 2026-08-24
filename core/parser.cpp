@@ -818,7 +818,7 @@ Parser::Parser(
     strictMode(false), hasLogFile(false), allowLuau(allowLuau), canAllowLuau(canAllowLuau), doExecute(doExecute), runAsync(runAsync),
     canAllowJS(allowJavaScript ? true : canAllowJS), scriptName(scriptName), scriptType(scriptType), asJSON(false), isJSONArray(false),
     endOfScript("."), returnValue(DataType::UNKNOWN), isFunction(isFunction), chartype(chartype), currentScope(0), rootIndex(0),
-    parsertype(parsertype), nextStructConstructor(0), nextIndex(0)
+    parsertype(parsertype), nextStructConstructor(0), nextIndex(0), throwError(false)
 {
     initializeCPPTypes();
     initializeBuiltIns();
@@ -1703,6 +1703,10 @@ ParseResult Parser::parse(bool doExecute) {
 
         result.error = err;
         addLog("ERROR", err, currentToken().start);
+    }
+
+    if (throwError && !result.error.empty()) {
+        throw std::runtime_error(result.error);
     }
 
     return result;
@@ -6592,6 +6596,8 @@ Value Parser::isolated(const std::string& code, bool doExecute, size_t startPos,
             }
         }
 
+        isolatedParser.throwError = true;
+
         result = isolatedParser.parse(doExecute);
 
         Value isolatedObject;
@@ -6884,42 +6890,44 @@ Value Parser::parseCondition(bool doExecute, bool wasIsolated) {
     std::stringstream third;
     int ssnum = 1;
 
-    int braceCount = 1;
-    int braceCount2= 0;
-    int braceCount3= 0;
-    while (braceCount > 0 && !isEnd()) {
-        if (match("(")) braceCount++;
-        else if (match(")")) braceCount--;
+    if (conditionType != 4) {
+        int braceCount = 1;
+        int braceCount2= 0;
+        int braceCount3= 0;
+        while (braceCount > 0 && !isEnd()) {
+            if (match("(")) braceCount++;
+            else if (match(")")) braceCount--;
 
-        if (braceCount > 0) {
-            if (braceCount == 1 && match(";") && braceCount2 == 0 && braceCount3 == 0) {
-                ssnum++;
-            } else {
-                if (match("{")) braceCount2++;
-                else if (match("}")) braceCount2--;
-                else if (match("[")) braceCount3++;
-                else if (match("]")) braceCount3--;
+            if (braceCount > 0) {
+                if (braceCount == 1 && match(";") && braceCount2 == 0 && braceCount3 == 0) {
+                    ssnum++;
+                } else {
+                    if (match("{")) braceCount2++;
+                    else if (match("}")) braceCount2--;
+                    else if (match("[")) braceCount3++;
+                    else if (match("]")) braceCount3--;
 
-                std::string out = t2i(currentToken());
-                switch (ssnum) {
-                    case 1:
-                        first << out;
-                        break;
-                    case 2:
-                        second << out;
-                        break;
-                    default:
-                        third << out;
-                        break;
+                    std::string out = t2i(currentToken());
+                    switch (ssnum) {
+                        case 1:
+                            first << out;
+                            break;
+                        case 2:
+                            second << out;
+                            break;
+                        default:
+                            third << out;
+                            break;
+                    }
                 }
+                if (ssnum > 3) throw std::runtime_error("Unexpected ';' at " + Utility::position(currentToken().start, input) + ".");
             }
-            if (ssnum > 3) throw std::runtime_error("Unexpected ';' at " + Utility::position(currentToken().start, input) + ".");
+            advance();
         }
-        advance();
-    }
 
-    if (braceCount != 0) {
-        throw std::runtime_error("Expected ')' after condition at " + Utility::position(currentToken().start, input) + ".");
+        if (braceCount != 0) {
+            throw std::runtime_error("Expected ')' after condition at " + Utility::position(currentToken().start, input) + ".");
+        }
     }
     std::string conditionBodyErr = "Expected '{' for condition body at " + Utility::position(currentToken().start, input) + ".";
     if (!match("{")) {
