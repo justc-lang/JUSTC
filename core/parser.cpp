@@ -1538,7 +1538,7 @@ ParseResult Parser::parse(bool doExecute) {
             } else if (match("JavaScript") || match("JavaScript_i")) {
                 bool interpolation = match("JavaScript_i");
                 if (doExecute && allowJavaScript) {
-                    std::string code = interpolation ? parseStringInterpolation() : currentToken().value;
+                    std::string code = interpolation ? parseStringInterpolation(doExecute) : currentToken().value;
                     #ifdef __EMSCRIPTEN__
 
                     Value result = runJavaScript(code, Utility::position(currentToken().start, input), false);
@@ -1569,7 +1569,7 @@ ParseResult Parser::parse(bool doExecute) {
                 #ifndef JUSTC_NOLUAU
                     bool interpolation = match("Luau_i");
                     if (doExecute && allowLuau) {
-                        RunLuau::runScript(interpolation ? parseStringInterpolation() : currentToken().value);
+                        RunLuau::runScript(interpolation ? parseStringInterpolation(doExecute) : currentToken().value);
                     } else if (!allowLuau) {
                         #ifdef __EMSCRIPTEN__
                         warn_luau_disabled_by_justc(Utility::position(currentToken().start, input).c_str(), currentToken().value.c_str(), getCurrentTimestamp().c_str());
@@ -3178,7 +3178,7 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
     }*/
     else if ((match("JavaScript") || match("JavaScript_i")) && doExecute && allowJavaScript) {
         bool interpolation = match("JavaScript_i");
-        std::string code = interpolation ? parseStringInterpolation() : currentToken().value;
+        std::string code = interpolation ? parseStringInterpolation(doExecute) : currentToken().value;
 
         #ifdef __EMSCRIPTEN__
 
@@ -3214,7 +3214,7 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
     else if ((match("Luau") || match("Luau_i")) && doExecute && allowLuau) {
         #ifndef JUSTC_NOLUAU
             bool interpolation = match("Luau_i");
-            std::pair<std::string, int> luauresult = RunLuau::runScriptWithResult(interpolation ? parseStringInterpolation() : currentToken().value);
+            std::pair<std::string, int> luauresult = RunLuau::runScriptWithResult(interpolation ? parseStringInterpolation(doExecute) : currentToken().value);
             Value result;
 
             switch (luauresult.second) {
@@ -3263,13 +3263,13 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
     }
     else if (match("JUSTO") || match("JUSTO_i")) {
         bool interpolation = match("JUSTO_i");
-        std::string code = interpolation ? parseStringInterpolation() : currentToken().value;
+        std::string code = interpolation ? parseStringInterpolation(doExecute) : currentToken().value;
         advance();
         return ParseJUSTO(code);
     }
     else if (match("JUSTC") || match("JUSTC_i")) {
         bool interpolation = match("JUSTC_i");
-        std::string code = interpolation ? parseStringInterpolation() : currentToken().value;
+        std::string code = interpolation ? parseStringInterpolation(doExecute) : currentToken().value;
         advance();
         return functionJUSTC2(code, doExecute, currentToken().start);
     }
