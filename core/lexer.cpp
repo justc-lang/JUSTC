@@ -191,7 +191,7 @@ ParserToken Lexer::readString(char quote, bool raw) {
     }
     
     if (!raw && !interpolation) value = StringEscape::unescape(value);
-    return ParserToken{"string" + (interpolation ? "_i" : ""), value, start};
+    return ParserToken{std::string("string") + std::string(interpolation ? "_i" : ""), value, start};
 }
 
 ParserToken Lexer::readLink(bool isType) {
