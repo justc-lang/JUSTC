@@ -854,6 +854,13 @@ enum class CompressionAlgorithm : uint8_t {
     DEFLATE = 9,
 };
 
+struct StringPart {
+    bool isLiteral;
+    std::string content;
+
+    StringPart(bool lit, const std::string& cont) : isLiteral(lit), content(cont) {}
+};
+
 class Parser {
 private:
     bool doExecute;
@@ -949,7 +956,6 @@ private:
 
     Value getIdentifier();
 
-    Value parseExpression(bool doExecute, bool identifierMode = false, bool doFunctionCall = true, bool ignoreColon = false);
     Value parsePrimary(bool doExecute, bool doFunctionCall = true);
     Value parseConditional(bool doExecute, bool identifierMode = false, bool doFunctionCall = true, bool ignoreColon = false);
     Value parseBitwiseOR(bool doExecute, bool identifierMode = false, bool doFunctionCall = true, bool ignoreColon = false);
@@ -1183,6 +1189,9 @@ private:
     void fromBIM(const std::unordered_map<std::string, uint64_t>& BIM, const std::string& name);
     Value parseEnumDeclaration(const Value& value, bool doExecute, std::string enumName);
 
+    std::string parseStringInterpolation(bool doExecute);
+    std::string evaluateInterpolationExpression(const std::string& expr, bool doExecute);
+
 public:
     static std::string getCurrentTimestamp();
     static Value stringToValue(const std::string& str);
@@ -1190,6 +1199,7 @@ public:
     ParseResult parse(bool doExecute = true);
     static ParseResult parseTokens(const std::vector<ParserToken>& tokens, bool doExecute = true, bool runAsync = false, const std::string& input = "", const bool allowJavaScript = true, const bool canAllowJS = true, const std::string scriptName = "", const std::string scriptType = "script", const bool allowLuau = true, const bool canAllowLuau = true);
 
+    Value parseExpression(bool doExecute, bool identifierMode = false, bool doFunctionCall = true, bool ignoreColon = false);
     Value callFunction(const Value& function, const std::vector<Value>& args, size_t startPos, bool doExecute);
     void registerFunction(const std::string& name, Function func, bool isConst = true);
     void registerFunctions(const std::unordered_map<std::string, Function>& functions, bool isConst = true);

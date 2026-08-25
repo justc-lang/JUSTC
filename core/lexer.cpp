@@ -167,6 +167,7 @@ void Lexer::readMultiLineComment() {
 ParserToken Lexer::readString(char quote, bool raw) {
     size_t start = ++position;
     std::string value = "";
+    bool interpolation = quote == '`';
     
     while (position < input.length()) {
         char ch = input[position];
@@ -189,8 +190,8 @@ ParserToken Lexer::readString(char quote, bool raw) {
         }
     }
     
-    if (!raw) value = StringEscape::unescape(value);
-    return ParserToken{"string", value, start};
+    if (!raw && !interpolation) value = StringEscape::unescape(value);
+    return ParserToken{"string" + (interpolation ? "_i" : ""), value, start};
 }
 
 ParserToken Lexer::readLink(bool isType) {
@@ -664,7 +665,7 @@ void Lexer::tokenize() {
             continue;
         }
 
-        if (ch == '"' || ch == '\'') {
+        if (ch == '"' || ch == '\'' || ch == '`') {
             addDollarBefore();
             tokens.push_back(readString(ch, ch == '\''));
             continue;
@@ -857,13 +858,13 @@ void Lexer::tokenize() {
             continue;
         }
 
-        if ((ch == 'l' || ch == 'j' || ch == 'c' || ch == 'o') && (peek() == '"' || peek() == '\'')) {
+        if ((ch == 'l' || ch == 'j' || ch == 'c' || ch == 'o') && (peek() == '"' || peek() == '\'' || peek() == '`')) {
             addDollarBefore();
             char qch = peek();
             position++;
             ParserToken str = readString(qch, qch == '\'');
             std::string type = ch == 'l' ? "Luau" : ch == 'j' ? "JavaScript" : ch == 'c' ? "JUSTC" : "JUSTO";
-            tokens.push_back(ParserToken{type, str.value, str.start});
+            tokens.push_back(ParserToken{type + (qch == '`' ? "_i" : ""), str.value, str.start});
             if (warn) {
                 #ifdef __EMSCRIPTEN__
                 warn_lexer_lang(Parser::getCurrentTimestamp().c_str(), Utility::position(position, input).c_str(), type.c_str());
@@ -871,6 +872,17 @@ void Lexer::tokenize() {
                 std::cout << warnPrefix + "Warning: " + type + " may be corrupted in the lexer output." << std::endl;
                 #endif
             }
+            continue;
+        }
+
+        if (ch == 'r' && (peek() == '"' || peek() == '\'' || peek() == '`')) {
+            addDollarBefore();
+            char qch = peek();
+            position++;
+            bool isRaw = qch != '\'';
+            ParserToken str = readString(qch, isRaw);
+            if (isRaw && qch == '`') str.type = "string_ri";
+            tokens.push_back(str);
             continue;
         }
 

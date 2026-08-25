@@ -1463,12 +1463,12 @@ ParseResult Parser::parse(bool doExecute) {
                 } else {
                     ast.push_back(parseStatement(doExecute));
                 }
-            } else if ((match("identifier") || ((match("string") || match("number")) && !isJSONArray)) && !isInBracketedExpression()) {
+            } else if ((match("identifier") || ((match("string") || match("number") || match("string_i") || match("string_ri")) && !isJSONArray)) && !isInBracketedExpression()) {
                 std::string identifier = currentToken().value;
                 bool isIdentifier = true;
                 size_t originalPos = position;
 
-                if (match("string") || match("number")) {
+                if (match("string") || match("number") || match("string_i") || match("string_ri")) {
                     isIdentifier = false;
                     Value exprValue = parseExpression(doExecute, true);
                     identifier = exprValue.toString();
@@ -1535,11 +1535,13 @@ ParseResult Parser::parse(bool doExecute) {
                     throw std::runtime_error("After end of script - Unexpected token \"" + currentToken().value + "\" at " + Utility::position(currentToken().start, input) + ".");
                 }
                 break;
-            } else if (match("JavaScript")) {
+            } else if (match("JavaScript") || match("JavaScript_i")) {
+                bool interpolation = match("JavaScript_i");
                 if (doExecute && allowJavaScript) {
+                    std::string code = interpolation ? parseStringInterpolation() : currentToken().value;
                     #ifdef __EMSCRIPTEN__
 
-                    Value result = runJavaScript(currentToken().value, Utility::position(currentToken().start, input), false);
+                    Value result = runJavaScript(code, Utility::position(currentToken().start, input), false);
                     addLog("JAVASCRIPT", Utility::value2string(result), position);
                     if (result.type != DataType::NULL_TYPE) {
                         std::cout << Utility::value2string(result) << std::endl;
@@ -1547,7 +1549,7 @@ ParseResult Parser::parse(bool doExecute) {
 
                     #elif !defined(_MSC_VER)
 
-                    std::pair<std::string, bool> jsresult = JavaScript::Eval(currentToken().value);
+                    std::pair<std::string, bool> jsresult = JavaScript::Eval(code);
                     if (jsresult.second) {
                         throw std::runtime_error("JavaScript error at " + Utility::position(currentToken().start, input) + ":\n" + jsresult.first);
                     } else {
@@ -1562,21 +1564,24 @@ ParseResult Parser::parse(bool doExecute) {
                     #endif
                 }
                 ast.push_back(ASTNode("JAVASCRIPT"));
-                advance();
-            } else if (match("Luau")) {
+                if (!interpolation) advance();
+            } else if (match("Luau") || match("Luau_i")) {
                 #ifndef JUSTC_NOLUAU
+                    bool interpolation = match("Luau_i");
                     if (doExecute && allowLuau) {
-                        RunLuau::runScript(currentToken().value);
+                        RunLuau::runScript(interpolation ? parseStringInterpolation() : currentToken().value);
                     } else if (!allowLuau) {
                         #ifdef __EMSCRIPTEN__
                         warn_luau_disabled_by_justc(Utility::position(currentToken().start, input).c_str(), currentToken().value.c_str(), getCurrentTimestamp().c_str());
                         #endif
                     }
                     ast.push_back(ASTNode("LUAU"));
-                    advance();
+                    if (!interpolation) advance();
                 #else
                     throw std::runtime_error("To run Luau, use the standard JUSTC build. The current build excludes Luau.");
                 #endif
+            } else if (match("\\")) {
+                advance();
             } else if (isJSONArray) {
                 try {
                     Value itemVal = parseBitwiseOR(doExecute);
@@ -1821,8 +1826,8 @@ ASTNode Parser::parseAllowCommand() {
 
 std::string Parser::readVariableName() {
     std::stringstream name;
-    while (!isEnd() && (match("identifier") || match("string") || match("minus") || match("-"))) {
-        name << currentToken().value;
+    while (!isEnd() && (match("identifier") || match("string") || match("minus") || match("-") || match("string_i") || match("string_ri"))) {
+        name << ((match("string_i") || match("string_ri")) ? parseStringInterpolation(doExecute) : currentToken().value);
         advance();
     }
     return name.str();
@@ -2189,9 +2194,9 @@ ASTNode Parser::parseStatement(bool doExecute) {
         return node;
     } else if (keyword == "echo" || keyword == "log" || keyword == "logfile") {
         return parseCommand(doExecute);
-    } else if ((((match("identifier") || match("string")) && (parsertype != ParserType::STRUCT && parsertype != ParserType::ENUM)) || isCPPType() || isStruct(currentToken().value).first) && !isJSONArray) {
+    } else if ((((match("identifier") || match("string") || match("string_i") || match("string_ri")) && (parsertype != ParserType::STRUCT && parsertype != ParserType::ENUM)) || isCPPType() || isStruct(currentToken().value).first) && !isJSONArray) {
         return parseVariableDeclaration(doExecute);
-    } else if ((match("identifier") || match("string")) && (parsertype == ParserType::STRUCT || parsertype == ParserType::ENUM)) {
+    } else if ((match("identifier") || match("string") || match("string_i") || match("string_ri")) && (parsertype == ParserType::STRUCT || parsertype == ParserType::ENUM)) {
         return parseVariableDeclaration(doExecute, true, true);
     } else if (match("keyword", "const") && !isJSONArray) {
         advance();
@@ -2268,7 +2273,9 @@ bool Parser::CanIgnoreNoAssignmentOperator() {
     return (match("string") || match("number") || match("null") || match("path") || match("link") ||
             match("hex") || match("binary") || match("boolean") || match("identifier") || match("|") ||
             match("JavaScript") || match("Luau") || match(endOfScript) || match(".") || match(",") ||
-            match("{") || match("[") || match(";"));
+            match("{") || match("[") || match(";") || match("string_i") || match("string_ri") ||
+            match("Luau_i") || match("JavaScript_i") || match("JUSTC") || match("JUSTO") || 
+            match("JUSTC_i") || match("JUSTO_i"));
 }
 ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool local, bool global) {
     std::string cpptype = DEFAULT_CPP_TYPE;
@@ -2340,7 +2347,8 @@ ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool loc
     if (match(":")) {
         advance();
         typeDecl = currentToken().value;
-        if (!match("identifier") && !match("string") && !match("link")) {
+        bool interpolation = match("string_i") || match("string_ri");
+        if (!match("identifier") && !match("string") && !match("link") && !match("string_i") && !match("string_ri")) {
             // then `:` and `=` are the same
             Value exprValue = applyCPPTypeDeclaration(parseExpression(doExecute), cpptype, DataType::UNKNOWN, doExecute);
             node.value = exprValue;
@@ -2360,7 +2368,7 @@ ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool loc
             return node;
         }
         try {
-            node.typeDeclaration = Utility::typeDeclaration2dataType(typeDecl, Utility::position(currentToken().start, input) + ".");
+            node.typeDeclaration = Utility::typeDeclaration2dataType(interpolation ? parseStringInterpolation(doExecute) : typeDecl, Utility::position(currentToken().start, input) + ".");
         } catch (...) {
             // then `:` and `=` are the same
             Value exprValue = applyCPPTypeDeclaration(parseExpression(doExecute), cpptype, DataType::UNKNOWN, doExecute);
@@ -2380,7 +2388,7 @@ ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool loc
 
             return node;
         }
-        advance();
+        if (!interpolation) advance();
     }
 
     if (match("keyword", "is") || match("=") || match("-") || match("minus")) {
@@ -2994,6 +3002,9 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
         advance();
         return stringToValue(str);
     }
+    else if (match("string_i") || match("string_ri")) {
+        return stringToValue(parseStringInterpolation(doExecute));
+    }
     else if (match("link")) {
         std::string link = currentToken().value;
         advance();
@@ -3165,31 +3176,34 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
         result.name = objectstr;
         return result;
     }*/
-    else if (match("JavaScript") && doExecute && allowJavaScript) {
+    else if ((match("JavaScript") || match("JavaScript_i")) && doExecute && allowJavaScript) {
+        bool interpolation = match("JavaScript_i");
+        std::string code = interpolation ? parseStringInterpolation() : currentToken().value;
+
         #ifdef __EMSCRIPTEN__
 
-        Value result = runJavaScript(currentToken().value, Utility::position(currentToken().start, input), true);
+        Value result = runJavaScript(code, Utility::position(currentToken().start, input), true);
         addLog("JAVASCRIPT", Utility::value2string(result), currentToken().start);
-        advance();
-        result.name = "j'" + currentToken().value + "'";
+        if (!interpolation) advance();
+        result.name = "j'" + code + "'";
         return result;
 
         #elif !defined(_MSC_VER)
 
-        std::pair<std::string, bool> jsresult = JavaScript::Eval(currentToken().value);
+        std::pair<std::string, bool> jsresult = JavaScript::Eval(code);
         if (jsresult.second) {
             throw std::runtime_error("JavaScript error at " + Utility::position(currentToken().start, input) + ":\n" + jsresult.first);
         } else {
             addLog("JAVASCRIPT", jsresult.first, currentToken().start);
         }
-        advance();
+        if (!interpolation) advance();
         Value result = stringToValue(jsresult.first);
-        result.name = "j'" + currentToken().value + "'";
+        result.name = "j'" + code + "'";
         return result;
 
         #endif
     }
-    else if (match("JavaScript")) {
+    else if (match("JavaScript") || match("JavaScript_i")) {
         #ifdef __EMSCRIPTEN__
         if (!allowJavaScript) warn_js_disabled_by_justc(Utility::position(currentToken().start, input).c_str(), currentToken().value.c_str(), getCurrentTimestamp().c_str());
         else warn_js_disabled(Utility::position(currentToken().start, input).c_str(), currentToken().value.c_str(), getCurrentTimestamp().c_str());
@@ -3197,9 +3211,10 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
         advance();
         return Value::createNull();
     }
-    else if (match("Luau") && doExecute && allowLuau) {
+    else if ((match("Luau") || match("Luau_i")) && doExecute && allowLuau) {
         #ifndef JUSTC_NOLUAU
-            std::pair<std::string, int> luauresult = RunLuau::runScriptWithResult(currentToken().value);
+            bool interpolation = match("Luau_i");
+            std::pair<std::string, int> luauresult = RunLuau::runScriptWithResult(interpolation ? parseStringInterpolation() : currentToken().value);
             Value result;
 
             switch (luauresult.second) {
@@ -3226,14 +3241,14 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
             }
 
             addLog("LUAU", Utility::value2string(result), currentToken().start);
-            advance();
             result.name = "l'" + currentToken().value + "'";
+            if (!interpolation) advance();
             return result;
         #else
             throw std::runtime_error("To run Luau, use the standard JUSTC build. The current build excludes Luau.");
         #endif
     }
-    else if (match("Luau")) {
+    else if (match("Luau") || match("Luau_i")) {
         #ifdef __EMSCRIPTEN__
         if (!allowLuau) warn_luau_disabled_by_justc(Utility::position(currentToken().start, input).c_str(), currentToken().value.c_str(), getCurrentTimestamp().c_str());
         else warn_luau_disabled(Utility::position(currentToken().start, input).c_str(), currentToken().value.c_str(), getCurrentTimestamp().c_str());
@@ -3246,13 +3261,17 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
         advance();
         return parseJSXElement(jsxStr);
     }
-    else if (match("JUSTO")) {
+    else if (match("JUSTO") || match("JUSTO_i")) {
+        bool interpolation = match("JUSTO_i");
+        std::string code = interpolation ? parseStringInterpolation() : currentToken().value;
         advance();
-        return ParseJUSTO(currentToken().value);
+        return ParseJUSTO(code);
     }
-    else if (match("JUSTC")) {
+    else if (match("JUSTC") || match("JUSTC_i")) {
+        bool interpolation = match("JUSTC_i");
+        std::string code = interpolation ? parseStringInterpolation() : currentToken().value;
         advance();
-        return functionJUSTC2(currentToken().value, doExecute, currentToken().start);
+        return functionJUSTC2(code, doExecute, currentToken().start);
     }
 
     throw std::runtime_error("Invalid or unexpected token \"" + currentToken().value + "\" at " + Utility::position(currentToken().start, input) + ".");
@@ -9198,6 +9217,141 @@ void Parser::freePointer(const Value& pointer) {
 
 void Parser::cleanup() {
     cleanupGlobal();
+}
+
+std::string Parser::parseStringInterpolation(bool doExecute) {
+    if (!match("string_i") && !match("string_ri") && !match("Luau_i") && !match("JavaScript_i") && !match("JUSTC_i") && !match("JUSTO_i")) {
+        throw std::runtime_error("Expected string interpolation at " + Utility::position(currentToken().start, input) + ".");
+    }
+    
+    std::string str = currentToken().value;
+    bool isRaw = match("string_ri");
+    advance();
+    
+    std::vector<StringPart> parts;
+    size_t pos = 0;
+    std::string currentLiteral = "";
+    int braceDepth = 0;
+    std::string exprBuffer = "";
+    bool inExpression = false;
+    
+    while (pos < str.length()) {
+        char ch = str[pos];
+        
+        if (ch == '\\' && pos + 1 < str.length()) {
+            if (str[pos + 1] == '{') {
+                if (inExpression) {
+                    exprBuffer += "\\{";
+                } else {
+                    currentLiteral += "{";
+                }
+                pos += 2;
+                continue;
+            } else {
+                if (inExpression) {
+                    exprBuffer += ch;
+                    exprBuffer += str[pos + 1];
+                } else {
+                    currentLiteral += ch;
+                    currentLiteral += str[pos + 1];
+                }
+                pos += 2;
+                continue;
+            }
+        }
+        
+        if (ch == '{' && !inExpression) {
+            inExpression = true;
+            braceDepth = 1;
+            exprBuffer = "";
+            pos++;
+            continue;
+        }
+        
+        if (inExpression) {
+            if (ch == '{') {
+                braceDepth++;
+                exprBuffer += ch;
+            } else if (ch == '}') {
+                braceDepth--;
+                if (braceDepth == 0) {
+                    inExpression = false;
+                    
+                    if (!currentLiteral.empty()) {
+                        parts.emplace_back(true, currentLiteral);
+                        currentLiteral = "";
+                    }
+                    
+                    if (!exprBuffer.empty()) {
+                        std::string exprResult = evaluateInterpolationExpression(exprBuffer, doExecute);
+                        parts.emplace_back(false, exprResult);
+                    }
+                    
+                    exprBuffer = "";
+                    pos++;
+                    continue;
+                } else {
+                    exprBuffer += ch;
+                }
+            } else {
+                exprBuffer += ch;
+            }
+            pos++;
+            continue;
+        }
+        
+        currentLiteral += ch;
+        pos++;
+    }
+    
+    if (!currentLiteral.empty()) {
+        parts.emplace_back(true, currentLiteral);
+    }
+    
+    std::string result = "";
+    for (const auto& part : parts) {
+        if (part.isLiteral && !isRaw) {
+            result += StringEscape::unescape(part.content);
+        } else {
+            result += part.content;
+        }
+    }
+    
+    return result;
+}
+
+std::string Parser::evaluateInterpolationExpression(const std::string& expr, bool doExecute) {
+    auto lexerResult = Lexer::parse(expr, false);
+
+    size_t savedPos = position;
+    
+    Parser tempParser(
+        lexerResult.second,
+        doExecute,
+        this->runAsync,
+        expr,
+        this->allowJavaScript,
+        this->canAllowJS,
+        this->scriptName + "::interpolation",
+        "interpolation",
+        this->allowLuau,
+        this->canAllowLuau,
+        false,
+        nullptr,
+        this->chartype,
+        this->parsertype
+    );
+    
+    tempParser.variables = this->variables;
+    tempParser.constVars = this->constVars;
+    tempParser.mutated = this->mutated;
+    tempParser.throwError = true;
+
+    Value result = tempParser.parseExpression(doExecute);
+    
+    this->position = savedPos;
+    
+    return result.toString();
 }
 
 ParseResult Parser::parseTokens(const std::vector<ParserToken>& tokens, bool doExecute, bool runAsync, const std::string& input, const bool allowJavaScript, const bool canAllowJS, const std::string scriptName, const std::string scriptType, const bool allowLuau, const bool canAllowLuau) {
