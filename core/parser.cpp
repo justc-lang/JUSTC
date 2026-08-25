@@ -5284,7 +5284,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
         }
         if (funcName == "memory.global") {
             std::unordered_map<std::string, Value> obj = listGlobals();
-            Value result = createJsonObject(obj);
+            Value result = Value::createJsonObject(obj);
             result.name = funcName;
             return result;
         }
@@ -5294,7 +5294,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             for (const auto& [key, value] : raw) {
                 obj[Utility::uint64ToHexString(key)] = addClass(key);
             }
-            Value result = createJsonObject(obj);
+            Value result = Value::createJsonObject(obj);
             result.name = funcName;
             return result;
         }
@@ -5303,11 +5303,11 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             std::unordered_map<uint64_t, std::function<Value(const std::vector<Value>&)>> raw = listFunctions();
             for (const auto& [key, value] : raw) {
                 std::string keyHex = Utility::uint64ToHexString(key);
-                Value func = createFunction(raw, funcName + "()[\"" + keyHex + "\"]");
+                Value func = createFunction(value, funcName + "()[\"" + keyHex + "\"]");
                 func.string_value = "[optimized code]";
                 obj[keyHex] = func;
             }
-            Value result = createJsonObject(obj);
+            Value result = Value::createJsonObject(obj);
             result.name = funcName;
             return result;
         }
@@ -5317,7 +5317,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             for (const auto& [key, value] : raw) {
                 obj[Utility::uint64ToHexString(key)] = value;
             }
-            Value result = createJsonObject(obj);
+            Value result = Value::createJsonObject(obj);
             result.name = funcName;
             return result;
         }
