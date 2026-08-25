@@ -204,6 +204,19 @@ SOFTWARE.
         void resetRootCounter() {
             m_rootCounter = 0;
         }
+
+        std::unordered_map<std::string, Value> globals() {
+            return m_variables;
+        }
+        std::unordered_map<uint64_t, Class> classes() {
+            return m_classes;
+        }
+        std::unordered_map<uint64_t, std::function<Value(const std::vector<Value>&)>> functions() {
+            return m_functions;
+        }
+        std::unordered_map<uint64_t, Value> pointers() {
+            return m_pointers;
+        }
     };
 #else
     #include <shared_mutex>
@@ -402,6 +415,19 @@ SOFTWARE.
             std::unique_lock<std::shared_mutex> lock(m_mutex);
             m_rootCounter = 0;
         }
+
+        std::unordered_map<std::string, Value> globals() {
+            return m_variables;
+        }
+        std::unordered_map<uint64_t, Class> classes() {
+            return m_classes;
+        }
+        std::unordered_map<uint64_t, std::function<Value(const std::vector<Value>&)>> functions() {
+            return m_functions;
+        }
+        std::unordered_map<uint64_t, Value> pointers() {
+            return m_pointers;
+        }
     };
 #endif
 
@@ -540,6 +566,22 @@ inline void cleanupGlobal() {
     setBIM({});
     clearFunctions_();
     clearPointers_();
+}
+
+inline std::unordered_map<std::string, Value> listGlobals() {
+    return GlobalContext::getInstance().globals();
+}
+
+inline std::unordered_map<uint64_t, Class> listClasses() {
+    return GlobalContext::getInstance().classes();
+}
+
+inline std::unordered_map<uint64_t, std::function<Value(const std::vector<Value>&)>> listFunctions() {
+    return GlobalContext::getInstance().functions();
+}
+
+inline std::unordered_map<uint64_t, Value> listPointers() {
+    return GlobalContext::getInstance().pointers();
 }
 
 #endif

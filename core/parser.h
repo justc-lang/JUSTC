@@ -126,6 +126,7 @@ enum class DataType : int8_t {
     PROMISE      = 32,
     ENUM         = 33,
     POINTER      = 34,
+    NINFINITE    = 35,
 
     INT8_ARRAY   =-2,
     INT16_ARRAY  =-3,
@@ -162,7 +163,7 @@ inline std::string dataTypeToString(DataType type) {
         case DataType::VARIABLE:     return "Variable";
         case DataType::FUNCTION:     return "Function";
         case DataType::NOT_A_NUMBER: return "NaN";
-        case DataType::INFINITE:     return "Infinity";
+        case DataType::INFINITE:     return "Positive Infinity";
         case DataType::SYNTAX_ERROR: return "Syntax Error";
         case DataType::OCTAL:        return "Octal number";
         case DataType::CLASS:        return "Class";
@@ -179,6 +180,7 @@ inline std::string dataTypeToString(DataType type) {
         case DataType::PROMISE:      return "Promise";
         case DataType::ENUM:         return "Enum";
         case DataType::POINTER:      return "Pointer";
+        case DataType::NINFINITE:    return "Negative Infinity";
 
         case DataType::INT8_ARRAY:   return "Int8 Array";
         case DataType::INT16_ARRAY:  return "Int16 Array";
@@ -1258,6 +1260,8 @@ public:
     void cleanup();
 
     bool throwError;
+    
+    Value This();
 };
 
 #endif

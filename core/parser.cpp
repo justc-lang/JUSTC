@@ -157,6 +157,7 @@ std::string Value::toString() const {
         case DataType::LINK:
         case DataType::PATH:
         case DataType::VARIABLE:
+        case DataType::ERROR:
             return string_value;
         case DataType::NUMBER:
             return toNumericString();
@@ -185,6 +186,8 @@ std::string Value::toString() const {
             return "NaN";
         case DataType::INFINITE:
             return "Infinity";
+        case DataType::NINFINITE:
+            return "-Infinity";
         case DataType::JUSTC_OBJECT:
         case DataType::JSON_OBJECT:
             return "[object " + valname + "]";
@@ -318,6 +321,8 @@ double Value::toNumber() const {
             return std::numeric_limits<double>::quiet_NaN();
         case DataType::INFINITE:
             return std::numeric_limits<double>::infinity();
+        case DataType::NINFINITE:
+            return -std::numeric_limits<double>::infinity();
         default:
             return 0.0;
     }
@@ -406,7 +411,7 @@ Value Value::createLink(const std::string& link) {
     Value result;
     result.type = DataType::LINK;
     result.string_value = link;
-    result.name = "<" + link + ">";
+    result.name = "l<" + link + ">";
     return result;
 }
 
@@ -454,7 +459,7 @@ Value Value::createBinaryData(const std::vector<unsigned char>& data) {
     Value result;
     result.type = DataType::BINARY_DATA;
     result.binary_data = data;
-    result.name = "[BinaryData size=" + std::to_string(data.size()) + "]";
+    result.name = "BinaryData size=" + std::to_string(data.size()) + "";
     return result;
 }
 
@@ -463,7 +468,7 @@ Value Value::createJustcObject(const std::shared_ptr<ObjectContext>& context) {
     result.type = DataType::JUSTC_OBJECT;
     result.object_context = context;
     result.object_type = DataType::JUSTC_OBJECT;
-    result.name = "[Object]";
+    result.name = "Object";
     return result;
 }
 
@@ -474,7 +479,7 @@ Value Value::createJsonObject(const std::unordered_map<std::string, Value>& obj)
     for (const auto& [key, value] : obj) {
         result.properties[key] = Value::Property(value, Access::READ_WRITE);
     }
-    result.name = "[Object]";
+    result.name = "Object";
     return result;
 }
 
@@ -483,7 +488,7 @@ Value Value::createJsonArray(const std::vector<Value>& arr) {
     result.type = DataType::JSON_ARRAY;
     result.object_type = DataType::JSON_ARRAY;
     result.array_elements = arr;
-    result.name = "[Array]";
+    result.name = "Array";
     return result;
 }
 
@@ -946,6 +951,12 @@ Parser::Parser(
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
     };
+    typeMethods[DataType::NINFINITE] = {
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
+    };
     typeMethods[DataType::STRUCT] = {
         {"toString", "String"},
         {"toNumber", "Number"},
@@ -1127,6 +1138,12 @@ Parser::Parser(
         {"toInt", "ParseInt"},
         {"toLink", "Link"},
     };
+    typeMethods[DataType::ERROR] = {
+        {"toString", "String"},
+        {"toNumber", "Number"},
+        {"toInt", "ParseInt"},
+        {"toLink", "Link"},
+    };
 
     // built-in variables
 
@@ -1300,6 +1317,13 @@ Parser::Parser(
     systemProperties["env"] = builtinObjectFunction("system.env");
     builtinObject("system", systemProperties);
 
+    std::unordered_map<std::string, Value> memoryProperties;
+    memoryProperties["global"] = builtinObjectFunction("memory.global");
+    memoryProperties["classes"] = builtinObjectFunction("memory.classes");
+    memoryProperties["functions"] = builtinObjectFunction("memory.functions");
+    memoryProperties["pointers"] = builtinObjectFunction("memory.pointers");
+    builtinObject("memory", memoryProperties);
+
     builtinClasses();
 }
 
@@ -1460,6 +1484,14 @@ ParseResult Parser::parse(bool doExecute) {
                     ASTNode output("CONDITION", "", currentToken().start);
                     output.value = result;
                     ast.push_back(output);
+                } else if (keyword == "throw") {
+                    ASTNode output("EXCEPTION", "", currentToken().start);
+                    advance();
+                    Value result = parseExpression(doExecute);
+                    output.value = result;
+                    ast.push_back(output);
+                    if (throwError) throw std::runtime_error(result.toString());
+                    else break;
                 } else {
                     ast.push_back(parseStatement(doExecute));
                 }
@@ -3116,6 +3148,12 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
             }
         }
         return result;
+    }
+    else if (match("keyword", "this")) {
+        if ((peekToken().type == "." && position + 2 < tokens.size()) || peekToken().type == "[") {
+            return parseObjectPropertyAccess(doExecute);
+        }
+        return This();
     }
     else if (match("keyword") && peekToken().type == "(") {
         return parseFunctionCall(doExecute, doFunctionCall);
@@ -5239,6 +5277,50 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
             }
             return Value::createNull();
         }
+        if (funcName == "Error") {
+            Value result = stringToValue(args[0].toString());
+            result.type = DataType::ERROR;
+            return result;
+        }
+        if (funcName == "memory.global") {
+            std::unordered_map<std::string, Value> obj = listGlobals();
+            Value result = createJsonObject(obj);
+            result.name = funcName;
+            return result;
+        }
+        if (funcName == "memory.classes") {
+            std::unordered_map<std::string, Value> obj;
+            std::unordered_map<uint64_t, Class> raw = listClasses();
+            for (const auto& [key, value] : raw) {
+                obj[Utility::uint64ToHexString(key)] = addClass(key);
+            }
+            Value result = createJsonObject(obj);
+            result.name = funcName;
+            return result;
+        }
+        if (funcName == "memory.functions") {
+            std::unordered_map<std::string, Value> obj;
+            std::unordered_map<uint64_t, std::function<Value(const std::vector<Value>&)>> raw = listFunctions();
+            for (const auto& [key, value] : raw) {
+                std::string keyHex = Utility::uint64ToHexString(key);
+                Value func = createFunction(raw, funcName + "()[\"" + keyHex + "\"]");
+                func.string_value = "[optimized code]";
+                obj[keyHex] = func;
+            }
+            Value result = createJsonObject(obj);
+            result.name = funcName;
+            return result;
+        }
+        if (funcName == "memory.pointers") {
+            std::unordered_map<std::string, Value> obj;
+            std::unordered_map<uint64_t, Value> raw = listPointers();
+            for (const auto& [key, value] : raw) {
+                obj[Utility::uint64ToHexString(key)] = value;
+            }
+            Value result = createJsonObject(obj);
+            result.name = funcName;
+            return result;
+        }
     } catch (const std::exception& e) {
         throw std::runtime_error(std::string(e.what()) + " at " + Utility::position(startPos, input) + ".");
     }
@@ -5856,6 +5938,8 @@ void Parser::buildDependencyGraph() {
     for (const auto& node : ast) {
         if (node.type == "VARIABLE_DECLARATION") {
             dependencies[node.identifier] = node.references;
+        } else if (node.type == "EXCEPTION") {
+            throw std::runtime_error(node.value.toString());
         }
     }
 }
@@ -5899,7 +5983,9 @@ bool Parser::dfsCycleDetection(const std::string& node,
 }
 
 Value Parser::resolveVariableValue(const std::string& varName, const bool unknownIsString) {
-    if (hasGlobal(varName)) {
+    if (varName == "this") {
+        return This();
+    } else if (hasGlobal(varName)) {
         return getGlobal(varName);
     } else if (hasLocal(currentScope, varName)) {
         return resolveVariableValueWithScopes(varName, unknownIsString);
@@ -6040,6 +6126,9 @@ Value Parser::applyTypeDeclaration(const Value value, const ASTNode node) {
                     break;
                 case DataType::INFINITE:
                     result.boolean_value = true;
+                    break;
+                case DataType::NINFINITE:
+                    result.boolean_value = false;
                     break;
                 default:
                     throw typeDeclarationError(result.type, typeDeclaration, node);
@@ -7068,7 +7157,9 @@ Value Parser::parseCondition(bool doExecute, bool wasIsolated) {
                     if (match(")")) {
                         advance();
                     } else {
-                        catchContext[currentToken().value] = Value::createString(err);
+                        Value errval = Value::createString(err);
+                        errval.type = DataType::ERROR;
+                        catchContext[currentToken().value] = errval;
                         advance();
                         if (!match(")")) throw std::runtime_error("Expected \")\" at " + Utility::position(currentToken().start, input) + ".");
                         advance();
@@ -9107,6 +9198,7 @@ void Parser::builtinClasses() {
             BIM["Window"] = builtinClass("Window");
         #endif
         BIM["Promise"] = builtinClass("Promise");
+        BIM["Error"] = builtinClass("Error");
         setBIM(BIM);
         setBIC(true);
     } else {
@@ -9115,6 +9207,7 @@ void Parser::builtinClasses() {
             fromBIM(BIM, "Window");
         #endif
         fromBIM(BIM, "Promise");
+        fromBIM(BIM, "Error");
     }
 }
 void Parser::fromBIM(const std::unordered_map<std::string, uint64_t>& BIM, const std::string& name) {
@@ -9352,6 +9445,22 @@ std::string Parser::evaluateInterpolationExpression(const std::string& expr, boo
     this->position = savedPos;
     
     return result.toString();
+}
+
+Value Parser::This() {
+    std::unordered_map<std::string, Value> obj;
+    for (const auto& [key, value] : this->variables) {
+        try {
+            Value val = resolveVariableValue(key, false);
+            if (val.type == DataType::UNKNOWN) throw std::runtime_error("");
+            obj[key] = val;
+        } catch (...) {
+            obj[key] = value;
+        }
+    }
+    Value result = Value::createJsonObject(obj);
+    result.name = "this";
+    return result;
 }
 
 ParseResult Parser::parseTokens(const std::vector<ParserToken>& tokens, bool doExecute, bool runAsync, const std::string& input, const bool allowJavaScript, const bool canAllowJS, const std::string scriptName, const std::string scriptType, const bool allowLuau, const bool canAllowLuau) {
