@@ -3622,7 +3622,10 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
         return booleanToValue(allowLuau);
     }
 
-    if (args.empty() && funcName != "math.random" && funcName != "Window" && funcName != "task.wait") {
+    if (
+        args.empty() && funcName != "math.random" && funcName != "Window" && funcName != "task.wait" && funcName != "memory.global" &&
+        funcName != "memory.classes" && funcName != "memory.funcitons" && funcName != "memory.pointers"
+    ) {
         if (funcName == "JUSTC.parse" || funcName == "JUSTC.execute") {
             return emptyJUSTC();
         }
