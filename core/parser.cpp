@@ -6938,7 +6938,7 @@ Value Parser::parseCondition(bool doExecute, bool wasIsolated) {
     enterScope();
     std::stringstream body;
 
-    braceCount = 1;
+    int braceCount = 1;
     while (!isEnd() && braceCount > 0) {
         if (match("{")) braceCount++;
         else if (match("}")) braceCount--;
