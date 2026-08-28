@@ -40,7 +40,7 @@ const monacoJUSTClang = {
             "uint128", "float32", "float64", "float128",
             "cuint8", "cuint16", "cuint32", "cuint64",
 
-            "Window",
+            "Window", "Promise", "Error",
         ],
 
         operators: [
@@ -374,17 +374,14 @@ monacoScript.onload = function() {
             },
             provideDocumentSemanticTokens: function(model, lastResultId, token) {
                 const lines = model.getLinesContent();
-                const tokens = [];
-                let line = 0;
-                let char = 0;
-                let offset = 0;
+                const rawTokens = [];
                 const definedTypes = new Set();
 
                 for (let i = 0; i < lines.length; i++) {
                     const lineContent = lines[i];
-                    const structMatch = lineContent.match(/^\s*struct\s+([a-zA-Z_][\w']*)/);
+                    const structMatch = lineContent.match(/^\s*(struct|class)\s+([a-zA-Z_][\w']*)/);
                     if (structMatch) {
-                        definedTypes.add(structMatch[1]);
+                        definedTypes.add(structMatch[2]);
                     }
                 }
 
@@ -392,39 +389,24 @@ monacoScript.onload = function() {
                     const lineContent = lines[i];
                     
                     let match;
-                    const structRegex = /^\s*struct\s+([a-zA-Z_][\w']*)/g;
+                    const structRegex = /\b(struct|class)\s+([a-zA-Z_][\w']*)/g;
                     while ((match = structRegex.exec(lineContent)) !== null) {
-                        const startPos = match.index + match[0].indexOf(match[1]);
-                        tokens.push({
-                            startLine: i,
-                            startChar: startPos,
-                            length: match[1].length,
-                            tokenType: 0
-                        });
-                    }
-
-                    const declRegex = /\b(local|const|global|var)\s+([a-zA-Z_][\w']*)/g;
-                    while ((match = declRegex.exec(lineContent)) !== null) {
                         const startPos = match.index + match[0].indexOf(match[2]);
-                        tokens.push({
-                            startLine: i,
+                        rawTokens.push({
+                            line: i,
                             startChar: startPos,
                             length: match[2].length,
                             tokenType: 0
                         });
                     }
-                }
 
-                for (let i = 0; i < lines.length; i++) {
-                    const lineContent = lines[i];
                     for (const type of definedTypes) {
                         const regex = new RegExp(`\\b${type}\\b`, 'g');
-                        let match;
                         while ((match = regex.exec(lineContent)) !== null) {
                             const beforeMatch = lineContent.substring(0, match.index);
-                            if (!beforeMatch.match(/\b(struct|local|const|global|var)\s+$/)) {
-                                tokens.push({
-                                    startLine: i,
+                            if (!beforeMatch.match(/\b(struct|class)\s+$/)) {
+                                rawTokens.push({
+                                    line: i,
                                     startChar: match.index,
                                     length: type.length,
                                     tokenType: 0
@@ -434,13 +416,34 @@ monacoScript.onload = function() {
                     }
                 }
 
-                tokens.sort((a, b) => {
-                    if (a.startLine !== b.startLine) return a.startLine - b.startLine;
+                rawTokens.sort((a, b) => {
+                    if (a.line !== b.line) return a.line - b.line;
                     return a.startChar - b.startChar;
                 });
 
+                const data = [];
+                let prevLine = 0;
+                let prevChar = 0;
+
+                for (let i = 0; i < rawTokens.length; i++) {
+                    const t = rawTokens[i];
+                    let deltaLine = t.line - prevLine;
+                    let deltaStart = deltaLine === 0 ? t.startChar - prevChar : t.startChar;
+
+                    data.push(
+                        deltaLine,
+                        deltaStart,
+                        t.length,
+                        t.tokenType,
+                        0
+                    );
+
+                    prevLine = t.line;
+                    prevChar = t.startChar;
+                }
+
                 return {
-                    tokens: tokens
+                    data: new Uint32Array(data)
                 };
             },
             releaseDocumentSemanticTokens: function(lastResultId) {}
