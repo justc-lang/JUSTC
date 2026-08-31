@@ -122,6 +122,7 @@ SOFTWARE.
         boolInput0: 'Argument 0 should be a boolean.',
         Luau: 'To run Luau, use the standard JUSTC build. The current build excludes Luau.',
         numInput: 'Argument 1 should be a number.',
+        arrInput: 'Argument 1 should be an array with two items: [boolean, string].',
     };
 
     if (isBrowser) {
@@ -212,6 +213,145 @@ SOFTWARE.
         } else {
             return result.return || {};
         }
+    };
+
+    JUSTC.UTF16Base64 = {
+        encode: function(str) {
+            const codeUnits = [];
+            for (let i = 0; i < str.length; i++) {
+                codeUnits.push(str.charCodeAt(i));
+            }
+            
+            const bytes = new UI8A(codeUnits.length * 2);
+            for (let i = 0; i < codeUnits.length; i++) {
+                const code = codeUnits[i];
+                bytes[i * 2] = code & 0xFF;
+                bytes[i * 2 + 1] = (code >> 8) & 0xFF;
+            }
+            
+            return this._bytesToBase64(bytes);
+        },
+        
+        decode: function(base64) {
+            const bytes = this._base64ToBytes(base64);
+            
+            if (bytes.length % 2 !== 0) {
+                throw new JUSTC.Error('Invalid UTF-16 data: odd number of bytes');
+            }
+            
+            const codeUnits = [];
+            for (let i = 0; i < bytes.length; i += 2) {
+                const low = bytes[i];
+                const high = bytes[i + 1];
+                const code = (high << 8) | low;
+                codeUnits.push(code);
+            }
+            
+            return String.fromCharCode(...codeUnits);
+        },
+
+        _chars: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
+        
+        _bytesToBase64: function(bytes) {
+            const chars = this._chars;
+            let result = '';
+            const len = bytes.length;
+            
+            for (let i = 0; i < len; i += 3) {
+                const a = bytes[i];
+                const b = i + 1 < len ? bytes[i + 1] : 0;
+                const c = i + 2 < len ? bytes[i + 2] : 0;
+                
+                const n = (a << 16) | (b << 8) | c;
+                
+                result += chars[(n >> 18) & 0x3F];
+                result += chars[(n >> 12) & 0x3F];
+                result += i + 1 < len ? chars[(n >> 6) & 0x3F] : '=';
+                result += i + 2 < len ? chars[n & 0x3F] : '=';
+            }
+            
+            return result;
+        },
+        
+        _base64ToBytes: function(base64) {
+            const decodeTable = new UI8A(256);
+            const chars = this._chars;
+            
+            for (let i = 0; i < 256; i++) {
+                decodeTable[i] = 0x40;
+            }
+            for (let i = 0; i < chars.length; i++) {
+                decodeTable[chars.charCodeAt(i)] = i;
+            }
+            
+            let clean = '';
+            for (let i = 0; i < base64.length; i++) {
+                const c = base64[i];
+                if (c !== ' ' && c !== '\n' && c !== '\r' && c !== '\t') {
+                    clean += c;
+                }
+            }
+            
+            if (clean.length === 0) {
+                return new UI8A(0);
+            }
+            
+            if (clean.length % 4 !== 0) {
+                throw new JUSTC.Error('Invalid Base64 length');
+            }
+            
+            for (let i = 0; i < clean.length; i++) {
+                const c = clean[i];
+                if (c !== '=' && decodeTable[c.charCodeAt(0)] === 0x40) {
+                    throw new JUSTC.Error('Invalid Base64 character: ' + c);
+                }
+            }
+            
+            const result = [];
+            let padding = 0;
+            
+            for (let i = 0; i < clean.length; i += 4) {
+                const a = decodeTable[clean.charCodeAt(i)];
+                const b = decodeTable[clean.charCodeAt(i + 1)];
+                const c = clean[i + 2] === '=' ? 0x40 : decodeTable[clean.charCodeAt(i + 2)];
+                const d = clean[i + 3] === '=' ? 0x40 : decodeTable[clean.charCodeAt(i + 3)];
+                
+                if (clean[i + 2] === '=') padding++;
+                if (clean[i + 3] === '=') padding++;
+                
+                const n = (a << 18) | (b << 12) | (c << 6) | d;
+                
+                result.push((n >> 16) & 0xFF);
+                if (padding < 2) {
+                    result.push((n >> 8) & 0xFF);
+                }
+                if (padding < 1) {
+                    result.push(n & 0xFF);
+                }
+            }
+            
+            return new UI8A(result);
+        },
+
+        random: function() {
+            return this._chars[MATH.round(MATH.random() * 64)]
+        },
+        byte: function() {
+            return this.random() + this.random() + this.random() + this.random()
+        }
+    };
+    JUSTC.Base64toUTF16 = function(b64) {
+        try {
+            return [true, JUSTC.UTF16Base64.decode(b64)]
+        } catch (_) {
+            return [false, JUSTC.UTF16Base64.decode(b64) + JUSTC.UTF16Base64.byte()]
+        }
+    };
+    JUSTC.UTF16toBase64 = function(data) {
+        if (typeof data != 'object' || !ARRAY.isArray(data) || data.length != 2) throw new JUSTC.Error(JUSTC.Errors.arrInput);
+        if (typeof data[0] != 'boolean') throw new JUSTC.Error(JUSTC.Errors.arrInput);
+        if (typeof data[1] != 'string') throw new JUSTC.Error(JUSTC.Errors.arrInput);
+        return JUSTC.UTF16Base64.encode(data[1]).slice(0, data[0] ? -4 : undefined);
     };
 
     JUSTC.PrivateFunctions = {
@@ -348,27 +488,26 @@ SOFTWARE.
                         'internal_zlib_comp',
                         'number',
                         ['string', 'number'],
-                        [data, NUMBER(level)]
+                        [JUSTC.UTF16Base64.encode(data), NUMBER(level)]
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    return raw;
+                    return JUSTC.Base64toUTF16(raw);
                 }
             },
             ZlibDcmp: {
                 NeedsWASM: true,
                 Name: "internal.decompress.zlib",
                 Return: function ZLIB(data) {
-                    if (!data || typeof data != 'string') throw new JUSTC.Error(JUSTC.Errors.wrongInputType);
                     const ptr = JUSTC.WASM.ccall(
                         'internal_zlib_dcmp',
                         'number',
                         ['string'],
-                        [data]
+                        [JUSTC.UTF16toBase64(data)]
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    return raw;
+                    return JUSTC.UTF16Base64.decode(raw);
                 }
             },
             GzipComp: {
@@ -381,27 +520,26 @@ SOFTWARE.
                         'internal_gzip_comp',
                         'number',
                         ['string', 'number'],
-                        [data, NUMBER(level)]
+                        [JUSTC.UTF16Base64.encode(data), NUMBER(level)]
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    return raw;
+                    return JUSTC.Base64toUTF16(raw);
                 }
             },
             GzipDcmp: {
                 NeedsWASM: true,
                 Name: "internal.decompress.gzip",
                 Return: function GZIP(data) {
-                    if (!data || typeof data != 'string') throw new JUSTC.Error(JUSTC.Errors.wrongInputType);
                     const ptr = JUSTC.WASM.ccall(
                         'internal_gzip_dcmp',
                         'number',
                         ['string'],
-                        [data]
+                        [JUSTC.UTF16toBase64(data)]
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    return raw;
+                    return JUSTC.UTF16Base64.decode(raw);
                 }
             },
             Bzip2Comp: {
@@ -414,27 +552,26 @@ SOFTWARE.
                         'internal_bzip2_comp',
                         'number',
                         ['string', 'number'],
-                        [data, NUMBER(level)]
+                        [JUSTC.UTF16Base64.encode(data), NUMBER(level)]
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    return raw;
+                    return JUSTC.Base64toUTF16(raw);
                 }
             },
             Bzip2Dcmp: {
                 NeedsWASM: true,
                 Name: "internal.decompress.bzip2",
                 Return: function BZIP2(data) {
-                    if (!data || typeof data != 'string') throw new JUSTC.Error(JUSTC.Errors.wrongInputType);
                     const ptr = JUSTC.WASM.ccall(
                         'internal_bzip2_dcmp',
                         'number',
                         ['string'],
-                        [data]
+                        [JUSTC.UTF16toBase64(data)]
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    return raw;
+                    return JUSTC.UTF16Base64.decode(raw);
                 }
             },
             LzmaComp: {
@@ -447,27 +584,26 @@ SOFTWARE.
                         'internal_lzma_comp',
                         'number',
                         ['string', 'number'],
-                        [data, NUMBER(level)]
+                        [JUSTC.UTF16Base64.encode(data), NUMBER(level)]
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    return raw;
+                    return JUSTC.Base64toUTF16(raw);
                 }
             },
             LzmaDcmp: {
                 NeedsWASM: true,
                 Name: "internal.decompress.lzma",
                 Return: function LZMA(data) {
-                    if (!data || typeof data != 'string') throw new JUSTC.Error(JUSTC.Errors.wrongInputType);
                     const ptr = JUSTC.WASM.ccall(
                         'internal_lzma_dcmp',
                         'number',
                         ['string'],
-                        [data]
+                        [JUSTC.UTF16toBase64(data)]
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    return raw;
+                    return JUSTC.UTF16Base64.decode(raw);
                 }
             },
             ZstdComp: {
@@ -480,27 +616,26 @@ SOFTWARE.
                         'internal_zstd_comp',
                         'number',
                         ['string', 'number'],
-                        [data, NUMBER(level)]
+                        [JUSTC.UTF16Base64.encode(data), NUMBER(level)]
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    return raw;
+                    return JUSTC.Base64toUTF16(raw);
                 }
             },
             ZstdDcmp: {
                 NeedsWASM: true,
                 Name: "internal.decompress.zstd",
                 Return: function ZSTD(data) {
-                    if (!data || typeof data != 'string') throw new JUSTC.Error(JUSTC.Errors.wrongInputType);
                     const ptr = JUSTC.WASM.ccall(
                         'internal_zstd_dcmp',
                         'number',
                         ['string'],
-                        [data]
+                        [JUSTC.UTF16toBase64(data)]
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    return raw;
+                    return JUSTC.UTF16Base64.decode(raw);
                 }
             },
             Lz4Comp: {
@@ -513,27 +648,26 @@ SOFTWARE.
                         'internal_lz4_comp',
                         'number',
                         ['string', 'number'],
-                        [data, NUMBER(level)]
+                        [JUSTC.UTF16Base64.encode(data), NUMBER(level)]
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    return raw;
+                    return JUSTC.Base64toUTF16(raw);
                 }
             },
             Lz4Dcmp: {
                 NeedsWASM: true,
                 Name: "internal.decompress.lz4",
                 Return: function LZ4(data) {
-                    if (!data || typeof data != 'string') throw new JUSTC.Error(JUSTC.Errors.wrongInputType);
                     const ptr = JUSTC.WASM.ccall(
                         'internal_lz4_dcmp',
                         'number',
                         ['string'],
-                        [data]
+                        [JUSTC.UTF16toBase64(data)]
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    return raw;
+                    return JUSTC.UTF16Base64.decode(raw);
                 }
             },
             SnappyComp: {
@@ -546,27 +680,26 @@ SOFTWARE.
                         'internal_snappy_comp',
                         'number',
                         ['string', 'number'],
-                        [data, NUMBER(level)]
+                        [JUSTC.UTF16Base64.encode(data), NUMBER(level)]
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    return raw;
+                    return JUSTC.Base64toUTF16(raw);
                 }
             },
             SnappyDcmp: {
                 NeedsWASM: true,
                 Name: "internal.decompress.snappy",
                 Return: function SNAPPY(data) {
-                    if (!data || typeof data != 'string') throw new JUSTC.Error(JUSTC.Errors.wrongInputType);
                     const ptr = JUSTC.WASM.ccall(
                         'internal_snappy_dcmp',
                         'number',
                         ['string'],
-                        [data]
+                        [JUSTC.UTF16toBase64(data)]
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    return raw;
+                    return JUSTC.UTF16Base64.decode(raw);
                 }
             },
             DeflateComp: {
@@ -579,27 +712,26 @@ SOFTWARE.
                         'internal_deflate_comp',
                         'number',
                         ['string', 'number'],
-                        [data, NUMBER(level)]
+                        [JUSTC.UTF16Base64.encode(data), NUMBER(level)]
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    return raw;
+                    return JUSTC.Base64toUTF16(raw);
                 }
             },
             DeflateDcmp: {
                 NeedsWASM: true,
                 Name: "internal.decompress.deflate",
                 Return: function DEFLATE(data) {
-                    if (!data || typeof data != 'string') throw new JUSTC.Error(JUSTC.Errors.wrongInputType);
                     const ptr = JUSTC.WASM.ccall(
                         'internal_deflate_dcmp',
                         'number',
                         ['string'],
-                        [data]
+                        [JUSTC.UTF16toBase64(data)]
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    return raw;
+                    return JUSTC.UTF16Base64.decode(raw);
                 }
             },
         },
