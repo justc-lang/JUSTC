@@ -315,10 +315,14 @@ std::vector<uint8_t> c2v(const char* c) {
     return Base64::decode(std::string(c));
 }
 char* v2c(std::vector<uint8_t>& v) {
-    return Base64::encode(v).c_str();
+    thread_local std::string cached;
+    cached = Base64::encode(v);
+    return const_cast<char*>(cached.c_str());
 }
 const char* v2c(const std::vector<uint8_t>& v) {
-    return Base64::encode(v).c_str();
+    thread_local std::string cached;
+    cached = Base64::encode(v);
+    return cached.c_str();
 }
 
 #ifdef __EMSCRIPTEN__
