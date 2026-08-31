@@ -521,7 +521,7 @@ int has_luau() {
 char* internal_luau_eval(const char* code) {
     std::pair<std::string, int> res = RunLuau::runScriptWithResult(code);
     std::stringstream ss;
-    ss << res.first << res.second;
+    ss << res.second << res.first;
     std::string out = ss.str();
     return strdup(out.c_str());
 }
