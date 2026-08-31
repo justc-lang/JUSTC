@@ -351,9 +351,7 @@ SOFTWARE.
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    const len = raw.split('|')[0];
-                    const out = raw.slice(len.length + 1);
-                    return [out, NUMBER(len)];
+                    return raw;
                 }
             },
             ZlibDcmp: {
@@ -387,9 +385,7 @@ SOFTWARE.
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    const len = raw.split('|')[0];
-                    const out = raw.slice(len.length + 1);
-                    return [out, NUMBER(len)];
+                    return raw;
                 }
             },
             GzipDcmp: {
@@ -423,9 +419,7 @@ SOFTWARE.
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    const len = raw.split('|')[0];
-                    const out = raw.slice(len.length + 1);
-                    return [out, NUMBER(len)];
+                    return raw;
                 }
             },
             Bzip2Dcmp: {
@@ -459,9 +453,7 @@ SOFTWARE.
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    const len = raw.split('|')[0];
-                    const out = raw.slice(len.length + 1);
-                    return [out, NUMBER(len)];
+                    return raw;
                 }
             },
             LzmaDcmp: {
@@ -495,9 +487,7 @@ SOFTWARE.
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    const len = raw.split('|')[0];
-                    const out = raw.slice(len.length + 1);
-                    return [out, NUMBER(len)];
+                    return raw;
                 }
             },
             ZstdDcmp: {
@@ -531,9 +521,7 @@ SOFTWARE.
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    const len = raw.split('|')[0];
-                    const out = raw.slice(len.length + 1);
-                    return [out, NUMBER(len)];
+                    return raw;
                 }
             },
             Lz4Dcmp: {
@@ -567,9 +555,7 @@ SOFTWARE.
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    const len = raw.split('|')[0];
-                    const out = raw.slice(len.length + 1);
-                    return [out, NUMBER(len)];
+                    return raw;
                 }
             },
             SnappyDcmp: {
@@ -603,9 +589,7 @@ SOFTWARE.
                     );
                     const raw = JUSTC.WASM.UTF8ToString(ptr);
                     JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
-                    const len = raw.split('|')[0];
-                    const out = raw.slice(len.length + 1);
-                    return [out, NUMBER(len)];
+                    return raw;
                 }
             },
             DeflateDcmp: {

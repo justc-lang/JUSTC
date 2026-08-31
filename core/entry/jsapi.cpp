@@ -46,6 +46,7 @@ SOFTWARE.
 #include <cstdint>
 #include "../lang/luau.hpp"
 #include "../built-in/compression/compression.hpp"
+#include <stdexcept>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -162,18 +163,162 @@ void triggerVariableUpdate(const std::string& name, const Value& value) {
     }
 }
 
-std::vector<uint8_t> c2v(const char* c, size_t len) {
-    std::vector<uint8_t> vec(
-        reinterpret_cast<const uint8_t*>(c),
-        reinterpret_cast<const uint8_t*>(c + len)
-    );
-    return vec;
+class Base64 {
+public:
+    static std::string encode(const std::vector<uint8_t>& data) {
+        static const char* chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        
+        std::string result;
+        result.reserve(((data.size() + 2) / 3) * 4);
+        
+        size_t i = 0;
+        while (i < data.size()) {
+            uint32_t n = 0;
+            size_t bytes = 0;
+            
+            for (size_t j = 0; j < 3 && i + j < data.size(); ++j) {
+                n = (n << 8) | data[i + j];
+                bytes++;
+            }
+            i += bytes;
+            
+            n <<= (3 - bytes) * 8;
+            
+            result.push_back(chars[(n >> 18) & 0x3F]);
+            result.push_back(chars[(n >> 12) & 0x3F]);
+            
+            if (bytes >= 2) {
+                result.push_back(chars[(n >> 6) & 0x3F]);
+            } else {
+                result.push_back('=');
+            }
+            
+            if (bytes >= 3) {
+                result.push_back(chars[n & 0x3F]);
+            } else {
+                result.push_back('=');
+            }
+        }
+        
+        return result;
+    }
+    
+    static std::vector<uint8_t> decode(const std::string& base64) {
+        static const uint8_t decode_table[256] = {
+            0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,
+            0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,
+            0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x3E,0x40,0x40,0x40,0x3F,
+            0x34,0x35,0x36,0x37,0x38,0x39,0x3A,0x3B,0x3C,0x3D,0x40,0x40,0x40,0x40,0x40,0x40,
+            0x40,0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0A,0x0B,0x0C,0x0D,0x0E,
+            0x0F,0x10,0x11,0x12,0x13,0x14,0x15,0x16,0x17,0x18,0x19,0x40,0x40,0x40,0x40,0x40,
+            0x40,0x1A,0x1B,0x1C,0x1D,0x1E,0x1F,0x20,0x21,0x22,0x23,0x24,0x25,0x26,0x27,0x28,
+            0x29,0x2A,0x2B,0x2C,0x2D,0x2E,0x2F,0x30,0x31,0x32,0x33,0x40,0x40,0x40,0x40,0x40,
+            0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,
+            0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,
+            0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,
+            0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,
+            0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,
+            0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,
+            0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,
+            0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40
+        };
+        
+        std::string clean;
+        clean.reserve(base64.size());
+        for (char c : base64) {
+            if (c != ' ' && c != '\n' && c != '\r' && c != '\t') {
+                clean.push_back(c);
+            }
+        }
+        
+        if (clean.empty()) {
+            return {};
+        }
+        
+        if (clean.size() % 4 != 0) {
+            throw std::runtime_error("Invalid Base64 length");
+        }
+        
+        for (char c : clean) {
+            if (c != '=' && decode_table[static_cast<unsigned char>(c)] == 0x40) {
+                throw std::runtime_error("Invalid Base64 character");
+            }
+        }
+        
+        std::vector<uint8_t> result;
+        result.reserve((clean.size() / 4) * 3);
+        
+        for (size_t i = 0; i < clean.size(); i += 4) {
+            uint32_t n = 0;
+            size_t padding = 0;
+            
+            for (size_t j = 0; j < 4; ++j) {
+                char c = clean[i + j];
+                if (c == '=') {
+                    padding++;
+                } else {
+                    uint8_t val = decode_table[static_cast<unsigned char>(c)];
+                    n = (n << 6) | val;
+                }
+            }
+            
+            n <<= (padding * 6);
+            
+            result.push_back((n >> 16) & 0xFF);
+            if (padding < 2) {
+                result.push_back((n >> 8) & 0xFF);
+            }
+            if (padding < 1) {
+                result.push_back(n & 0xFF);
+            }
+        }
+        
+        return result;
+    }
+    
+    static std::string encode_string(const std::string& data) {
+        return encode(std::vector<uint8_t>(data.begin(), data.end()));
+    }
+    
+    static std::string decode_to_string(const std::string& base64) {
+        auto bytes = decode(base64);
+        return std::string(bytes.begin(), bytes.end());
+    }
+    
+    static char* encode_to_char(const char* data, size_t len) {
+        std::vector<uint8_t> bytes(data, data + len);
+        std::string encoded = encode(bytes);
+        char* result = static_cast<char*>(malloc(encoded.size() + 1));
+        if (result) {
+            std::memcpy(result, encoded.c_str(), encoded.size() + 1);
+        }
+        return result;
+    }
+    
+    static char* decode_to_char(const char* base64, size_t len) {
+        try {
+            std::string input(base64, len);
+            auto decoded = decode(input);
+            char* result = static_cast<char*>(malloc(decoded.size() + 1));
+            if (result) {
+                std::memcpy(result, decoded.data(), decoded.size());
+                result[decoded.size()] = '\0';
+            }
+            return result;
+        } catch (const std::exception&) {
+            return nullptr;
+        }
+    }
+};
+
+std::vector<uint8_t> c2v(const char* c) {
+    return Base64::decode(std::string(c));
 }
 char* v2c(std::vector<uint8_t>& v) {
-    return reinterpret_cast<char*>(v.data());
+    return Base64::encode(v).c_str();
 }
 const char* v2c(const std::vector<uint8_t>& v) {
-    return reinterpret_cast<const char*>(v.data());
+    return Base64::encode(v).c_str();
 }
 
 #ifdef __EMSCRIPTEN__
@@ -533,107 +678,67 @@ int internal_luau_comp(const char* code) {
 }
 
 char* internal_zlib_comp(const char* data, int level) {
-    std::vector<uint8_t> comp = ZLIB::CompressU8(c2v(data, strlen(data)), level);
-    size_t length = comp.size();
-    std::stringstream ss;
-    ss << length << "|" << v2c(comp);
-    std::string out = ss.str();
-    return strdup(out.c_str());
+    return strdup(v2c(ZLIB::CompressU8(c2v(data), level)));
 }
 
-char* internal_zlib_dcmp(const char* data, size_t length) {
-    return strdup(v2c(ZLIB::DecompressU8(c2v(data, length))));
+char* internal_zlib_dcmp(const char* data) {
+    return strdup(v2c(ZLIB::DecompressU8(c2v(data))));
 }
 
 char* internal_gzip_comp(const char* data, int level) {
-    std::vector<uint8_t> comp = GZIP::CompressU8(c2v(data, strlen(data)), level);
-    size_t length = comp.size();
-    std::stringstream ss;
-    ss << length << "|" << v2c(comp);
-    std::string out = ss.str();
-    return strdup(out.c_str());
+    return strdup(v2c(GZIP::CompressU8(c2v(data), level)));
 }
 
-char* internal_gzip_dcmp(const char* data, size_t length) {
-    return strdup(v2c(GZIP::DecompressU8(c2v(data, length))));
+char* internal_gzip_dcmp(const char* data) {
+    return strdup(v2c(GZIP::DecompressU8(c2v(data))));
 }
 
 char* internal_bzip2_comp(const char* data, int level) {
-    std::vector<uint8_t> comp = BZIP2::CompressU8(c2v(data, strlen(data)), level);
-    size_t length = comp.size();
-    std::stringstream ss;
-    ss << length << "|" << v2c(comp);
-    std::string out = ss.str();
-    return strdup(out.c_str());
+    return strdup(v2c(BZIP2::CompressU8(c2v(data), level)));
 }
 
-char* internal_bzip2_dcmp(const char* data, size_t length) {
-    return strdup(v2c(BZIP2::DecompressU8(c2v(data, length))));
+char* internal_bzip2_dcmp(const char* data) {
+    return strdup(v2c(BZIP2::DecompressU8(c2v(data))));
 }
 
 char* internal_lzma_comp(const char* data, int level) {
-    std::vector<uint8_t> comp = LZMA::CompressU8(c2v(data, strlen(data)), level);
-    size_t length = comp.size();
-    std::stringstream ss;
-    ss << length << "|" << v2c(comp);
-    std::string out = ss.str();
-    return strdup(out.c_str());
+    return strdup(v2c(LZMA::CompressU8(c2v(data), level)));
 }
 
-char* internal_lzma_dcmp(const char* data, size_t length) {
-    return strdup(v2c(LZMA::DecompressU8(c2v(data, length))));
+char* internal_lzma_dcmp(const char* data) {
+    return strdup(v2c(LZMA::DecompressU8(c2v(data))));
 }
 
 char* internal_zstd_comp(const char* data, int level) {
-    std::vector<uint8_t> comp = ZSTD::CompressU8(c2v(data, strlen(data)), level);
-    size_t length = comp.size();
-    std::stringstream ss;
-    ss << length << "|" << v2c(comp);
-    std::string out = ss.str();
-    return strdup(out.c_str());
+    return strdup(v2c(ZSTD::CompressU8(c2v(data), level)));
 }
 
-char* internal_zstd_dcmp(const char* data, size_t length) {
-    return strdup(v2c(ZSTD::DecompressU8(c2v(data, length))));
+char* internal_zstd_dcmp(const char* data) {
+    return strdup(v2c(ZSTD::DecompressU8(c2v(data))));
 }
 
 char* internal_lz4_comp(const char* data, int level) {
-    std::vector<uint8_t> comp = LZ4::CompressU8(c2v(data, strlen(data)), level);
-    size_t length = comp.size();
-    std::stringstream ss;
-    ss << length << "|" << v2c(comp);
-    std::string out = ss.str();
-    return strdup(out.c_str());
+    return strdup(v2c(LZ4::CompressU8(c2v(data), level)));
 }
 
-char* internal_lz4_dcmp(const char* data, size_t length) {
-    return strdup(v2c(LZ4::DecompressU8(c2v(data, length))));
+char* internal_lz4_dcmp(const char* data) {
+    return strdup(v2c(LZ4::DecompressU8(c2v(data))));
 }
 
 char* internal_snappy_comp(const char* data, int level) {
-    std::vector<uint8_t> comp = SNAPPY::CompressU8(c2v(data, strlen(data)), level);
-    size_t length = comp.size();
-    std::stringstream ss;
-    ss << length << "|" << v2c(comp);
-    std::string out = ss.str();
-    return strdup(out.c_str());
+    return strdup(v2c(SNAPPY::CompressU8(c2v(data), level)));
 }
 
-char* internal_snappy_dcmp(const char* data, size_t length) {
-    return strdup(v2c(SNAPPY::DecompressU8(c2v(data, length))));
+char* internal_snappy_dcmp(const char* data) {
+    return strdup(v2c(SNAPPY::DecompressU8(c2v(data))));
 }
 
 char* internal_deflate_comp(const char* data, int level) {
-    std::vector<uint8_t> comp = DEFLATE::CompressU8(c2v(data, strlen(data)), level);
-    size_t length = comp.size();
-    std::stringstream ss;
-    ss << length << "|" << v2c(comp);
-    std::string out = ss.str();
-    return strdup(out.c_str());
+    return strdup(v2c(DEFLATE::CompressU8(c2v(data), level)));
 }
 
-char* internal_deflate_dcmp(const char* data, size_t length) {
-    return strdup(v2c(DEFLATE::DecompressU8(c2v(data, length))));
+char* internal_deflate_dcmp(const char* data) {
+    return strdup(v2c(DEFLATE::DecompressU8(c2v(data))));
 }
 
 }
