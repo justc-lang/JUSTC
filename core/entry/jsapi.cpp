@@ -44,6 +44,8 @@ SOFTWARE.
 #include "../compiler/justb.hpp"
 #include "../loader/justb.hpp"
 #include <cstdint>
+#include "../lang/luau.hpp"
+#include "../built-in/compression/compression.hpp"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -158,6 +160,17 @@ void triggerVariableUpdate(const std::string& name, const Value& value) {
             listener(name, value);
         } catch (const std::exception& e) {}
     }
+}
+
+std::vector<uint8_t> c2v(const char* c, size_t len) {
+    std::vector<uint8_t> vec(
+        reinterpret_cast<const uint8_t*>(c),
+        reinterpret_cast<const uint8_t*>(c + len)
+    );
+    return vec;
+}
+char* v2c(const std::vector<uint8_t> v) {
+    return reinterpret_cast<char*>(v.data());
 }
 
 #ifdef __EMSCRIPTEN__
@@ -492,6 +505,132 @@ void cleanup() {
     std::lock_guard<std::mutex> lock(globalParserMutex);
     ensureGlobalParser();
     globalParser->cleanup();
+}
+
+int has_luau() {
+    #ifdef JUSTC_NOLUAU
+        return 0;
+    #else
+        return 1;
+    #endif
+}
+
+char* internal_luau_eval(const char* code) {
+    std::pair<std::string, int> res = RunLuau::runScriptWithResult(code);
+    std::stringstream ss;
+    ss << res.first << res.second;
+    std::string out = ss.str();
+    return strdup(out.c_str());
+}
+
+int internal_luau_comp(const char* code) {
+    std::string err;
+    bool res = RunLuau::compileScript(code, err);
+    return res ? 1 : 0;
+}
+
+char* internal_zlib_comp(const char* data, int level) {
+    std::vector<uint8_t> comp = ZLIB::CompressU8(c2v(data, strlen(data)), level);
+    size_t length = comp.size();
+    std::stringstream ss;
+    ss << length << "|" << v2c(comp);
+    std::string out = ss.str();
+    return strdup(out.c_str());
+}
+
+char* internal_zlib_dcmp(const char* data, size_t length) {
+    return strdup(v2c(ZLIB::DecompressU8(c2v(data, length))));
+}
+
+char* internal_gzip_comp(const char* data, int level) {
+    std::vector<uint8_t> comp = GZIP::CompressU8(c2v(data, strlen(data)), level);
+    size_t length = comp.size();
+    std::stringstream ss;
+    ss << length << "|" << v2c(comp);
+    std::string out = ss.str();
+    return strdup(out.c_str());
+}
+
+char* internal_gzip_dcmp(const char* data, size_t length) {
+    return strdup(v2c(GZIP::DecompressU8(c2v(data, length))));
+}
+
+char* internal_bzip2_comp(const char* data, int level) {
+    std::vector<uint8_t> comp = BZIP2::CompressU8(c2v(data, strlen(data)), level);
+    size_t length = comp.size();
+    std::stringstream ss;
+    ss << length << "|" << v2c(comp);
+    std::string out = ss.str();
+    return strdup(out.c_str());
+}
+
+char* internal_bzip2_dcmp(const char* data, size_t length) {
+    return strdup(v2c(BZIP2::DecompressU8(c2v(data, length))));
+}
+
+char* internal_lzma_comp(const char* data, int level) {
+    std::vector<uint8_t> comp = LZMA::CompressU8(c2v(data, strlen(data)), level);
+    size_t length = comp.size();
+    std::stringstream ss;
+    ss << length << "|" << v2c(comp);
+    std::string out = ss.str();
+    return strdup(out.c_str());
+}
+
+char* internal_lzma_dcmp(const char* data, size_t length) {
+    return strdup(v2c(LZMA::DecompressU8(c2v(data, length))));
+}
+
+char* internal_zstd_comp(const char* data, int level) {
+    std::vector<uint8_t> comp = ZSTD::CompressU8(c2v(data, strlen(data)), level);
+    size_t length = comp.size();
+    std::stringstream ss;
+    ss << length << "|" << v2c(comp);
+    std::string out = ss.str();
+    return strdup(out.c_str());
+}
+
+char* internal_zstd_dcmp(const char* data, size_t length) {
+    return strdup(v2c(ZSTD::DecompressU8(c2v(data, length))));
+}
+
+char* internal_lz4_comp(const char* data, int level) {
+    std::vector<uint8_t> comp = LZ4::CompressU8(c2v(data, strlen(data)), level);
+    size_t length = comp.size();
+    std::stringstream ss;
+    ss << length << "|" << v2c(comp);
+    std::string out = ss.str();
+    return strdup(out.c_str());
+}
+
+char* internal_lz4_dcmp(const char* data, size_t length) {
+    return strdup(v2c(LZ4::DecompressU8(c2v(data, length))));
+}
+
+char* internal_snappy_comp(const char* data, int level) {
+    std::vector<uint8_t> comp = SNAPPY::CompressU8(c2v(data, strlen(data)), level);
+    size_t length = comp.size();
+    std::stringstream ss;
+    ss << length << "|" << v2c(comp);
+    std::string out = ss.str();
+    return strdup(out.c_str());
+}
+
+char* internal_snappy_dcmp(const char* data, size_t length) {
+    return strdup(v2c(SNAPPY::DecompressU8(c2v(data, length))));
+}
+
+char* internal_deflate_comp(const char* data, int level) {
+    std::vector<uint8_t> comp = DEFLATE::CompressU8(c2v(data, strlen(data)), level);
+    size_t length = comp.size();
+    std::stringstream ss;
+    ss << length << "|" << v2c(comp);
+    std::string out = ss.str();
+    return strdup(out.c_str());
+}
+
+char* internal_deflate_dcmp(const char* data, size_t length) {
+    return strdup(v2c(DEFLATE::DecompressU8(c2v(data, length))));
 }
 
 }

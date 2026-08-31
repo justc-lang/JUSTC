@@ -80,6 +80,7 @@ SOFTWARE.
     const TXTENCDR  = isBrowser ? globalThis_.TextEncoder   : TextEncoder;
     const UI8A      = isBrowser ? globalThis_.Uint8Array    : Uint8Array;
     const AB        = isBrowser ? globalThis_.ArrayBuffer   : ArrayBuffer;
+    const NUMBER    = isBrowser ? globalThis_.Number        : Number;
 
     const isSafari = isBrowser ? /^((?!chrome|android).)*safari/i.test(globalThis_.navigator.userAgent) : false;
     const isNode   = isModule ? typeof process !== 'undefined' && process.versions && process.versions.node : false;
@@ -119,6 +120,8 @@ SOFTWARE.
         redefineO: 'JUSTO cannot be redefined.',
         redefineB: 'JUSTB cannot be redefined.',
         boolInput0: 'Argument 0 should be a boolean.',
+        Luau: 'To run Luau, use the standard JUSTC build. The current build excludes Luau.',
+        numInput: 'Argument 1 should be a number.',
     };
 
     if (isBrowser) {
@@ -149,6 +152,7 @@ SOFTWARE.
     JUSTC.Silent = false;
     JUSTC.Experiments = false;
     JUSTC.Initialized = false;
+    JUSTC.HasLuau = false;
 
     if (!isBrowser && !JUSTC.JUSTC && !JUSTC.WASM && JUSTC.NodeWASM) {JUSTC.JUSTC = JUSTC.NodeWASM}
     else if (isBrowser && globalThis_.__justc__) throw new JUSTC.Error(JUSTC.Errors.environment);
@@ -282,6 +286,76 @@ SOFTWARE.
                     }
                 }
             },
+            HasLuau: {
+                NeedsWASM: true,
+                Name: "hasLuau",
+                Return: ()=>{return JUSTC.HasLuau}
+            },
+            Luau: {
+                NeedsWASM: true,
+                Name: "internal.luau",
+                Return: function Luau(code) {
+                    if (!JUSTC.HasLuau) throw new JUSTC.Error(JUSTC.Errors.Luau);
+                    if (!code || typeof code != 'string') throw new JUSTC.Error(JUSTC.Errors.wrongInputType);
+                    const ptr = JUSTC.WASM.ccall(
+                        'internal_luau_eval',
+                        'number',
+                        ['string'],
+                        [code]
+                    );
+                    const raw = JUSTC.WASM.UTF8ToString(ptr);
+                    JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
+                    return raw;
+                }
+            },
+            LuauComp: {
+                NeedsWASM: true,
+                Name: "internal.luau.compile",
+                Return: function Luau(code) {
+                    if (!JUSTC.HasLuau) throw new JUSTC.Error(JUSTC.Errors.Luau);
+                    if (!code || typeof code != 'string') throw new JUSTC.Error(JUSTC.Errors.wrongInputType);
+                    return JUSTC.WASM.ccall(
+                        'internal_luau_comp',
+                        'number',
+                        ['string'],
+                        [code]
+                    ) === 1;
+                }
+            },
+            ZlibComp: {
+                NeedsWASM: true,
+                Name: "internal.compress.zlib",
+                Return: function ZLIB(data, level = 6) {
+                    if (!data || typeof data != 'string') throw new JUSTC.Error(JUSTC.Errors.wrongInputType);
+                    if (!level || typeof level != 'number') throw new JUSTC.Error(JUSTC.Errors.numInput);
+                    const ptr = JUSTC.WASM.ccall(
+                        'internal_zlib_comp',
+                        'number',
+                        ['string', 'number'],
+                        [data, NUMBER(level)]
+                    );
+                    const raw = JUSTC.WASM.UTF8ToString(ptr);
+                    JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
+                    return raw;
+                }
+            },
+            ZlibDcmp: {
+                NeedsWASM: true,
+                Name: "internal.decompress.zlib",
+                Return: function ZLIB(data, length) {
+                    if (!data || typeof data != 'string') throw new JUSTC.Error(JUSTC.Errors.wrongInputType);
+                    if (!length || typeof length != 'number') throw new JUSTC.Error(JUSTC.Errors.numInput);
+                    const ptr = JUSTC.WASM.ccall(
+                        'internal_zlib_comp',
+                        'number',
+                        ['string', 'number'],
+                        [data, length]
+                    );
+                    const raw = JUSTC.WASM.UTF8ToString(ptr);
+                    JUSTC.WASM.ccall('free_string', null, ['number'], [ptr]);
+                    return raw;
+                }
+            }
         },
         Available: [
             'errorsEnabled',
@@ -297,6 +371,11 @@ SOFTWARE.
             "isSilent": "Silent",
             "detectedEnvironment": "env",
             "core.cli": "CLI",
+            "hasLuau": "HasLuau",
+            "internal.luau": "Luau",
+            "internal.luau.compile": "LuauComp",
+            "internal.compress.zlib": "ZlibComp",
+            "internal.decompress.zlib": "ZlibDcmp",
         },
     };
 
@@ -355,12 +434,18 @@ SOFTWARE.
             }
         };
         if (JUSTC.WASM) {
-            for (const [unused, prfunc] of OBJECT.entries(JUSTC.PrivateFunctions.All)) {
+            for (const [_unused, prfunc] of OBJECT.entries(JUSTC.PrivateFunctions.All)) {
                 if (prfunc.NeedsWASM && !JUSTC.PrivateFunctions.Available.includes(prfunc.Name)) {
                     JUSTC.PrivateFunctions.Available.push(prfunc.Name);
                 }
             }
             JUSTC.Initialized = true;
+            JUSTC.HasLuau = JUSTC.WASM.ccall(
+                'has_luau',
+                'number',
+                [], []
+            ) === 1;
+            console.log('hasLuau:',JUSTC.HasLuau);
         } else {
             JUSTC.Initialized = false;
         }
@@ -506,7 +591,7 @@ SOFTWARE.
             return filename;
         }
 
-        _registerFileInDevTools(filename, content, language) {
+        _registerFileInDevTools(filename, content, _language) {
             const blob = new BLOB([content], { type: 'text/plain' });
             const url = __URL__.createObjectURL(blob);
 

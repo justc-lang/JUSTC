@@ -193,7 +193,12 @@ luau/VM/src/lvmutils.cpp luau/Ast/src/Allocator.cpp luau/Ast/src/Cst.cpp luau/As
 luau/VM/src/lbuflib.cpp luau/VM/src/lgcdebug.cpp luau/VM/src/lnumprint.cpp luau/VM/src/lveclib.cpp"
 LUAU_INCLUDE="-I./luau/Ast/include -I./luau/Common/include -I./luau/Compiler/include -I./luau/VM/include"
 
-COMMON_FLAGS="-s EXPORTED_FUNCTIONS=[\"_malloc\",\"_free\",\"_registerFunction\",\"_unregisterFunction\",\"_clearUserFunctions\",\"_registerGlobal\",\"_getGlobal\",\"_hasGlobal\",\"_unregisterGlobal\",\"_clearGlobals\",\"_registerPointer\",\"_getPointer\",\"_unregisterPointer\",\"_clearPointers\",\"_addVariableUpdateListener\",\"_clearVariableUpdateListeners\",\"_justoParse\",\"_lexer\",\"_parser\",\"_parse\",\"_free_string\",\"_version\",\"_load\",\"_unregisterClass\",\"_clearClasses\",\"_freePointer\",\"_clearJUSTCPointers\",\"_cleanup\"] \
+COMMON_FLAGS="-s EXPORTED_FUNCTIONS=[\"_malloc\",\"_free\",\"_registerFunction\",\"_unregisterFunction\",\"_clearUserFunctions\",\"_registerGlobal\",\"_getGlobal\",\"_hasGlobal\",\
+\"_unregisterGlobal\",\"_clearGlobals\",\"_registerPointer\",\"_getPointer\",\"_unregisterPointer\",\"_clearPointers\",\"_addVariableUpdateListener\",\"_clearVariableUpdateListeners\",\
+\"_justoParse\",\"_lexer\",\"_parser\",\"_parse\",\"_free_string\",\"_version\",\"_load\",\"_unregisterClass\",\"_clearClasses\",\"_freePointer\",\"_clearJUSTCPointers\",\"_cleanup\",\
+\"_has_luau\",\"_internal_luau_eval\",\"_internal_luau_comp\",\"_internal_zlib_comp\",\"_internal_zlib_dcmp\",\"_internal_gzip_comp\",\"_internal_gzip_dcmp\",\"_internal_bzip2_comp\",\
+\"_internal_bzip2_dcmp\",\"_internal_lzma_comp\",\"_internal_lzma_dcmp\",\"_internal_zstd_comp\",\"_internal_zstd_dcmp\",\"_internal_lz4_comp\",\"_internal_lz4_dcmp\",\
+\"_internal_snappy_comp\",\"_internal_snappy_dcmp\",\"_internal_deflate_comp\",\"_internal_deflate_dcmp\"] \
 -s EXPORTED_RUNTIME_METHODS=[\"ccall\",\"cwrap\",\"addFunction\",\"removeFunction\",\"UTF8ToString\",\"stringToUTF8\",\"setValue\",\"getValue\",\"HEAPU8\",\"HEAP32\",\"HEAP16\",\"HEAP8\"] \
 -s MODULARIZE=1 \
 -s EXPORT_ALL=1 \
