@@ -169,8 +169,11 @@ std::vector<uint8_t> c2v(const char* c, size_t len) {
     );
     return vec;
 }
-char* v2c(const std::vector<uint8_t> v) {
+char* v2c(std::vector<uint8_t>& v) {
     return reinterpret_cast<char*>(v.data());
+}
+const char* v2c(const std::vector<uint8_t>& v) {
+    return reinterpret_cast<const char*>(v.data());
 }
 
 #ifdef __EMSCRIPTEN__
