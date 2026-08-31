@@ -50,6 +50,11 @@ SOFTWARE.
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+
+EM_JS(void, console_error, (const char* what), {
+    console.error('[JUSTC]', UTF8ToString(what));
+});
+
 #endif
 
 std::string outputString(const std::string& mode, const ParseResult& result) {
@@ -668,81 +673,207 @@ int has_luau() {
 }
 
 char* internal_luau_eval(const char* code) {
-    std::pair<std::string, int> res = RunLuau::runScriptWithResult(code);
-    std::stringstream ss;
-    ss << res.second << res.first;
-    std::string out = ss.str();
-    return strdup(out.c_str());
+    try {
+        std::pair<std::string, int> res = RunLuau::runScriptWithResult(code);
+        std::stringstream ss;
+        ss << res.second << res.first;
+        std::string out = ss.str();
+        return strdup(out.c_str());
+    } catch (const std::exception& e) {
+        #ifdef __EMSCRIPTEN__
+            console_error(e.what().c_str());
+        #endif
+        std::stringstream ss;
+        ss << "6" << e.what();
+        std::string out = ss.str();
+        return strdup(out.c_str());
+    }
 }
 
 int internal_luau_comp(const char* code) {
-    std::string err;
-    bool res = RunLuau::compileScript(code, err);
-    return res ? 1 : 0;
+    try {
+        std::string err;
+        bool res = RunLuau::compileScript(code, err);
+        return res ? 1 : 0;
+    } catch (...) {
+        return 0;
+    }
 }
 
 char* internal_zlib_comp(const char* data, int level) {
-    return strdup(v2c(ZLIB::CompressU8(c2v(data), level)));
+    try {
+        return strdup(v2c(ZLIB::CompressU8(c2v(data), level)));
+    } catch (const std::exception& e) {
+        #ifdef __EMSCRIPTEN__
+            console_error(e.what().c_str());
+        #endif
+        return strdup(e.what().c_str());
+    }
 }
 
 char* internal_zlib_dcmp(const char* data) {
-    return strdup(v2c(ZLIB::DecompressU8(c2v(data))));
+    try {
+        return strdup(v2c(ZLIB::DecompressU8(c2v(data))));
+    } catch (const std::exception& e) {
+        #ifdef __EMSCRIPTEN__
+            console_error(e.what().c_str());
+        #endif
+        return strdup(e.what().c_str());
+    }
 }
 
 char* internal_gzip_comp(const char* data, int level) {
-    return strdup(v2c(GZIP::CompressU8(c2v(data), level)));
+    try {
+        return strdup(v2c(GZIP::CompressU8(c2v(data), level)));
+    } catch (const std::exception& e) {
+        #ifdef __EMSCRIPTEN__
+            console_error(e.what().c_str());
+        #endif
+        return strdup(e.what().c_str());
+    }
 }
 
 char* internal_gzip_dcmp(const char* data) {
-    return strdup(v2c(GZIP::DecompressU8(c2v(data))));
+    try {
+        return strdup(v2c(GZIP::DecompressU8(c2v(data))));
+    } catch (const std::exception& e) {
+        #ifdef __EMSCRIPTEN__
+            console_error(e.what().c_str());
+        #endif
+        return strdup(e.what().c_str());
+    }
 }
 
 char* internal_bzip2_comp(const char* data, int level) {
-    return strdup(v2c(BZIP2::CompressU8(c2v(data), level)));
+    try {
+        return strdup(v2c(BZIP2::CompressU8(c2v(data), level)));
+    } catch (const std::exception& e) {
+        #ifdef __EMSCRIPTEN__
+            console_error(e.what().c_str());
+        #endif
+        return strdup(e.what().c_str());
+    }
 }
 
 char* internal_bzip2_dcmp(const char* data) {
-    return strdup(v2c(BZIP2::DecompressU8(c2v(data))));
+    try {
+        return strdup(v2c(BZIP2::DecompressU8(c2v(data))));
+    } catch (const std::exception& e) {
+        #ifdef __EMSCRIPTEN__
+            console_error(e.what().c_str());
+        #endif
+        return strdup(e.what().c_str());
+    }
 }
 
 char* internal_lzma_comp(const char* data, int level) {
-    return strdup(v2c(LZMA::CompressU8(c2v(data), level)));
+    try {
+        return strdup(v2c(LZMA::CompressU8(c2v(data), level)));
+    } catch (const std::exception& e) {
+        #ifdef __EMSCRIPTEN__
+            console_error(e.what().c_str());
+        #endif
+        return strdup(e.what().c_str());
+    }
 }
 
 char* internal_lzma_dcmp(const char* data) {
-    return strdup(v2c(LZMA::DecompressU8(c2v(data))));
+    try {
+        return strdup(v2c(LZMA::DecompressU8(c2v(data))));
+    } catch (const std::exception& e) {
+        #ifdef __EMSCRIPTEN__
+            console_error(e.what().c_str());
+        #endif
+        return strdup(e.what().c_str());
+    }
 }
 
 char* internal_zstd_comp(const char* data, int level) {
-    return strdup(v2c(ZSTD::CompressU8(c2v(data), level)));
+    try {
+        return strdup(v2c(ZSTD::CompressU8(c2v(data), level)));
+    } catch (const std::exception& e) {
+        #ifdef __EMSCRIPTEN__
+            console_error(e.what().c_str());
+        #endif
+        return strdup(e.what().c_str());
+    }
 }
 
 char* internal_zstd_dcmp(const char* data) {
-    return strdup(v2c(ZSTD::DecompressU8(c2v(data))));
+    try {
+        return strdup(v2c(ZSTD::DecompressU8(c2v(data))));
+    } catch (const std::exception& e) {
+        #ifdef __EMSCRIPTEN__
+            console_error(e.what().c_str());
+        #endif
+        return strdup(e.what().c_str());
+    }
 }
 
 char* internal_lz4_comp(const char* data, int level) {
-    return strdup(v2c(LZ4::CompressU8(c2v(data), level)));
+    try {
+        return strdup(v2c(LZ4::CompressU8(c2v(data), level)));
+    } catch (const std::exception& e) {
+        #ifdef __EMSCRIPTEN__
+            console_error(e.what().c_str());
+        #endif
+        return strdup(e.what().c_str());
+    }
 }
 
 char* internal_lz4_dcmp(const char* data) {
-    return strdup(v2c(LZ4::DecompressU8(c2v(data))));
+    try {
+        return strdup(v2c(LZ4::DecompressU8(c2v(data))));
+    } catch (const std::exception& e) {
+        #ifdef __EMSCRIPTEN__
+            console_error(e.what().c_str());
+        #endif
+        return strdup(e.what().c_str());
+    }
 }
 
 char* internal_snappy_comp(const char* data, int level) {
-    return strdup(v2c(SNAPPY::CompressU8(c2v(data), level)));
+    try {
+        return strdup(v2c(SNAPPY::CompressU8(c2v(data), level)));
+    } catch (const std::exception& e) {
+        #ifdef __EMSCRIPTEN__
+            console_error(e.what().c_str());
+        #endif
+        return strdup(e.what().c_str());
+    }
 }
 
 char* internal_snappy_dcmp(const char* data) {
-    return strdup(v2c(SNAPPY::DecompressU8(c2v(data))));
+    try {
+        return strdup(v2c(SNAPPY::DecompressU8(c2v(data))));
+    } catch (const std::exception& e) {
+        #ifdef __EMSCRIPTEN__
+            console_error(e.what().c_str());
+        #endif
+        return strdup(e.what().c_str());
+    }
 }
 
 char* internal_deflate_comp(const char* data, int level) {
-    return strdup(v2c(DEFLATE::CompressU8(c2v(data), level)));
+    try {
+        return strdup(v2c(DEFLATE::CompressU8(c2v(data), level)));
+    } catch (const std::exception& e) {
+        #ifdef __EMSCRIPTEN__
+            console_error(e.what().c_str());
+        #endif
+        return strdup(e.what().c_str());
+    }
 }
 
 char* internal_deflate_dcmp(const char* data) {
-    return strdup(v2c(DEFLATE::DecompressU8(c2v(data))));
+    try {
+        return strdup(v2c(DEFLATE::DecompressU8(c2v(data))));
+    } catch (const std::exception& e) {
+        #ifdef __EMSCRIPTEN__
+            console_error(e.what().c_str());
+        #endif
+        return strdup(e.what().c_str());
+    }
 }
 
 }

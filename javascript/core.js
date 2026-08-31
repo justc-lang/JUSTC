@@ -317,7 +317,8 @@ SOFTWARE.
                         case '4':
                         case '5':
                             return JUSTC.TryCatchLog(()=>json_.parse(str), str);
-                        case '0':
+                        case '6':
+                            throw new JUSTC.Error(str);
                         default:
                             return str;
                     }
