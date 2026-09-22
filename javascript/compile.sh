@@ -24,7 +24,7 @@
 
 set -e
 
-OUTPUT_DIR="${1:-development}"
+OUTPUT_DIR="${1:-dev}"
 SAFE_DIR=$(echo "$OUTPUT_DIR" | sed 's|/|_|g') || "${{ env.DEFAULT_DIR }}"
 mkdir -p "javascript/$SAFE_DIR"
 

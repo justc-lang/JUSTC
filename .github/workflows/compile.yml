@@ -33,13 +33,13 @@ on:
       dirname:
         description: 'Directory name / Path'
         required: true
-        default: 'development'
+        default: 'dev'
         type: string
   schedule:
     - cron: '0 0 * * 1,4' # keep cache alive (every mon and thu at 00:00 utc)
 
 env:
-  DEFAULT_DIR: 'development'
+  DEFAULT_DIR: 'dev'
   VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg_cache
 
 permissions:
@@ -539,6 +539,17 @@ jobs:
           destination-repository-name: JUSTC.js
           user-email: "support@juststudio.is-a.dev"
           target-branch: main
+      - name: Commit to JUSTC Website
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
+        with:
+          source-directory: "javascript_output/${{ needs.compile-wasm.outputs.dirpath }}"
+          destination-github-username: js-just
+          destination-repository-name: JUSTC.js
+          user-email: "support@juststudio.is-a.dev"
+          target-branch: gh-pages
+          target-directory: "justc/${{ needs.compile-wasm.outputs.dirpath }}"
 
   release-assets:
     if: github.event_name == 'release'
