@@ -545,8 +545,8 @@ jobs:
           API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
         with:
           source-directory: "javascript_output/${{ needs.compile-wasm.outputs.dirpath }}"
-          destination-github-username: js-just
-          destination-repository-name: JUSTC.js
+          destination-github-username: justc-lang
+          destination-repository-name: justc-lang.github.io
           user-email: "support@juststudio.is-a.dev"
           target-branch: gh-pages
           target-directory: "justc/${{ needs.compile-wasm.outputs.dirpath }}"
