@@ -3622,6 +3622,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
         return booleanToValue(allowLuau);
     }
 
+    double inpnum = 0.0;
     if (
         args.empty() && funcName != "math.random" && funcName != "Window" && funcName != "task.wait" && funcName != "memory.global" &&
         funcName != "memory.classes" && funcName != "memory.funcitons" && funcName != "memory.pointers"
@@ -3637,7 +3638,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
         }
         throw std::runtime_error("Expected at least one argument, got 0 at " + Utility::position(startPos, input) + ".");
     }
-    double inpnum = args[0].number_value;
+    if (!args.empty()) inpnum = args[0].number_value;
     try {
         if (funcName == "Binary::toText") {
             return Binary::ToText(args);
@@ -5872,8 +5873,10 @@ Value Parser::evaluateExpression(const Value& left, const std::string& op, const
                 else throw std::runtime_error("Expected \"(\" for function call at " + Utility::position(currentToken().start, input) + ".");
             } else if (left.type == DataType::JSON_OBJECT || left.type == DataType::JUSTC_OBJECT) {
                 result = accessProperty(left, right.toString()).first;
+            } else {
+                std::string ogName = left.isVariable ? left.variable : std::string("<" + dataTypeToString(left.type) + ">");
+                throw std::runtime_error(ogName + op + funcName + " is not a function. Call attempt at " + Utility::position(currentToken().start, input) + ".");
             }
-            else throw std::runtime_error("<" + dataTypeToString(left.type) + ">" + op + funcName + " is not a function. Call attempt at " + Utility::position(currentToken().start, input) + ".");
         } else if (left.type == DataType::JSON_OBJECT || left.type == DataType::JUSTC_OBJECT) {
             result = accessProperty(left, right.toString()).first;
         }
