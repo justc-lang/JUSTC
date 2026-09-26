@@ -4156,12 +4156,16 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
         }
         if (funcName == "Window") {
             #ifndef __EMSCRIPTEN__
+                std::cout << "window call" << std::endl;
                 Value windowHandle = JUSTCWindow::Create(args, this);
+                std::cout << "window created _" << std::endl;
                 std::unordered_map<std::string, Value> obj;
                 obj["_handle"] = windowHandle;
                 
                 obj["show"] = createFunction([windowHandle](const std::vector<Value>& args) -> Value {
+                    std::cout << "show call" << std::endl;
                     bool success = JUSTCWindow::showWindow(windowHandle.getNumericValue<uint64_t>());
+                    std::cout << "show done" << std::endl;
                     return Value::createBoolean(success);
                 }, "Window.show");
                 
@@ -4344,6 +4348,7 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
 
                 Value result = Value::createJsonObject(obj);
                 result.name = "Window";
+                std::cout << "window object done" << std::endl;
                 return result;
             #else
                 throw std::runtime_error("JUSTC Window is not supported in WebAssembly builds.");

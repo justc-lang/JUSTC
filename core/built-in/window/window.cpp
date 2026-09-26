@@ -29,6 +29,7 @@ SOFTWARE.
 #include <stdexcept>
 #include <sstream>
 #include <cstring>
+#include <iostream>
 
 namespace JUSTCWindow {
 
@@ -40,8 +41,10 @@ static std::unique_ptr<WindowLib::IWindow> g_window;
 static uint64_t g_windowHandle = 0;
 
 Value Create(const std::vector<Value>& args, Parser* parser) {
+    std::cout << "window create" << std::endl;
     try {
         WindowCreateOptions options;
+        std::cout << "window options create" << std::endl;
         
         if (!args.empty() && args[0].type == DataType::JSON_OBJECT) {
             auto props = args[0].properties;
@@ -67,13 +70,17 @@ Value Create(const std::vector<Value>& args, Parser* parser) {
             it = props.find("visible");
             if (it != props.end()) options.visible = parser->v(it->second).toBoolean();
         }
+        std::cout << "window options done" << std::endl;
         
         g_window = WindowLib::CreateClassicWindow();
+        std::cout << "window created" << std::endl;
         if (!g_window) {
+            std::cout << "window failed" << std::endl;
             throw std::runtime_error("Failed to create window instance");
         }
         
         WindowLib::WindowConfig config;
+        std::cout << "window config create" << std::endl;
         config.title = options.title.empty() ? L"JUSTC Window" : std::wstring(options.title.begin(), options.title.end());
         config.width = options.width > 0 ? options.width : 800;
         config.height = options.height > 0 ? options.height : 600;
@@ -82,18 +89,26 @@ Value Create(const std::vector<Value>& args, Parser* parser) {
         config.resizable = options.resizable;
         config.maximized = false;
         config.hInstance = GetModuleHandle(nullptr);
+        std::cout << "window config done" << std::endl;
         
         if (!g_window->Create(config)) {
+            std::cout << "window create failed" << std::endl;
             throw std::runtime_error("Failed to create window");
         }
+        std::cout << "window create done" << std::endl;
         
         g_windowHandle = reinterpret_cast<uint64_t>(g_window.get());
+        std::cout << "window handle " << Utility::uint64ToHexString(g_windowHandle) << std::endl;
         managedWindows[g_windowHandle] = options;
+        std::cout << "window handle done" << std::endl;
         
         if (options.visible) {
+            std::cout << "window show" << std::endl;
             g_window->Show();
+            std::cout << "window show done" << std::endl;
         }
         
+        std::cout << "window done" << std::endl;
         return Value::createNumberWithType(g_windowHandle, NumericType::UINT64);
         
     } catch (const std::exception& e) {
@@ -168,13 +183,18 @@ bool setWindowSize(uint64_t handle, int width, int height) {
 }
 
 bool showWindow(uint64_t handle) {
+    std::cout << "window show call" << std::endl;
     auto it = managedWindows.find(handle);
+    std::cout << "window handle" << std::endl;
     if (it == managedWindows.end() || !g_window) {
         return false;
     }
+    std::cout << "window found" << std::endl;
     
     g_window->Show();
+    std::cout << "window show done" << std::endl;
     it->second.visible = true;
+    std::cout << "window done" << std::endl;
     return true;
 }
 
