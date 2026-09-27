@@ -226,7 +226,7 @@ elseif(NOT JUSTC_NOLUAU)
     message(WARNING "Please use CMake 3.14+")
 endif()
 
-find_package(ICU REQUIRED COMPONENTS uc i18n)
+find_package(ICU REQUIRED COMPONENTS uc i18n data)
 
 message(STATUS "Downloading promise-cpp...")
 FetchContent_Declare(
@@ -303,7 +303,42 @@ else()
     target_link_libraries(justc_core PRIVATE cpr::cpr)
 endif()
 target_include_directories(justc_core SYSTEM PRIVATE ${Boost_INCLUDE_DIRS})
-target_link_libraries(justc_core PRIVATE ICU::uc ICU::i18n)
+
+if(UNIX AND NOT APPLE AND NOT MSVC)
+    find_library(ICUUC_STATIC
+        NAMES libicuuc.a icuuc.a
+        PATHS /usr/lib/x86_64-linux-gnu /usr/lib /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    find_library(ICUI18N_STATIC
+        NAMES libicui18n.a icui18n.a
+        PATHS /usr/lib/x86_64-linux-gnu /usr/lib /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    find_library(ICUDATA_STATIC
+        NAMES libicudata.a icudata.a
+        PATHS /usr/lib/x86_64-linux-gnu /usr/lib /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
+    if(ICUUC_STATIC AND ICUI18N_STATIC AND ICUDATA_STATIC)
+        message(STATUS "Using static ICU: ${ICUUC_STATIC}")
+        
+        target_link_libraries(justc_core PRIVATE
+            ${ICUI18N_STATIC}
+            ${ICUUC_STATIC}
+            ${ICUDATA_STATIC}
+        )
+        
+        set(ICU_LIBRARIES "")
+    else()
+        message(WARNING "Static ICU libraries not found, falling back to shared")
+        target_link_libraries(justc_core PRIVATE ICU::uc ICU::i18n)
+    endif()
+else()
+    target_link_libraries(justc_core PRIVATE ICU::uc ICU::i18n)
+endif()
+
 target_include_directories(justc_core PRIVATE ${PROMISE_CPP_INCLUDE_DIR})
 
 if(UNIX AND NOT APPLE)
