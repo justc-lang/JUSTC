@@ -4167,7 +4167,8 @@ Value Parser::executeFunction(const std::string& funcName, const std::vector<Val
         if (funcName == "Window") {
             #ifndef __EMSCRIPTEN__
                 hasWindow = true;
-                Value windowHandle = JUSTCWindow::Create(args.empty() ? {Value::createJsonObject({})} : args, this);
+                std::vector<Value> defArgs( {Value::createJsonObject({})} );
+                Value windowHandle = JUSTCWindow::Create(args.empty() ? defArgs : args, this);
                 std::unordered_map<std::string, Value> obj;
                 obj["_handle"] = windowHandle;
                 
