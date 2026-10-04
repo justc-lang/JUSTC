@@ -58,9 +58,10 @@ sudo apt-get install -y python3 python3-dev python3-setuptools autoconf automake
 if [ ! -f /usr/local/icu-static/lib/libicuuc.a ]; then
     echo "Building ICU from source with -fPIC..."
     ICU_VERSION="74.2"
+    ICU_RELEASE="74-2"
     ICU_SHORT="74_2"
     cd /tmp || { echo "::error::cd /tmp"; exit 1; }
-    wget -q "https://github.com/unicode-org/icu/releases/download/release-${ICU_SHORT}/icu4c-${ICU_SHORT}-src.tgz" || { echo "::error::wget"; exit 1; }
+    wget -q "https://github.com/unicode-org/icu/releases/download/release-${ICU_RELEASE}/icu4c-${ICU_SHORT}-src.tgz" || { echo "::error::wget"; exit 1; }
     tar xzf "icu4c-${ICU_SHORT}-src.tgz" || { echo "::error::tar"; exit 1; }
     cd icu/source || { echo "::error::cd icu/source"; exit 1; }
     ./configure \
