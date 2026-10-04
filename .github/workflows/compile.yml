@@ -91,7 +91,7 @@ jobs:
         with:
           packages: |
             libcurl4-openssl-dev cmake build-essential pkg-config zip
-            libboost-all-dev libicu-dev libidn2-dev
+            libboost-all-dev wget libidn2-dev
             libx11-dev libx11-xcb-dev libxcb1-dev libxcb-util-dev
             libxcb-util0-dev libxcb-icccm4-dev libxcb-keysyms1-dev
             libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
@@ -112,6 +112,13 @@ jobs:
           key: ${{ runner.os }}-boost-${{ hashFiles('linux/compile.sh') }}
           restore-keys: |
             ${{ runner.os }}-boost-
+      - name: Cache static ICU
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/icu-static
+          key: ${{ runner.os }}-icu-static-74.2-fpic
+          restore-keys: |
+            ${{ runner.os }}-icu-static-
       - name: Configure APT mirror
         uses: vegardit/fast-apt-mirror.sh@v1
       - name: Build

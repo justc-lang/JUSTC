@@ -226,7 +226,17 @@ elseif(NOT JUSTC_NOLUAU)
     message(WARNING "Please use CMake 3.14+")
 endif()
 
-find_package(ICU REQUIRED COMPONENTS uc i18n data)
+if(UNIX AND NOT APPLE)
+    set(ICU_STATIC_ROOT "/usr/local/icu-static")
+    
+    if(NOT EXISTS "${ICU_STATIC_ROOT}/lib/libicuuc.a")
+        message(FATAL_ERROR 
+            "Static ICU not found at ${ICU_STATIC_ROOT}. "
+            "Run linux/compile.sh which builds ICU from source with -fPIC.")
+    endif()
+else()
+    find_package(ICU REQUIRED COMPONENTS uc i18n data)
+endif()
 
 message(STATUS "Downloading promise-cpp...")
 FetchContent_Declare(
@@ -305,28 +315,29 @@ endif()
 target_include_directories(justc_core SYSTEM PRIVATE ${Boost_INCLUDE_DIRS})
 
 if(UNIX AND NOT APPLE)
-    find_library(ICUUC_STATIC NAMES libicuuc.a PATHS ${ICU_LIBRARY_DIRS} /usr/lib/x86_64-linux-gnu /usr/lib NO_DEFAULT_PATH)
-    find_library(ICUI18N_STATIC NAMES libicui18n.a PATHS ${ICU_LIBRARY_DIRS} /usr/lib/x86_64-linux-gnu /usr/lib NO_DEFAULT_PATH)
-    find_library(ICUDATA_STATIC NAMES libicudata.a PATHS ${ICU_LIBRARY_DIRS} /usr/lib/x86_64-linux-gnu /usr/lib NO_DEFAULT_PATH)
+    set(ICU_STATIC_ROOT "/usr/local/icu-static")
     
-    if(ICUUC_STATIC)
-        message(STATUS "Static ICU UC: ${ICUUC_STATIC}")
-    else()
-        message(FATAL_ERROR "Static libicuuc.a not found! Install libicu-dev.")
-    endif()
+    set(ICUUC_STATIC   "${ICU_STATIC_ROOT}/lib/libicuuc.a")
+    set(ICUI18N_STATIC "${ICU_STATIC_ROOT}/lib/libicui18n.a")
+    set(ICUDATA_STATIC "${ICU_STATIC_ROOT}/lib/libicudata.a")
     
-    if(ICUI18N_STATIC)
-        message(STATUS "Static ICU i18n: ${ICUI18N_STATIC}")
-    endif()
+    foreach(_lib ${ICUUC_STATIC} ${ICUI18N_STATIC} ${ICUDATA_STATIC})
+        if(NOT EXISTS "${_lib}")
+            message(FATAL_ERROR "Missing static ICU library: ${_lib}")
+        endif()
+    endforeach()
     
-    if(ICUDATA_STATIC)
-        message(STATUS "Static ICU data: ${ICUDATA_STATIC}")
-    endif()
+    message(STATUS "Using STATIC ICU from ${ICU_STATIC_ROOT}")
+    message(STATUS "  ${ICUUC_STATIC}")
+    message(STATUS "  ${ICUI18N_STATIC}")
+    message(STATUS "  ${ICUDATA_STATIC}")
     
+    target_include_directories(justc_core PRIVATE ${ICU_STATIC_ROOT}/include)
     target_link_libraries(justc_core PRIVATE
         ${ICUI18N_STATIC}
         ${ICUUC_STATIC}
         ${ICUDATA_STATIC}
+        stdc++
     )
 else()
     target_link_libraries(justc_core PRIVATE ICU::uc ICU::i18n)

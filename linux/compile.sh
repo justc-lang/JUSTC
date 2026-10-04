@@ -23,11 +23,12 @@
 #!/bin/bash
 set -e
 OPTIONS="${1:-""}"
+SAVEDPWD=$(pwd)
 
 g++ --version
 
 sudo apt-get update
-sudo apt-get install -y libcurl4-openssl-dev cmake build-essential pkg-config zip libboost-all-dev libicu-dev libidn2-dev
+sudo apt-get install -y libcurl4-openssl-dev cmake build-essential pkg-config zip libboost-all-dev wget libidn2-dev
 
 sudo apt-get install -y libluau-dev libluau0 || echo "Luau not available in packages, will build from source"
 
@@ -51,6 +52,33 @@ sudo apt-get install -y \
     libbz2-dev \
     liblzma-dev \
     zlib1g-dev
+
+if [ ! -f /usr/local/icu-static/lib/libicuuc.a ]; then
+    echo "Building ICU from source with -fPIC..."
+    ICU_VERSION="74.2"
+    ICU_SHORT="74_2"
+    cd /tmp
+    wget -q "https://github.com/unicode-org/icu/releases/download/release-${ICU_SHORT}/icu4c-${ICU_SHORT}-src.tgz"
+    tar xzf "icu4c-${ICU_SHORT}-src.tgz"
+    cd icu/source
+    ./configure \
+        --prefix=/usr/local/icu-static \
+        --enable-static \
+        --disable-shared \
+        --with-data-packaging=static \
+        --disable-samples \
+        --disable-tests \
+        --disable-extras \
+        CFLAGS="-O2 -fPIC" \
+        CXXFLAGS="-O2 -fPIC"
+    make -j$(nproc)
+    sudo make install
+    cd /tmp && rm -rf icu
+else
+    echo "Using cached static ICU from /usr/local/icu-static"
+fi
+
+cd "$SAVEDPWD"
 
 mkdir -p build
 cd build
