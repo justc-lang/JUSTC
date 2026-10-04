@@ -53,6 +53,8 @@ sudo apt-get install -y \
     liblzma-dev \
     zlib1g-dev
 
+sudo apt-get install -y python3 python3-dev python3-distutils || true
+
 if [ ! -f /usr/local/icu-static/lib/libicuuc.a ]; then
     echo "Building ICU from source with -fPIC..."
     ICU_VERSION="74.2"
@@ -70,7 +72,8 @@ if [ ! -f /usr/local/icu-static/lib/libicuuc.a ]; then
         --disable-tests \
         --disable-extras \
         CFLAGS="-O2 -fPIC" \
-        CXXFLAGS="-O2 -fPIC"
+        CXXFLAGS="-O2 -fPIC" \
+        || { cat config.log | tail -100; exit 1; }
     make -j$(nproc)
     sudo make install
     cd /tmp && rm -rf icu
