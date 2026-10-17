@@ -27,7 +27,7 @@ on:
     branches: ["main"]
     tags:
   release:
-    types: [published, edited]
+    types: [published]
   workflow_dispatch:
     inputs:
       dirname:
