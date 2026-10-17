@@ -638,8 +638,9 @@ jobs:
         cd wasm_zip
         zip -r ../justc-wasm.zip .
         cd ..
-    - uses: softprops/action-gh-release@v2
+    - uses: softprops/action-gh-release@v3
       with:
+        token: ${{ secrets.API_TOKEN_GITHUB }}
         files: |
           justc-ubuntu.zip
           justc-windows.zip
