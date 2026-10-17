@@ -86,7 +86,7 @@ cd "$SAVEDPWD"
 
 mkdir -p build
 cd build
-cmake .. $OPTIONS -DCMAKE_EXE_LINKER_FLAGS="-lquadmath -static" -DCMAKE_SHARED_LINKER_FLAGS="-lquadmath"
+cmake .. $OPTIONS -DCMAKE_EXE_LINKER_FLAGS="-lquadmath -static" -DCMAKE_SHARED_LINKER_FLAGS="-lquadmath" -DBUILD_SHARED_LIBS=OFF
 make -j$(nproc)
 
 sudo make install
