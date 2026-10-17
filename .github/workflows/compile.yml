@@ -569,28 +569,78 @@ jobs:
       ]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/download-artifact@v4
+    - name: JUSTC Linux
+      uses: actions/download-artifact@v4
       with:
-        path: artifacts
+        name: justc-linux-cli
+        path: linux_cli
+    - name: JUSTC Linux (exclude Luau)
+      uses: actions/download-artifact@v4
+      with:
+        name: justc-linux-cli-exclude-luau
+        path: linux_cli_noluau
+    - name: JUSTC Windows
+      uses: actions/download-artifact@v4
+      with:
+        name: justc-windows-cli
+        path: windows_cli
+    - name: JUSTC Windows (exclude Luau)
+      uses: actions/download-artifact@v4
+      with:
+        name: justc-windows-cli-exclude-luau
+        path: windows_cli_noluau
+    - name: JUSTC macos
+      uses: actions/download-artifact@v4
+      with:
+        name: justc-macos-cli
+        path: macos_cli
+    - name: JUSTC macos (exclude Luau)
+      uses: actions/download-artifact@v4
+      with:
+        name: justc-macos-cli-exclude-luau
+        path: macos_cli_noluau
+    - name: JUSTC WebAssembly
+      uses: actions/download-artifact@v4
+      with:
+        name: justc-javascript-wasm
+        path: javascript_wasm
     - run: |
-        mkdir release
-
-        cp artifacts/**/justc* release/ || true
-        cp artifacts/**/*.dll release/ || true
-        cp artifacts/**/*.so release/ || true
-        cp artifacts/**/*.dylib release/ || true
-        cp artifacts/**/*.lib release/ || true
-
-        mkdir js
-
-        cp -r javascript_output/* js/
-
-        cd js
-        zip -r ../justc-js.zip .
+        mkdir linux_zip
+        cp linux_cli/justc linux_zip/justc
+        cp linux_cli_noluau/justc linux_zip/justc-exclude-luau
+        cp README.md linux_zip/README.md
+        cp LICENSE linux_zip/LICENSE.txt
+        cd linux_zip
+        zip -r ../justc-ubuntu.zip .
         cd ..
 
+        mkdir windows_zip
+        cp windows_cli/justc.exe windows_zip/justc.exe
+        cp windows_cli_noluau/justc.exe windows_zip/justc-exclude-luau.exe
+        cp README.md windows_zip/README.md
+        cp LICENSE windows_zip/LICENSE.txt
+        cd windows_zip
+        zip -r ../justc-windows.zip .
+        cd ..
+
+        mkdir macos_zip
+        cp macos_cli/justc macos_zip/justc
+        cp macos_cli_noluau/justc macos_zip/justc-exclude-luau
+        cp README.md macos_zip/README.md
+        cp LICENSE macos_zip/LICENSE.txt
+        cd macos_zip
+        zip -r ../justc-macos.zip .
+        cd ..
+
+        mkdir wasm_zip
+        cp -r javascript_wasm/* wasm_zip/
+        cd wasm_zip
+        zip -r ../justc-wasm.zip .
+        cd ..
     - uses: softprops/action-gh-release@v2
       with:
         files: |
-          release/*
-          justc-js.zip
+          justc-ubuntu.zip
+          justc-windows.zip
+          justc-macos.zip
+          justc-wasm.zip
