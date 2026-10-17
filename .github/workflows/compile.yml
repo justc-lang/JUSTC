@@ -608,8 +608,8 @@ jobs:
         mkdir linux_zip
         cp linux_cli/justc linux_zip/justc
         cp linux_cli_noluau/justc linux_zip/justc-exclude-luau
-        cp README.md linux_zip/README.md
-        cp LICENSE linux_zip/LICENSE.txt
+        cp javascript_wasm/README.md linux_zip/README.md
+        cp javascript_wasm/LICENSE linux_zip/LICENSE.txt
         cd linux_zip
         zip -r ../justc-ubuntu.zip .
         cd ..
@@ -617,8 +617,8 @@ jobs:
         mkdir windows_zip
         cp windows_cli/justc.exe windows_zip/justc.exe
         cp windows_cli_noluau/justc.exe windows_zip/justc-exclude-luau.exe
-        cp README.md windows_zip/README.md
-        cp LICENSE windows_zip/LICENSE.txt
+        cp javascript_wasm/README.md windows_zip/README.md
+        cp javascript_wasm/LICENSE windows_zip/LICENSE.txt
         cd windows_zip
         zip -r ../justc-windows.zip .
         cd ..
@@ -626,14 +626,15 @@ jobs:
         mkdir macos_zip
         cp macos_cli/justc macos_zip/justc
         cp macos_cli_noluau/justc macos_zip/justc-exclude-luau
-        cp README.md macos_zip/README.md
-        cp LICENSE macos_zip/LICENSE.txt
+        cp javascript_wasm/README.md macos_zip/README.md
+        cp javascript_wasm/LICENSE macos_zip/LICENSE.txt
         cd macos_zip
         zip -r ../justc-macos.zip .
         cd ..
 
         mkdir wasm_zip
         cp -r javascript_wasm/* wasm_zip/
+        mv wasm_zip/LICENSE wasm_zip/LICENSE.txt
         cd wasm_zip
         zip -r ../justc-wasm.zip .
         cd ..
