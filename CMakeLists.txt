@@ -355,6 +355,7 @@ find_library(ZSTD_LIB zstd)
 find_library(LZ4_LIB lz4)
 find_library(SNAPPY_LIB snappy)
 find_library(LZMA_LIB lzma)
+set(ZLIB_USE_STATIC_LIBS TRUE)
 find_package(ZLIB REQUIRED)
 find_package(BZip2 QUIET)
 target_link_libraries(justc_core PRIVATE
