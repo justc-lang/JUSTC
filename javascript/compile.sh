@@ -231,11 +231,15 @@ WEB_FLAGS="-s ENVIRONMENT=web,worker \
 -s ASYNCIFY_IMPORTS=['fetch','emscripten_fetch','emscripten_fetch_close','use_luau']"
 WEB_OUTPUT="javascript/$SAFE_DIR/justc.core.js"
 WEB_OUTPUT_EXCLUDE_LUAU="javascript/$SAFE_DIR/justc_noluau.core.js"
+WEB_OUTPUT_EXCLUDE_JUSTB="javascript/$SAFE_DIR/justc_nojustb.core.js"
+WEB_OUTPUT_EXCLUDE_JUSTB_LUAU="javascript/$SAFE_DIR/justc_min.core.js"
 
 NODE_FLAGS="-s ENVIRONMENT=node \
 -s ASYNCIFY_IMPORTS=['fetch','emscripten_fetch','emscripten_fetch_close']"
 NODE_OUTPUT="javascript_output/$SAFE_DIR/justc.node.js"
 NODE_OUTPUT_EXCLUDE_LUAU="javascript_output/$SAFE_DIR/justc_noluau.node.js"
+NODE_OUTPUT_EXCLUDE_JUSTB="javascript_output/$SAFE_DIR/justc_nojustb.node.js"
+NODE_OUTPUT_EXCLUDE_JUSTB_LUAU="javascript_output/$SAFE_DIR/justc_min.node.js"
 
 JSOUT_DIR="javascript_output/$SAFE_DIR"
 
@@ -282,6 +286,51 @@ web_exclude_luau() {
 
     echo "::notice::Compiled to justc_noluau.core.js"
 }
+web_exclude_cereal() {
+    echo "::group::core_nojustb"
+
+    set +e
+    emcc $SOURCE_FILES core/lang/luau.cpp $LUAU_FILES \
+        -o $WEB_OUTPUT_EXCLUDE_JUSTB \
+        $COMMON_FLAGS \
+        $WEB_FLAGS \
+        -D __JUSTC_WEB__ \
+        -D JUSTC_NOCEREAL
+    COMPILE_EXIT_CODE=$?
+    set -e
+
+    echo "::endgroup::"
+
+    if [ $COMPILE_EXIT_CODE -ne 0 ]; then
+        echo "::error::Failed to compile to justc_nojustb.core.js"
+        exit 1
+    fi
+
+    echo "::notice::Compiled to justc_nojustb.core.js"
+}
+web_exclude_luau_cereal() {
+    echo "::group::core_min"
+
+    set +e
+    emcc $SOURCE_FILES \
+        -o $WEB_OUTPUT_EXCLUDE_JUSTB_LUAU \
+        $COMMON_FLAGS \
+        $WEB_FLAGS \
+        -D __JUSTC_WEB__ \
+        -D JUSTC_NOLUAU \
+        -D JUSTC_NOCEREAL
+    COMPILE_EXIT_CODE=$?
+    set -e
+
+    echo "::endgroup::"
+
+    if [ $COMPILE_EXIT_CODE -ne 0 ]; then
+        echo "::error::Failed to compile to justc_min.core.js"
+        exit 1
+    fi
+
+    echo "::notice::Compiled to justc_min.core.js"
+}
 
 nodejs() {
     echo "::group::node"
@@ -326,23 +375,81 @@ nodejs_exclude_luau() {
 
     echo "::notice::Compiled to justc_noluau.node.js"
 }
+nodejs_exclude_cereal() {
+    echo "::group::node_nojustb"
+
+    mkdir -p $JSOUT_DIR
+    set +e
+    emcc $SOURCE_FILES core/lang/luau.cpp $LUAU_FILES \
+        -o $NODE_OUTPUT_EXCLUDE_JUSTB \
+        $COMMON_FLAGS \
+        $NODE_FLAGS \
+        -D JUSTC_NOCEREAL
+    COMPILE_EXIT_CODE=$?
+    set -e
+    
+    echo "::endgroup::"
+
+    if [ $COMPILE_EXIT_CODE -ne 0 ]; then
+        echo "::error::Failed to compile to justc_nojustb.node.js"
+        exit 1
+    fi
+
+    echo "::notice::Compiled to justc_nojustb.node.js"
+}
+nodejs_exclude_luau_cereal() {
+    echo "::group::node_min"
+
+    mkdir -p $JSOUT_DIR
+    set +e
+    emcc $SOURCE_FILES \
+        -o $NODE_OUTPUT_EXCLUDE_JUSTB_LUAU \
+        $COMMON_FLAGS \
+        $NODE_FLAGS \
+        -D JUSTC_NOLUAU \
+        -D JUSTC_NOCEREAL
+    COMPILE_EXIT_CODE=$?
+    set -e
+    
+    echo "::endgroup::"
+
+    if [ $COMPILE_EXIT_CODE -ne 0 ]; then
+        echo "::error::Failed to compile to justc_min.node.js"
+        exit 1
+    fi
+
+    echo "::notice::Compiled to justc_min.node.js"
+}
 
 web && \
 web_exclude_luau && \
+web_exclude_cereal && \
+web_exclude_luau_cereal && \
 nodejs && \
-nodejs_exclude_luau
+nodejs_exclude_luau && \
+nodejs_exclude_cereal && \
+nodejs_exclude_luau_cereal
 
 mv javascript/$SAFE_DIR/justc.core.wasm $JSOUT_DIR/justc.wasm
 mv javascript/$SAFE_DIR/justc_noluau.core.wasm $JSOUT_DIR/justc_noluau.wasm
+mv javascript/$SAFE_DIR/justc_nojustb.core.wasm $JSOUT_DIR/justc_nojustb.wasm
+mv javascript/$SAFE_DIR/justc_min.core.wasm $JSOUT_DIR/justc.min.wasm
+
 sed -i 's/justc\.core\.wasm/justc.wasm/g' javascript/$SAFE_DIR/justc.core.js
 sed -i 's/justc_noluau\.core\.wasm/justc_noluau.wasm/g' javascript/$SAFE_DIR/justc_noluau.core.js
+sed -i 's/justc_nojustb\.core\.wasm/justc_nojustb.wasm/g' javascript/$SAFE_DIR/justc_nojustb.core.js
+sed -i 's/justc_min\.core\.wasm/justc.min.wasm/g' javascript/$SAFE_DIR/justc_min.core.js
+
 mv javascript/$SAFE_DIR/justc.core.js $JSOUT_DIR/justc.core.js
 mv javascript/$SAFE_DIR/justc_noluau.core.js $JSOUT_DIR/justc_noluau.core.js
+mv javascript/$SAFE_DIR/justc_nojustb.core.js $JSOUT_DIR/justc_noluau.core.js
+mv javascript/$SAFE_DIR/justc_min.core.js $JSOUT_DIR/justc.min.core.js
+
 mv javascript/core.js $JSOUT_DIR/justc.js
 mv javascript/test.js $JSOUT_DIR/test.js
 
 JUSTC_VERSION=$(justc --raw-version 2>/dev/null || echo "undefined")
-JUSTC_NAME="Just an Ultimate Site Tool Configuration language"
+JUSTC_NAME="The JUSTC Programming Language"
 JUSTC_HELP=$(justc -h || echo "undefined")
 
 if [[ "$JUSTC_VERSION" == "undefined" ]]; then
@@ -386,19 +493,19 @@ JSONString() {
 
     echo -n "$result"
 }
-echo "console.log(\"$(JSONString "$JUSTC_HELP")\");" > javascript/help.js
+echo "console.log(\"$(JSONString "$JUSTC_HELP")\".replace(\" build type 0 (standard build)\",\"\"));" > javascript/help.js
 
 for file in $JSOUT_DIR/justc.core.js $JSOUT_DIR/justc.js $JSOUT_DIR/justc.node.js javascript/help.js $JSOUT_DIR/justc_noluau.core.js $JSOUT_DIR/justc_noluau.node.js; do
     printf "/*\n\n%s\n\n*/\n\n/*\n\n$JUSTC_NAME v$OUTPUT_VERSION\n\n*/\n\n" "$(cat LICENSE)" | cat - "$file" > temp.js && mv temp.js "$file"
 done
-for file in justc justc.node justc_noluau justc_noluau.node; do
+for file in justc justc.node justc_noluau justc_noluau.node justc_nojustb justc_nojustb.node justc.min justc_min.node; do
     wasm2wat $JSOUT_DIR/$file.wasm > $JSOUT_DIR/$file.wat
     {
         head -n1 "$JSOUT_DIR/$file.wat"
         echo "  (@custom \"justc\" \"$JUSTC_NAME\")"
         echo "  (@custom \"justc.website\" \"https://just.js.org/justc\")"
         echo "  (@custom \"justc.license\" \"MIT License. https://just.js.org/justc/license.txt\")"
-        echo "  (@custom \"justc.copyright\" \"Copyright (c) 2025 JustStudio. <https://juststudio.is-a.dev/>\")"
+        echo "  (@custom \"justc.copyright\" \"Copyright (c) 2025-2026 JustStudio. <https://juststudio.is-a.dev/>\")"
         echo "  (@custom \"justc.version\" \"$OUTPUT_VERSION\")"
         tail -n +2 "$JSOUT_DIR/$file.wat"
     } > $JSOUT_DIR/$file.tmp

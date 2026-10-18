@@ -71,23 +71,25 @@ endif()
 
 include(FetchContent)
 
-set(BUILD_SANDBOX OFF CACHE BOOL "" FORCE)
-set(CEREAL_BUILD_SANDBOX OFF CACHE BOOL "Disable sandbox examples" FORCE)
-set(CEREAL_BUILD_DOCS OFF CACHE BOOL "Disable documentation" FORCE)
-set(CEREAL_BUILD_TESTS OFF CACHE BOOL "Disable tests" FORCE)
-set(CEREAL_USE_BOOST OFF CACHE BOOL "" FORCE)
-find_package(Cereal QUIET)
-if(NOT Cereal_FOUND)
-    message(STATUS "Cereal not found, downloading from GitHub...")
-    FetchContent_Declare(
-        cereal
-        GIT_REPOSITORY https://github.com/USCiLab/cereal.git
-        GIT_TAG v1.3.2
-    )
-    FetchContent_MakeAvailable(cereal)
-    set(CEREAL_INCLUDE_DIR ${cereal_SOURCE_DIR}/include)
-else()
-    set(CEREAL_INCLUDE_DIR ${Cereal_INCLUDE_DIR})
+if(NOT JUSTC_NOCEREAL)
+    set(BUILD_SANDBOX OFF CACHE BOOL "" FORCE)
+    set(CEREAL_BUILD_SANDBOX OFF CACHE BOOL "Disable sandbox examples" FORCE)
+    set(CEREAL_BUILD_DOCS OFF CACHE BOOL "Disable documentation" FORCE)
+    set(CEREAL_BUILD_TESTS OFF CACHE BOOL "Disable tests" FORCE)
+    set(CEREAL_USE_BOOST OFF CACHE BOOL "" FORCE)
+    find_package(Cereal QUIET)
+    if(NOT Cereal_FOUND)
+        message(STATUS "Cereal not found, downloading from GitHub...")
+        FetchContent_Declare(
+            cereal
+            GIT_REPOSITORY https://github.com/USCiLab/cereal.git
+            GIT_TAG v1.3.2
+        )
+        FetchContent_MakeAvailable(cereal)
+        set(CEREAL_INCLUDE_DIR ${cereal_SOURCE_DIR}/include)
+    else()
+        set(CEREAL_INCLUDE_DIR ${Cereal_INCLUDE_DIR})
+    endif()
 endif()
 
 find_package(cpr QUIET)
@@ -301,7 +303,9 @@ target_include_directories(justc_core PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/core>
 )
 
-target_include_directories(justc_core SYSTEM PRIVATE ${CEREAL_INCLUDE_DIR})
+if(NOT JUSTC_NOCEREAL)
+    target_include_directories(justc_core SYSTEM PRIVATE ${CEREAL_INCLUDE_DIR})
+endif()
 
 if(NOT JUSTC_NOLUAU)
     target_link_libraries(justc_core PRIVATE luau_lib)
@@ -400,7 +404,9 @@ if(MSVC)
 endif()
 target_compile_definitions(justc_lib PRIVATE JUSTC_BUILD)
 target_include_directories(justc_lib PUBLIC core)
-target_include_directories(justc_lib SYSTEM PRIVATE ${CEREAL_INCLUDE_DIR})
+if(NOT JUSTC_NOCEREAL)
+    target_include_directories(justc_lib SYSTEM PRIVATE ${CEREAL_INCLUDE_DIR})
+endif()
 target_link_libraries(justc_lib PUBLIC justc_core)
 
 if(NOT MSVC)
@@ -415,7 +421,9 @@ if(MSVC)
         target_sources(justc_cli PRIVATE ${RESOURCE_FILE})
     endif()
 endif()
-target_include_directories(justc_cli SYSTEM PRIVATE ${CEREAL_INCLUDE_DIR})
+if(NOT JUSTC_NOCEREAL)
+    target_include_directories(justc_cli SYSTEM PRIVATE ${CEREAL_INCLUDE_DIR})
+endif()
 target_link_libraries(justc_cli PRIVATE justc_core)
 set_target_properties(justc_cli PROPERTIES OUTPUT_NAME "justc")
 
