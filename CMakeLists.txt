@@ -24,6 +24,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(JUSTC)
 option(JUSTC_NOLUAU "Disable Luau support" OFF)
+option(JUSTC_NOCEREAL "Disable JUSTB support" OFF)
 
 if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -59,6 +60,9 @@ endif()
 
 if(JUSTC_NOLUAU)
     add_compile_definitions(JUSTC_NOLUAU)
+endif()
+if(JUSTC_NOCEREAL)
+    add_compile_definitions(JUSTC_NOCEREAL)
 endif()
 
 add_compile_definitions(PROMISE_HEADONLY)

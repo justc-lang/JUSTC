@@ -127,7 +127,7 @@ jobs:
         if: github.event_name != 'schedule'
         uses: actions/upload-artifact@v4
         with:
-          name: justc-linux-cli
+          name: justc-ubuntu-cli
           path: ${{ github.workspace }}/install_root/bin/justc
           retention-days: 1
       - name: Build (exclude Luau)
@@ -137,7 +137,7 @@ jobs:
         if: github.event_name == 'release'
         uses: actions/upload-artifact@v4
         with:
-          name: justc-linux-cli-exclude-luau
+          name: justc-ubuntu-cli-exclude-luau
           path: ${{ github.workspace }}/install_root/bin/justc
           retention-days: 1
       - name: Build (exclude Cereal)
@@ -147,7 +147,7 @@ jobs:
         if: github.event_name == 'release'
         uses: actions/upload-artifact@v4
         with:
-          name: justc-linux-cli-exclude-justb
+          name: justc-ubuntu-cli-exclude-justb
           path: ${{ github.workspace }}/install_root/bin/justc
           retention-days: 1
       - name: Build (exclude Luau & Cereal)
@@ -157,7 +157,7 @@ jobs:
         if: github.event_name == 'release'
         uses: actions/upload-artifact@v4
         with:
-          name: justc-linux-cli-exclude-justb-luau
+          name: justc-ubuntu-cli-exclude-justb-luau
           path: ${{ github.workspace }}/install_root/bin/justc
           retention-days: 1
 
@@ -455,7 +455,7 @@ jobs:
         if: github.event_name == 'release'
         uses: actions/upload-artifact@v4
         with:
-          name: justc-macos-cli-exclude-luau
+          name: justc-macos-cli-exclude-justb
           path: build_exclude_luau/justc
       - name: Build (exclude Luau & Cereal)
         if: github.event_name == 'release'
@@ -468,7 +468,7 @@ jobs:
         if: github.event_name == 'release'
         uses: actions/upload-artifact@v4
         with:
-          name: justc-macos-cli-exclude-luau
+          name: justc-macos-cli-exclude-justb-luau
           path: build_exclude_luau/justc
 
   test-linux:
@@ -482,7 +482,7 @@ jobs:
       - name: Download compiled files
         uses: actions/download-artifact@v4
         with:
-          name: justc-linux-cli
+          name: justc-ubuntu-cli
           path: ${{ github.workspace }}/downloaded_artifacts
       - name: Install JUSTC to /usr/bin
         run: |
@@ -558,7 +558,7 @@ jobs:
         if: github.event_name != 'schedule'
         uses: actions/download-artifact@v4
         with:
-          name: justc-linux-cli
+          name: justc-ubuntu-cli
           path: ${{ github.workspace }}/downloaded_artifacts
       - name: Install JUSTC to /usr/bin
         if: github.event_name != 'schedule'
@@ -680,16 +680,26 @@ jobs:
       ]
     runs-on: ubuntu-latest
     steps:
-    - name: JUSTC Linux
+    - name: JUSTC Ubuntu
       uses: actions/download-artifact@v4
       with:
-        name: justc-linux-cli
+        name: justc-ubuntu-cli
         path: linux_cli
-    - name: JUSTC Linux (exclude Luau)
+    - name: JUSTC Ubuntu (exclude Luau)
       uses: actions/download-artifact@v4
       with:
-        name: justc-linux-cli-exclude-luau
+        name: justc-ubuntu-cli-exclude-luau
         path: linux_cli_noluau
+    - name: JUSTC Ubuntu (exclude JUSTB)
+      uses: actions/download-artifact@v4
+      with:
+        name: justc-ubuntu-cli-exclude-justb
+        path: linux_cli_nojustb
+    - name: JUSTC Ubuntu (exclude JUSTB & Luau)
+      uses: actions/download-artifact@v4
+      with:
+        name: justc-ubuntu-cli-exclude-justb-luau
+        path: linux_cli_min
     - name: JUSTC Windows
       uses: actions/download-artifact@v4
       with:
@@ -700,16 +710,36 @@ jobs:
       with:
         name: justc-windows-cli-exclude-luau
         path: windows_cli_noluau
-    - name: JUSTC macos
+    - name: JUSTC Windows (exclude JUSTB)
+      uses: actions/download-artifact@v4
+      with:
+        name: justc-windows-cli-exclude-justb
+        path: windows_cli_nojustb
+    - name: JUSTC Windows (exclude JUSTB & Luau)
+      uses: actions/download-artifact@v4
+      with:
+        name: justc-windows-cli-exclude-justb-luau
+        path: windows_cli_min
+    - name: JUSTC macOS
       uses: actions/download-artifact@v4
       with:
         name: justc-macos-cli
         path: macos_cli
-    - name: JUSTC macos (exclude Luau)
+    - name: JUSTC macOS (exclude Luau)
       uses: actions/download-artifact@v4
       with:
         name: justc-macos-cli-exclude-luau
         path: macos_cli_noluau
+    - name: JUSTC macOS (exclude JUSTB)
+      uses: actions/download-artifact@v4
+      with:
+        name: justc-macos-cli-exclude-justb
+        path: macos_cli_nojustb
+    - name: JUSTC macOS (exclude JUSTB & Luau)
+      uses: actions/download-artifact@v4
+      with:
+        name: justc-macos-cli-exclude-justb-luau
+        path: macos_cli_min
     - name: JUSTC WebAssembly
       uses: actions/download-artifact@v4
       with:
@@ -719,6 +749,8 @@ jobs:
         mkdir linux_zip
         cp linux_cli/justc linux_zip/justc
         cp linux_cli_noluau/justc linux_zip/justc-exclude-luau
+        cp linux_cli_nojustb/justc linux_zip/justc-exclude-justb
+        cp linux_cli_min/justc linux_zip/justc-exclude-justb-luau
         cp javascript_wasm/README.md linux_zip/README.md
         cp javascript_wasm/LICENSE linux_zip/LICENSE.txt
         cd linux_zip
@@ -728,6 +760,8 @@ jobs:
         mkdir windows_zip
         cp windows_cli/justc.exe windows_zip/justc.exe
         cp windows_cli_noluau/justc.exe windows_zip/justc-exclude-luau.exe
+        cp windows_cli_nojustb/justc.exe windows_zip/justc-exclude-justb.exe
+        cp windows_cli_min/justc.exe windows_zip/justc-exclude-justb-luau.exe
         cp javascript_wasm/README.md windows_zip/README.md
         cp javascript_wasm/LICENSE windows_zip/LICENSE.txt
         cd windows_zip
@@ -737,6 +771,8 @@ jobs:
         mkdir macos_zip
         cp macos_cli/justc macos_zip/justc
         cp macos_cli_noluau/justc macos_zip/justc-exclude-luau
+        cp macos_cli_nojustb/justc macos_zip/justc-exclude-justb
+        cp macos_cli_min/justc macos_zip/justc-exclude-justb-luau
         cp javascript_wasm/README.md macos_zip/README.md
         cp javascript_wasm/LICENSE macos_zip/LICENSE.txt
         cd macos_zip
