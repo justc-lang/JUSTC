@@ -591,7 +591,7 @@ jobs:
         if: github.event_name != 'schedule'
         env:
           OUTPUT_DIR: ${{ needs.determine-dirpath.outputs.dirpath }}
-        run: bash javascript/compile.sh "${{ needs.determine-dirpath.outputs.dirpath }}"
+        run: bash javascript/compile.sh "${{ needs.determine-dirpath.outputs.dirpath }}" "${{ github.event_name }}"
         id: compile
       - name: Copy LICENSE and README.md
         if: github.event_name != 'schedule'
