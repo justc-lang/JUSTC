@@ -517,7 +517,7 @@ echo "console.log(\"$(JSONString "$JUSTC_HELP")\".replace(\" build type 0 (stand
 
 for file in $JSOUT_DIR/justc.core.js $JSOUT_DIR/justc.js $JSOUT_DIR/justc.node.js javascript/help.js $JSOUT_DIR/justc_noluau.core.js $JSOUT_DIR/justc_noluau.node.js; do
     if [ -f "$file" ]; then
-        printf "/*\n\n%s\n\n*/\n\n/*\n\n$JUSTC_NAME v$OUTPUT_VERSION\n$JUSTC_WEBSITE\nnpm i justc\n\n*/\n\n/*! JUSTC <$JUSTC_WEBSITE> (c) 2025-2026 JustStudio. <https://juststudio.is-a.dev/> (The dot in "JustStudio." is part of the name) $JUSTC_LICENSE*/\n\n" "$(cat LICENSE)" | cat - "$file" > temp.js && mv temp.js "$file"
+        printf "/*\n\n%s\n\n*/\n\n/*\n\n$JUSTC_NAME v$OUTPUT_VERSION\n$JUSTC_WEBSITE\nnpm i justc\n\n*/\n\n/*! JUSTC <$JUSTC_WEBSITE> (c) 2025-2026 JustStudio. <https://juststudio.is-a.dev/> (The dot in "JustStudio." is part of the name) $JUSTC_LICENSE */\n\n" "$(cat LICENSE)" | cat - "$file" > temp.js && mv temp.js "$file"
     fi
 done
 for file in justc justc.node justc_noluau justc_noluau.node justc_nojustb justc_nojustb.node justc.min justc_min.node; do
