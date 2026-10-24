@@ -469,6 +469,8 @@ mv javascript/test.js $JSOUT_DIR/test.js
 JUSTC_VERSION=$(justc --raw-version 2>/dev/null || echo "undefined")
 JUSTC_NAME="The JUSTC Programming Language"
 JUSTC_HELP=$(justc -h || echo "undefined")
+JUSTC_WEBSITE="https://just.js.org/justc"
+JUSTC_LICENSE="https://just.js.org/justc/license.txt"
 
 if [[ "$JUSTC_VERSION" == "undefined" ]]; then
     echo -e "::error::Invalid JUSTC version" && exit 1
@@ -515,7 +517,7 @@ echo "console.log(\"$(JSONString "$JUSTC_HELP")\".replace(\" build type 0 (stand
 
 for file in $JSOUT_DIR/justc.core.js $JSOUT_DIR/justc.js $JSOUT_DIR/justc.node.js javascript/help.js $JSOUT_DIR/justc_noluau.core.js $JSOUT_DIR/justc_noluau.node.js; do
     if [ -f "$file" ]; then
-        printf "/*\n\n%s\n\n*/\n\n/*\n\n$JUSTC_NAME v$OUTPUT_VERSION\n\n*/\n\n" "$(cat LICENSE)" | cat - "$file" > temp.js && mv temp.js "$file"
+        printf "/*\n\n%s\n\n*/\n\n/*\n\n$JUSTC_NAME v$OUTPUT_VERSION\n$JUSTC_WEBSITE\nnpm i justc\n\n*/\n\n/*! JUSTC <$JUSTC_WEBSITE> (c) 2025-2026 JustStudio. <https://juststudio.is-a.dev/> (The dot in "JustStudio." is part of the name) $JUSTC_LICENSE*/\n\n" "$(cat LICENSE)" | cat - "$file" > temp.js && mv temp.js "$file"
     fi
 done
 for file in justc justc.node justc_noluau justc_noluau.node justc_nojustb justc_nojustb.node justc.min justc_min.node; do
@@ -524,8 +526,8 @@ for file in justc justc.node justc_noluau justc_noluau.node justc_nojustb justc_
         {
             head -n1 "$JSOUT_DIR/$file.wat"
             echo "  (@custom \"justc\" \"$JUSTC_NAME\")"
-            echo "  (@custom \"justc.website\" \"https://just.js.org/justc\")"
-            echo "  (@custom \"justc.license\" \"MIT License. https://just.js.org/justc/license.txt\")"
+            echo "  (@custom \"justc.website\" \"$JUSTC_WEBSITE\")"
+            echo "  (@custom \"justc.license\" \"MIT License. $JUSTC_LICENSE\")"
             echo "  (@custom \"justc.copyright\" \"Copyright (c) 2025-2026 JustStudio. <https://juststudio.is-a.dev/>\")"
             echo "  (@custom \"justc.version\" \"$OUTPUT_VERSION\")"
             tail -n +2 "$JSOUT_DIR/$file.wat"
