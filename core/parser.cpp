@@ -9607,13 +9607,13 @@ std::vector<ParserToken> Parser::optimize(const std::vector<ParserToken>& tokens
                 return tokens;
             }
 
-            const auto lastPos = parser.optimizedTokens.back()->startPos;
+            const auto lastStart = parser.optimizedTokens.back().start;
 
             const auto it = std::find_if(
                 tokens.begin(),
                 tokens.end(),
-                [lastPos](const ParserToken* token) {
-                    return token && token->startPos > lastPos;
+                [lastStart](const ParserToken& token) {
+                    return token.start > lastStart;
                 }
             );
 
