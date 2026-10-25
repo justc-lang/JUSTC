@@ -8091,7 +8091,7 @@ Value Parser::parseObjectPropertyAccess(bool doExecute, bool set) {
 
         Value func = accessProperty(currentValue, funcName).first;
 
-        if (func.type == DataType::FUNCTION) { // user funciton
+        if (func.type == DataType::FUNCTION) { // user function
             return callFunction(func, parseArguments(doExecute), currentToken().start, doExecute);
         } else { // built-in function
             return executeFunction(funcName, parseArguments(doExecute), currentToken().start);
