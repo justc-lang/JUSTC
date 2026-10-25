@@ -423,15 +423,6 @@ nodejs_exclude_luau_cereal() {
     echo "::notice::Compiled to justc_min.node.js"
 }
 
-web && \
-web_exclude_luau && \
-web_exclude_cereal && \
-web_exclude_luau_cereal && \
-nodejs && \
-nodejs_exclude_luau && \
-nodejs_exclude_cereal && \
-nodejs_exclude_luau_cereal
-
 web && nodejs
 if [[ "$GITHUB_EVENT" == "release" ]]; then
     web_exclude_luau && \
