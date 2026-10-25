@@ -1278,6 +1278,7 @@ public:
     void unregisterUserFunction(uint64_t id);
     void clearUserFunctions_();
     Value createFunction(std::function<Value(const std::vector<Value>&)> func, const std::string& name = "");
+    Value createFunction(std::function<Value(const std::vector<Value>&)> func, const uint32_t& hash);
     bool isFunctionValue(const Value& value) const;
     bool isFunctionId(const std::string& name) const;
     uint64_t extractFunctionId(const std::string& name) const;

@@ -3538,10 +3538,11 @@ Value Parser::executeFunction(const builtinFunction& funcName_, const std::vecto
     uint32_t hashed;
 
     if (std::holds_alternative<uint32_t>(funcName_)) {
-        funcName = Utility::uint32ToHexString(funcName_);
-        hashed = funcName_;
+        uint32_t raw_val = std::get<uint32_t>(funcName_);
+        funcName = Utility::uint32ToHexString(raw_val);
+        hashed = raw_val;
     } else if (std::holds_alternative<std::string>(funcName_)) {
-        funcName = funcName_;
+        funcName = std::get<std::string>(funcName_);
         hashed = hash_fnv1a(funcName);
     }
 
@@ -3668,8 +3669,8 @@ Value Parser::executeFunction(const builtinFunction& funcName_, const std::vecto
 
         case "math.random"_h: {
             if (args.empty()) return Value::createNumber(Math::Random());
-            if (args.size() == 1) return Value::createNumber(Math::Random(0, inpnum));
-            return Value::createNumber(Math::Random(inpnum, args[1].number_value));
+            if (args.size() == 1) return Value::createNumber(Math::Random(0, args[0].number_value));
+            return Value::createNumber(Math::Random(args[0].number_value, args[1].number_value));
         }
         case "Window"_h: {
             #ifndef __EMSCRIPTEN__
@@ -3951,7 +3952,7 @@ Value Parser::executeFunction(const builtinFunction& funcName_, const std::vecto
         switch (hashed) {
             case "Binary::toText"_h: return Binary::ToText(args);
             case "Binary::fromText"_h: return Binary::FromText(args);
-            case "Binary::toDataURL"_h: return Binary::toDataURL(args);
+            case "Binary::toDataURL"_h: return Binary::ToDataURL(args);
             case "Binary::fromDataURL"_h: return Binary::FromDataURL(args);
             case "Binary::data"_h: return Binary::Data(args);
 
@@ -5294,7 +5295,7 @@ Value Parser::executeFunction(const builtinFunction& funcName_, const std::vecto
                 return result;
             }
 
-            case "String::hash"_h: return createNumberWithType(hash_fnv1a(args[0].toString()), NumericType::UINT32);
+            case "String::hash"_h: return Value::createNumberWithType(hash_fnv1a(args[0].toString()), NumericType::UINT32);
 
             default: break;
         }
@@ -7401,7 +7402,8 @@ Value Parser::callFunction(const Value& function, const std::vector<Value>& args
     } else if (!doExecute) {
         return onExecDisabled(startPos, function.name);
     } else if (function.native) {
-        return executeFunction(function.name, args, startPos);
+        if (static_cast<bool>(function.numeric_data)) return executeFunction(function.getNumericValue<uint32_t>(), args, startPos);
+        else return executeFunction(function.name, args, startPos);
     }
 
     const auto& funcInfo = function.function_info;
@@ -9294,6 +9296,21 @@ Value Parser::createFunction(std::function<Value(const std::vector<Value>&)> fun
     Value result;
     result.type = DataType::FUNCTION;
     result.name = name.empty() ? FUNCTION_PREFIX + Utility::uint64ToHexString(id) : name;
+    result.string_value = "[native code]";
+    result.object_type = DataType::FUNCTION;
+    result.native = true;
+    result.function_info.paramNames.push_back(FUNCTION_ID_NAME);
+    result.function_info.paramTypes.push_back(DataType::NUMBER);
+    result.function_info.defaultValues.push_back(Value::createNumberWithType(id, NumericType::UINT64));
+    
+    return result;
+}
+Value Parser::createFunction(std::function<Value(const std::vector<Value>&)> func, const uint32_t& hash) {
+    uint64_t id = registerUserFunction(func);
+    
+    Value result = Value::createNumberWithType(hash, NumericType::UINT32);
+    result.type = DataType::FUNCTION;
+    result.name = FUNCTION_PREFIX + Utility::uint64ToHexString(id);
     result.string_value = "[native code]";
     result.object_type = DataType::FUNCTION;
     result.native = true;
