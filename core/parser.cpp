@@ -1662,6 +1662,12 @@ ParseResult Parser::parse(bool doExecute) {
                 #else
                     throw std::runtime_error("To run Luau, use the standard JUSTC build. The current build excludes Luau.");
                 #endif
+            } else if (match("call")) {
+                uint32_t hash = currentToken().uint32;
+                size_t startPos = currentToken().start;
+                advance();
+                std::vector<Value> args = parseArguments(doExecute);
+                executeFunction(hash, args, startPos);
             } else if (match("\\")) {
                 advance();
             } else if (isJSONArray) {
@@ -3392,6 +3398,13 @@ Value Parser::parsePrimary(bool doExecute, bool doFunctionCall) {
         advance();
         return functionJUSTC2(code, doExecute, currentToken().start);
     }
+    else if (match("call")) {
+        uint32_t hash = currentToken().uint32;
+        size_t startPos = currentToken().start;
+        advance();
+        std::vector<Value> args = parseArguments(doExecute);
+        return executeFunction(hash, args, startPos);
+    }
 
     throw std::runtime_error("Invalid or unexpected token \"" + currentToken().value + "\" at " + Utility::position(currentToken().start, input) + ".");
 }
@@ -3412,8 +3425,8 @@ Value Parser::parseFunctionCall(bool doExecute, bool doFunctionCall, bool custom
     }
 
     Value funcValue = resolveVariableValue(funcName, false);
-    size_t end_ = position;
     advance();
+    size_t end_ = position;
     if (!doFunctionCall) return funcValue;
     
     if (funcValue.type == DataType::FUNCTION) {
