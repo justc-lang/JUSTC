@@ -7462,8 +7462,8 @@ Value Parser::parseFunctionDeclaration(bool doExecute, std::string funcName, boo
             input,
             allowJavaScript,
             canAllowJS,
-            &scriptName,
-            &scriptType,
+            scriptName,
+            scriptType,
             allowLuau,
             canAllowLuau
         );
