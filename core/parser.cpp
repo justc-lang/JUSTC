@@ -861,7 +861,7 @@ Parser::Parser(
     strictMode(false), hasLogFile(false), allowLuau(allowLuau), canAllowLuau(canAllowLuau), doExecute(doExecute), runAsync(runAsync),
     canAllowJS(allowJavaScript ? true : canAllowJS), scriptName(scriptName), scriptType(scriptType), asJSON(false), isJSONArray(false),
     endOfScript("."), returnValue(DataType::UNKNOWN), isFunction(isFunction), chartype(chartype), currentScope(0), rootIndex(0),
-    parsertype(parsertype), nextStructConstructor(0), nextIndex(0), throwError(false), hasWindow(false), optimizationError(false),
+    parsertype(parsertype), nextStructConstructor(0), nextIndex(0), throwError(false), hasWindow(false), optimizationError(false)
 {
     if (parsertype == ParserType::OPTIMIZE) {
         doExecute = false;
@@ -9715,7 +9715,7 @@ std::vector<ParserToken> Parser::optimize(const std::vector<ParserToken>& tokens
             parser.parse(doExecute);
         } catch (const std::exception& e) {
             if (parser.optimizationError) {
-                throw std::runtime_error(makeError(std::string(e.what())))
+                throw std::runtime_error(makeError(std::string(e.what())));
             } else if (parser.optimizedTokens.empty()) {
                 return tokens;
             }
