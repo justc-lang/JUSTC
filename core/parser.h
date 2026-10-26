@@ -1236,6 +1236,7 @@ private:
 
     std::string makeLog(const std::string& log);
     std::string makeCompilerError(const std::string& error, const bool level = true);
+    std::string makeError(const std::string& error);
 
 public:
     static std::string getCurrentTimestamp();
@@ -1310,6 +1311,7 @@ public:
 
     std::vector<ParserToken> optimizedTokens;
     bool optimizationLogs;
+    bool optimizationError;
 };
 
 #endif
