@@ -7490,7 +7490,7 @@ Value Parser::parseFunctionDeclaration(bool doExecute, std::string funcName, boo
             functionContext[importedVar.name] = importedVar;
         }
         for (std::string funcParam : funcParams) {
-            functionContext[funcParam] = Value::createFunction([](const std::vector<Value>& args) -> Value {
+            functionContext[funcParam] = createFunction([](const std::vector<Value>& args) -> Value {
                 return Value::createNull();
             }, funcParam);
         }
