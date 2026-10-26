@@ -1175,6 +1175,7 @@ private:
     }
 
     std::vector<std::string> builtins;
+    std::vector<std::string> builtinfunctions;
     std::vector<std::string> cpptypes;
     std::vector<std::string> cppnumbers;
     void initializeBuiltIns();
@@ -1182,6 +1183,7 @@ private:
     bool isBuiltinVariable(const std::string& name) const;
     bool isCPPType();
     bool isCPPNumber(const std::string& cpptype);
+    bool isBuiltinFunction(const std::string& name);
     void handleBuiltinVariableAssignment(const std::string& name, const Value& value, size_t startPos);
     void removeBuiltinVariablesFromOutput();
     void builtinObject(const std::string& name, std::unordered_map<std::string, Value> props);
@@ -1231,6 +1233,9 @@ private:
 
     std::string parseStringInterpolation(bool doExecute);
     std::string evaluateInterpolationExpression(const std::string& expr, bool doExecute);
+
+    std::string makeLog(const std::string& log);
+    std::string makeCompilerError(const std::string& error, const bool level = true);
 
 public:
     static std::string getCurrentTimestamp();
@@ -1304,6 +1309,7 @@ public:
     Value This();
 
     std::vector<ParserToken> optimizedTokens;
+    bool optimizationLogs;
 };
 
 #endif
