@@ -3649,14 +3649,17 @@ Value Parser::executeFunction(const builtinFunction& funcName_, const std::vecto
 
     std::string funcName = "unknown";
     uint32_t hashed;
+    bool isFunc = false;
 
     if (std::holds_alternative<uint32_t>(funcName_)) {
         uint32_t raw_val = std::get<uint32_t>(funcName_);
         funcName = Utility::uint32ToHexString(raw_val);
         hashed = raw_val;
+        isFunc = true;
     } else if (std::holds_alternative<std::string>(funcName_)) {
         funcName = std::get<std::string>(funcName_);
         hashed = hash_fnv1a(funcName);
+        isFunc = isBuiltinFunction(funcName);
     }
 
     if (!doExecute) {
@@ -3681,6 +3684,9 @@ Value Parser::executeFunction(const builtinFunction& funcName_, const std::vecto
             throw std::runtime_error(std::string(e.what()) + " at " + Utility::position(startPos, input));
         }
     }
+
+    std::string err_ = std::string("\"") + funcName + "\" is not a function. Call attempt at " + Utility::position(startPos, input);
+    if (!isFunc) throw std::runtime_error(err_);
 
     switch (hashed) {
         case "TIME"_h: {
@@ -5416,7 +5422,7 @@ Value Parser::executeFunction(const builtinFunction& funcName_, const std::vecto
         throw std::runtime_error(std::string(e.what()) + " at " + Utility::position(startPos, input));
     }
 
-    throw std::runtime_error("\"" + funcName + "\" is not a function. Call attempt at " + Utility::position(startPos, input));
+    throw std::runtime_error(err_);
 }
 
 Value Parser::doubleDot(const Value& left, const Value& right) {
