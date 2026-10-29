@@ -2547,9 +2547,9 @@ ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool loc
         } else if (match("$")) {
             val = evaluateNameOperator(var);
         } else if (match("##")) {
-            val = executeFunction("hash"_h, {var}, startPos);
+            val = executeFunction("hash"_h, {var}, currentToken().start);
         } else if (match(".#")) {
-            val = executeFunction("String::hash"_h, {var}, startPos);
+            val = executeFunction("String::hash"_h, {var}, currentToken().start);
         }
         
         advance();
@@ -2648,9 +2648,9 @@ Value Parser::parseExpression(bool doExecute, bool identifierMode, bool doFuncti
         } else if (match("$")) {
             val = evaluateNameOperator(result);
         } else if (match("##")) {
-            val = executeFunction("hash"_h, {result}, startPos);
+            val = executeFunction("hash"_h, {result}, currentToken().start);
         } else if (match(".#")) {
-            val = executeFunction("String::hash"_h, {result}, startPos);
+            val = executeFunction("String::hash"_h, {result}, currentToken().start);
         }
         if (result.isVariable) assign(result, val, " at " + Utility::position(currentToken().start, input));
         advance();
@@ -2968,7 +2968,7 @@ Value Parser::parseUnary(bool doExecute, bool identifierMode, bool doFunctionCal
     ) {
         ParserToken currToken = currentToken();
         std::string op = currToken.value;
-        size_t startPos = currToken.position;
+        size_t startPos = currToken.start;
         advance();
 
         Value right = parseUnary(doExecute, identifierMode, doFunctionCall, ignoreColon);
@@ -9222,7 +9222,9 @@ Value Parser::updateObjectProperty(const std::vector<std::variant<std::string, s
         newValue = parseConditional(doExecute);
     }
     else if (match("--") || match("++") || match("#") || match("!") || match("~") || match("$") || match("##") || match(".#")) {
-        std::string unaryOp = currentToken().value;
+        ParserToken currToken = currentToken();
+        std::string unaryOp = currToken.value;
+        size_t startPos = currToken.start;
         advance();
         
         Value currentVal;
