@@ -3474,11 +3474,11 @@ Value Parser::parseFunctionCall(bool doExecute, bool doFunctionCall, bool custom
                 uint32_t hashed = hash_fnv1a(funcName);
                 optimizedTokens.insert(next_it, ParserToken{"call", hashed, startPos});
                 if (optimizationLogs) std::cout << makeLog(
-                    "Optimized built-in function call \"" + funcName + "\" to hash " + Utility::uint32ToHexString(hashed) + " at " + Utility::position(currentToken().start, input)
+                    "Optimized built-in function call \"" + funcName + "\" to hash " + Utility::uint32ToHexString(hashed) + " at " + Utility::position(startPos, input)
                 ) << std::endl;
             } else {
                 optimizationError = true;
-                std::string error = makeCompilerError("Unknown function call \"" + funcName + "\" at " + Utility::position(currentToken().start, input));
+                std::string error = makeCompilerError("Unknown function call \"" + funcName + "\" at " + Utility::position(startPos, input));
                 if (optimizationLogs) std::cout << error << std::endl;
                 throw std::runtime_error(error);
             }
