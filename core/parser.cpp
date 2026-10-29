@@ -2547,9 +2547,9 @@ ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool loc
         } else if (match("$")) {
             val = evaluateNameOperator(var);
         } else if (match("##")) {
-            val = executeFunction("hash"_h, {right}, startPos);
+            val = executeFunction("hash"_h, {var}, startPos);
         } else if (match(".#")) {
-            val = executeFunction("String::hash"_h, {right}, startPos);
+            val = executeFunction("String::hash"_h, {var}, startPos);
         }
         
         advance();
@@ -2648,9 +2648,9 @@ Value Parser::parseExpression(bool doExecute, bool identifierMode, bool doFuncti
         } else if (match("$")) {
             val = evaluateNameOperator(result);
         } else if (match("##")) {
-            val = executeFunction("hash"_h, {right}, startPos);
+            val = executeFunction("hash"_h, {result}, startPos);
         } else if (match(".#")) {
-            val = executeFunction("String::hash"_h, {right}, startPos);
+            val = executeFunction("String::hash"_h, {result}, startPos);
         }
         if (result.isVariable) assign(result, val, " at " + Utility::position(currentToken().start, input));
         advance();
@@ -9250,9 +9250,9 @@ Value Parser::updateObjectProperty(const std::vector<std::variant<std::string, s
         } else if (unaryOp == "$") {
             newValue = evaluateNameOperator(currentVal);
         } else if (unaryOp == "##") {
-            newValue = executeFunction("hash"_h, {right}, startPos);
+            newValue = executeFunction("hash"_h, {currentVal}, startPos);
         } else if (unaryOp == ".#") {
-            newValue = executeFunction("String::hash"_h, {right}, startPos);
+            newValue = executeFunction("String::hash"_h, {currentVal}, startPos);
         }
     }
     else {
