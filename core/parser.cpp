@@ -2522,7 +2522,7 @@ ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool loc
         position -= 2;
         parseCommand(doExecute);
     }
-    else if (match("--") || match("++") || match("#") || match("!") || match("~") || match("$")) { // unary assignment
+    else if (match("--") || match("++") || match("#") || match("!") || match("~") || match("$") || match("##") || match(".#")) { // unary assignment
         Value var = resolveVariableValue(identifier, false);
         if (var.type == DataType::UNKNOWN) throw std::runtime_error("Assignment to undefined variable at " + Utility::position(currentToken().start, input));
         
@@ -2546,6 +2546,10 @@ ASTNode Parser::parseVariableDeclaration(bool doExecute, bool constant, bool loc
             }
         } else if (match("$")) {
             val = evaluateNameOperator(var);
+        } else if (match("##")) {
+            val = executeFunction("hash"_h, {right}, startPos);
+        } else if (match(".#")) {
+            val = executeFunction("String::hash"_h, {right}, startPos);
         }
         
         advance();
@@ -2622,7 +2626,7 @@ Value Parser::parseExpression(bool doExecute, bool identifierMode, bool doFuncti
     }
     Value result = parseConditional(doExecute, identifierMode, doFunctionCall, ignoreColon);
 
-    if (match("--") || match("++") || match("#") || match("!") || match("~") || match("$")) { // unary assignment
+    if (match("--") || match("++") || match("#") || match("!") || match("~") || match("$") || match("##") || match(".#")) { // unary assignment
         Value val = result;
         if (match("--") || match("++")) {
             val = Value::createNumber(result.toNumber() + (
@@ -2643,8 +2647,13 @@ Value Parser::parseExpression(bool doExecute, bool identifierMode, bool doFuncti
             }
         } else if (match("$")) {
             val = evaluateNameOperator(result);
+        } else if (match("##")) {
+            val = executeFunction("hash"_h, {right}, startPos);
+        } else if (match(".#")) {
+            val = executeFunction("String::hash"_h, {right}, startPos);
         }
         if (result.isVariable) assign(result, val, " at " + Utility::position(currentToken().start, input));
+        advance();
     }
 
     return result;
@@ -2953,9 +2962,13 @@ Value Parser::parsePower(bool doExecute, bool identifierMode, bool doFunctionCal
 }
 
 Value Parser::parseUnary(bool doExecute, bool identifierMode, bool doFunctionCall, bool ignoreColon) {
-    if ((match("minus") && !identifierMode) || match("+") || match("!") ||
-        (match("-") && !identifierMode) || match("#") || match("$") || match("&") || match("*")) {
-        std::string op = currentToken().value;
+    if (
+        (match("minus") && !identifierMode) || match("+") || match("!") || (match("-") && !identifierMode) || 
+        match("#") || match("$") || match("&") || match("*") || match("##") || match(".#")
+    ) {
+        ParserToken currToken = currentToken();
+        std::string op = currToken.value;
+        size_t startPos = currToken.position;
         advance();
 
         Value right = parseUnary(doExecute, identifierMode, doFunctionCall, ignoreColon);
@@ -2968,6 +2981,10 @@ Value Parser::parseUnary(bool doExecute, bool identifierMode, bool doFunctionCal
             return evaluateAddressOfOperator(right);
         } else if (op == "*") {
             return evaluateDereferenceOperator(right);
+        } else if (op == "##") {
+            return executeFunction("hash"_h, {right}, startPos);
+        } else if (op == ".#") {
+            return executeFunction("String::hash"_h, {right}, startPos);
         }
 
         return evaluateExpression(Value(), op, right, doExecute);
@@ -9204,7 +9221,7 @@ Value Parser::updateObjectProperty(const std::vector<std::variant<std::string, s
         
         newValue = parseConditional(doExecute);
     }
-    else if (match("--") || match("++") || match("#") || match("!") || match("~") || match("$")) {
+    else if (match("--") || match("++") || match("#") || match("!") || match("~") || match("$") || match("##") || match(".#")) {
         std::string unaryOp = currentToken().value;
         advance();
         
@@ -9232,6 +9249,10 @@ Value Parser::updateObjectProperty(const std::vector<std::variant<std::string, s
             }
         } else if (unaryOp == "$") {
             newValue = evaluateNameOperator(currentVal);
+        } else if (unaryOp == "##") {
+            newValue = executeFunction("hash"_h, {right}, startPos);
+        } else if (unaryOp == ".#") {
+            newValue = executeFunction("String::hash"_h, {right}, startPos);
         }
     }
     else {
