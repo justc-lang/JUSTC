@@ -1549,6 +1549,7 @@ ParseResult Parser::parse(bool doExecute) {
                 std::string identifier = currentToken().value;
                 bool isIdentifier = true;
                 size_t originalPos = position;
+                size_t start_ = optimizedTokens.size();
 
                 if (match("string") || match("number") || match("string_i") || match("string_ri")) {
                     isIdentifier = false;
@@ -1557,16 +1558,12 @@ ParseResult Parser::parse(bool doExecute) {
 
                     ParserToken parsedToken = {"string", identifier, currentToken().start};
 
-                    std::vector<ParserToken> newTokens;
-                    for (size_t i = 0; i < originalPos; i++) {
-                        newTokens.push_back(tokens[i]);
+                    auto next_it1 = tokens.erase(tokens.begin() + originalPos, tokens.begin() + position);
+                    tokens.insert(next_it1, parsedToken);
+                    if (parsertype == ParserType::OPTIMIZE) {
+                        auto next_it2 = optimizedTokens.erase(optimizedTokens.begin() + start_, optimizedTokens.begin() + optimizedTokens.size());
+                        optimizedTokens.insert(next_it2, parsedToken);
                     }
-                    newTokens.push_back(parsedToken);
-                    for (size_t i = position; i < tokens.size(); i++) {
-                        newTokens.push_back(tokens[i]);
-                    }
-
-                    tokens = newTokens;
 
                     position = originalPos;
                 } else if (doExecute && match(":")) {
@@ -9684,6 +9681,7 @@ std::string Parser::evaluateInterpolationExpression(const std::string& expr, boo
     auto lexerResult = Lexer::parse(expr, false);
 
     size_t savedPos = position;
+    size_t start_ = optimizedTokens.size();
     
     Parser tempParser(
         lexerResult.second,
@@ -9710,6 +9708,7 @@ std::string Parser::evaluateInterpolationExpression(const std::string& expr, boo
     Value result = tempParser.parseExpression(doExecute);
     
     this->position = savedPos;
+    if (parsertype == ParserType::OPTIMIZE) optimizedTokens.resize(start_);
     
     return result.toString();
 }
