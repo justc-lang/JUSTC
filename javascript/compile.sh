@@ -228,7 +228,7 @@ $COMPRESSION_FLAGS \
 -DPROMISE_HEADONLY \
 -DPROMISE_MULTITHREAD=0 \
 -s USE_BOOST_HEADERS=1 \
--lquadmath"
+-Wl,-u,scalbnl"
 
 WEB_FLAGS="-s ENVIRONMENT=web,worker \
 -s ASYNCIFY_IMPORTS=['fetch','emscripten_fetch','emscripten_fetch_close','use_luau']"
@@ -451,7 +451,7 @@ fi
 mv javascript/$SAFE_DIR/justc.core.js $JSOUT_DIR/justc.core.js
 if [[ "$GITHUB_EVENT" == "release" ]]; then
     mv javascript/$SAFE_DIR/justc_noluau.core.js $JSOUT_DIR/justc_noluau.core.js
-    mv javascript/$SAFE_DIR/justc_nojustb.core.js $JSOUT_DIR/justc_noluau.core.js
+    mv javascript/$SAFE_DIR/justc_nojustb.core.js $JSOUT_DIR/justc_nojustb.core.js
     mv javascript/$SAFE_DIR/justc_min.core.js $JSOUT_DIR/justc.min.core.js
 fi
 
@@ -587,5 +587,5 @@ for FILE in $JSOUT_DIR/*; do
 done
 
 ls -la $JSOUT_DIR/
-file $JSOUT_DIR/justc.core.wasm
-hexdump -C $JSOUT_DIR/justc.core.wasm | head -20
+file $JSOUT_DIR/justc.wasm
+hexdump -C $JSOUT_DIR/justc.wasm | head -20
