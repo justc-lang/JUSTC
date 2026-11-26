@@ -48,7 +48,6 @@ SOFTWARE.
     #include <cereal/types/memory.hpp>
 #endif
 #include <optional>
-#include <boost/multiprecision/float128.hpp>
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <boost/math/constants/constants.hpp>
 
@@ -69,11 +68,29 @@ SOFTWARE.
     using uint128_t = unsigned long long;
 #endif
 
-using float128_t = boost::multiprecision::float128; // 113 bits / ~34 digits
+using float128_t = boost::multiprecision::number< // IEEE 754 binary128: 113 bits / ~34 digits
+    boost::multiprecision::backends::cpp_bin_float<
+        113, 
+        boost::multiprecision::backends::digit_base_2, 
+        void, 
+        std::int16_t, 
+        -16382, 
+        16383
+    >, boost::multiprecision::et_off
+>;
 
-using float256_t = boost::multiprecision::cpp_bin_float_oct; // 237 bits / ~71 digits
+using float256_t = boost::multiprecision::number< // IEEE 754 binary256: 237 bits / ~71 digits
+    boost::multiprecision::backends::cpp_bin_float<
+        237, 
+        boost::multiprecision::backends::digit_base_2, 
+        void, 
+        std::int32_t, 
+        -262142, 
+        262143
+    >, boost::multiprecision::et_off
+>;
 
-using float512_t = boost::multiprecision::number< // IEEE 754 : 489 bits / ~147 digits / up to 2^23
+using float512_t = boost::multiprecision::number< // IEEE 754 binary512: 489 bits / ~147 digits
     boost::multiprecision::backends::cpp_bin_float<
         489, 
         boost::multiprecision::backends::digit_base_2, 
@@ -81,10 +98,10 @@ using float512_t = boost::multiprecision::number< // IEEE 754 : 489 bits / ~147 
         std::int32_t, 
         -4194302, 
         4194303
-    >
+    >, boost::multiprecision::et_off
 >;
 
-using float1024_t = boost::multiprecision::number< // IEEE 754 : 997 bits / ~300 digits / up to 2^27
+using float1024_t = boost::multiprecision::number< // IEEE 754 binary1024: 997 bits / ~300 digits
     boost::multiprecision::backends::cpp_bin_float<
         997, 
         boost::multiprecision::backends::digit_base_2, 
@@ -92,7 +109,7 @@ using float1024_t = boost::multiprecision::number< // IEEE 754 : 997 bits / ~300
         std::int64_t, 
         -67108862, 
         67108863
-    >
+    >, boost::multiprecision::et_off
 >;
 
 #ifndef DEFAULT_CPP_TYPE
