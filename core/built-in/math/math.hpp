@@ -93,20 +93,6 @@ public:
                         );
                     }
                 #endif
-                #if JUSTC_HAS_FLOAT128
-                    case NumericType::FLOAT128: {
-                        const __float128 value = x.getNumericValue<__float128>();
-
-                        if (value == std::numeric_limits<__float128>::min()) {
-                            throw std::runtime_error("math.abs: float overflow");
-                        }
-
-                        return Value::createNumberWithType(
-                            value < 0.0Q ? -value : value, 
-                            NumericType::FLOAT128
-                        );
-                    }
-                #endif
                 default:
                     return x; // uint, cuint
             }
@@ -203,6 +189,16 @@ public:
     static constexpr double SQRT1_2 = 0.7071067811865476;
     static constexpr double LOG2E = 1.4426950408889634;
     static constexpr double LOG10E = 0.4342944819032518;
+
+    static constexpr float128_t PI128 = boost::math::constants::pi<float128_t>();
+    static constexpr float256_t PI256 = boost::math::constants::pi<float256_t>();
+    static constexpr float512_t PI512 = boost::math::constants::pi<float512_t>();
+    static constexpr float1024_t PI1024 = boost::math::constants::pi<float1024_t>();
+
+    static constexpr float128_t E128 = boost::math::constants::e<float128_t>();
+    static constexpr float256_t E256 = boost::math::constants::e<float256_t>();
+    static constexpr float512_t E512 = boost::math::constants::e<float512_t>();
+    static constexpr float1024_t E1024 = boost::math::constants::e<float1024_t>();
 
     static double ParseNum(const std::string& str, int radix) {
         if (radix < 2 || radix > 64) {

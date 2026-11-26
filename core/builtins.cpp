@@ -67,6 +67,9 @@ const std::vector<std::string> builtinfunctions = {
     "math.sin", "math.sqrt", "math.square",
     "math.tan", "math.toDegrees", "math.cube",
     "math.toRadians", "parseNum", "parseInt",
+    "math.pi128", "math.pi256", "math.pi512",
+    "math.pi1024", "math.e128", "math.e256",
+    "math.e512", "math.e1024",
 
     "String::reverse", "String::graphemeReverse",
     "String::codePointReverse", "String::byteReverse",
