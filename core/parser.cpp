@@ -542,6 +542,12 @@ Value Value::createNumberWithType(T num, NumericType numType) {
     result.numeric_data->data = malloc(size);
     if (static_cast<bool>(result.numeric_data->data)) {
         switch (numType) {
+            case NumericType::FLOAT16:
+                *(float16_t*)result.numeric_data->data = static_cast<float16_t>(num);
+                break;
+            case NumericType::BFLOAT16:
+                *(bfloat16_t*)result.numeric_data->data = static_cast<bfloat16_t>(num);
+                break;
             case NumericType::FLOAT32:
                 *(float*)result.numeric_data->data = static_cast<float>(num);
                 break;
@@ -6513,8 +6519,12 @@ Value Parser::applyCPPTypeDeclaration(const Value value, const std::string& cppt
                     bfloat16_t num(cleaned);
                     result = Value::createNumberWithType(num, NumericType::BFLOAT16);
                 } else { // float64
-                    double num = std::stod(cleaned);
-                    result = Value::createNumberWithType(num, NumericType::FLOAT64);
+                    try {
+                        double num = std::stod(cleaned);
+                        result = Value::createNumberWithType(num, NumericType::FLOAT64);
+                    } catch (...) {
+                        result = Value::createNumberWithType(value.number_value, NumericType::FLOAT64);
+                    }
                 }
                 break;
             }

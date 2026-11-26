@@ -117,7 +117,7 @@ using float16_t = boost::multiprecision::number< // IEEE 754 binary16: 11 bits /
         11, 
         boost::multiprecision::backends::digit_base_2, 
         void, 
-        std::int8_t, 
+        std::int16_t, 
         -14, 
         15
     >, boost::multiprecision::et_off
@@ -375,6 +375,8 @@ struct NumericValue {
         else if constexpr (std::is_same_v<T, float256_t>) type = NumericType::FLOAT256;
         else if constexpr (std::is_same_v<T, float512_t>) type = NumericType::FLOAT512;
         else if constexpr (std::is_same_v<T, float1024_t>) type = NumericType::FLOAT1024;
+        else if constexpr (std::is_same_v<T, float16_t>) type = NumericType::FLOAT16;
+        else if constexpr (std::is_same_v<T, bfloat16_t>) type = NumericType::BFLOAT16;
         else type = NumericType::FLOAT64;
     }
     
@@ -465,6 +467,12 @@ struct NumericValue {
                 data = malloc(size);
                 if (data) {
                     switch (type) {
+                        case NumericType::FLOAT16:
+                            *(float16_t*)data = static_cast<float16_t>(value);
+                            break;
+                        case NumericType::BFLOAT16:
+                            *(bfloat16_t*)data = static_cast<bfloat16_t>(value);
+                            break;
                         case NumericType::FLOAT32:
                             *(float*)data = static_cast<float>(value);
                             break;
