@@ -112,6 +112,28 @@ using float1024_t = boost::multiprecision::number< // IEEE 754 binary1024: 997 b
     >, boost::multiprecision::et_off
 >;
 
+using float16_t = boost::multiprecision::number< // IEEE 754 binary16: 11 bits / ~3 digits
+    boost::multiprecision::backends::cpp_bin_float<
+        11, 
+        boost::multiprecision::backends::digit_base_2, 
+        void, 
+        std::int8_t, 
+        -14, 
+        15
+    >, boost::multiprecision::et_off
+>;
+
+using bfloat16_t = boost::multiprecision::number< // Google Brain: 8 bits / ~4 digits
+    boost::multiprecision::backends::cpp_bin_float<
+        8, 
+        boost::multiprecision::backends::digit_base_2, 
+        void, 
+        std::int16_t, 
+        -126, 
+        127
+    >, boost::multiprecision::et_off
+>;
+
 #ifndef DEFAULT_CPP_TYPE
 #define DEFAULT_CPP_TYPE "_"
 #endif
@@ -184,6 +206,8 @@ enum class DataType : int8_t {
     FLOAT256_ARRAY  =-17,
     FLOAT512_ARRAY  =-18,
     FLOAT1024_ARRAY =-19,
+    FLOAT16_ARRAY   =-20,
+    BFLOAT16_ARRAY  =-21,
 
     UNKNOWN         =-1
 };
@@ -236,6 +260,8 @@ inline std::string dataTypeToString(DataType type) {
         case DataType::CUINT16_ARRAY:   return "UInt16 clamped Array";
         case DataType::CUINT32_ARRAY:   return "UInt32 clamped Array";
         case DataType::CUINT64_ARRAY:   return "UInt32 clamped Array";
+        case DataType::FLOAT16_ARRAY:   return "Float16 Array";
+        case DataType::BFLOAT16_ARRAY:  return "Brain Float16 Array";
         case DataType::FLOAT32_ARRAY:   return "Float32 Array";
         case DataType::FLOAT64_ARRAY:   return "Float64 Array";
         case DataType::FLOAT128_ARRAY:  return "Float128 Array";
@@ -290,7 +316,9 @@ enum class NumericType : uint8_t {
     CUINT64 = 18,
     FLOAT256 = 19,
     FLOAT512 = 20,
-    FLOAT1024 = 21
+    FLOAT1024 = 21,
+    FLOAT16 = 22,
+    BFLOAT16 = 23,
 };
 
 struct NumericValue {
@@ -691,6 +719,34 @@ struct Value {
         auto ptr = std::static_pointer_cast<T>(complex_value);
         if (!ptr) return T{};
         return *ptr;
+    }
+
+    std::string numericTypeString() const {
+        switch (getNumericType()) {
+            case NumericType::FLOAT16: return "Float16";
+            case NumericType::BFLOAT16: return "Brain Float16";
+            case NumericType::FLOAT32: return "Float32";
+            case NumericType::FLOAT128: return "Float128";
+            case NumericType::FLOAT256: return "Float256";
+            case NumericType::FLOAT512: return "Float512";
+            case NumericType::FLOAT1024: return "Float1024";
+            case NumericType::BIGNUM: return "Big";
+            case NumericType::INT8: return "Int8";
+            case NumericType::INT16: return "Int16";
+            case NumericType::INT32: return "Int32";
+            case NumericType::INT64: return "Int64";
+            case NumericType::INT128: return "Int128";
+            case NumericType::UINT8: return "UInt8";
+            case NumericType::UINT16: return "UInt16";
+            case NumericType::UINT32: return "UInt32";
+            case NumericType::UINT64: return "UInt64";
+            case NumericType::UINT128: return "UInt128";
+            case NumericType::CUINT8: return "Clamped UInt8";
+            case NumericType::CUINT16: return "Clamped UInt16";
+            case NumericType::CUINT32: return "Clamped UInt32";
+            case NumericType::CUINT64: return "Clamped UInt64";
+            default: return "Float64";
+        }
     }
 
     #ifndef JUSTC_NOCEREAL

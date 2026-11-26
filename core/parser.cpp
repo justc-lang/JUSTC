@@ -741,6 +741,16 @@ std::string Value::toNumericString() const {
             ss << num.str(0, std::ios_base::fmtflags(0));
             break;
         }
+        case NumericType::FLOAT16: {
+            float16_t num = getNumericValue<float16_t>();
+            ss << num.str(0, std::ios_base::fmtflags(0));
+            break;
+        }
+        case NumericType::BFLOAT16: {
+            bfloat16_t num = getNumericValue<bfloat16_t>();
+            ss << num.str(0, std::ios_base::fmtflags(0));
+            break;
+        }
         default:
             ss << numeric_data->value;
             break;
@@ -6496,6 +6506,12 @@ Value Parser::applyCPPTypeDeclaration(const Value value, const std::string& cppt
                 } else if (cpptype == "float1024") {
                     float1024_t num(cleaned);
                     result = Value::createNumberWithType(num, NumericType::FLOAT1024);
+                } else if (cpptype == "float64") {
+                    float16_t num(cleaned);
+                    result = Value::createNumberWithType(num, NumericType::FLOAT16);
+                } else if (cpptype == "bfloat64") {
+                    bfloat16_t num(cleaned);
+                    result = Value::createNumberWithType(num, NumericType::BFLOAT16);
                 } else { // float64
                     double num = std::stod(cleaned);
                     result = Value::createNumberWithType(num, NumericType::FLOAT64);
@@ -6735,7 +6751,13 @@ Value Parser::functionTYPEID(const std::vector<Value>& args) {
 Value Parser::functionTYPEOF(const std::vector<Value>& args) {
     if (args.empty()) return stringToValue("unknown");
 
-    return stringToValue(dataTypeToString(args[0].type));
+    std::stringstream ss;
+    ss << dataTypeToString(args[0].type);
+    if (args[0].type == DataType::NUMBER) {
+        ss << " (" << args[0].numericTypeString() << ")";
+    }
+
+    return stringToValue(ss.str());
 }
 
 Value Parser::functionECHO(const std::vector<Value>& args) {

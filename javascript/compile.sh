@@ -227,7 +227,8 @@ $COMPRESSION_FLAGS \
 -I./third-party/promise-cpp/include \
 -DPROMISE_HEADONLY \
 -DPROMISE_MULTITHREAD=0 \
--s USE_BOOST_HEADERS=1"
+-s USE_BOOST_HEADERS=1 \
+-lquadmath"
 
 WEB_FLAGS="-s ENVIRONMENT=web,worker \
 -s ASYNCIFY_IMPORTS=['fetch','emscripten_fetch','emscripten_fetch_close','use_luau']"

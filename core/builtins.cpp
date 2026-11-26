@@ -98,7 +98,8 @@ const std::vector<std::string> builtinfunctions = {
     "Int8Array", "Int16Array", "Int32Array", "Int64Array",
     "UInt8Array", "UInt16Array", "UInt32Array", "UInt64Array",
     "CUInt8Array", "CUInt16Array", "CUInt32Array", "CUInt64Array",
-    "Float32Array", "Float64Array",
+    "Float32Array", "Float64Array", "Float128Array", "Float256Array",
+    "Float1024Array", "Float16Array", "BFloat16Array",
     
     "Int8Array::compress", "Int16Array::compress",
     "Int32Array::compress", "Int64Array::compress",
