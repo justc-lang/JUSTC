@@ -69,10 +69,31 @@ SOFTWARE.
     using uint128_t = unsigned long long;
 #endif
 
-using float128_t = boost::multiprecision::float128;                                                                          // 113 bits / ~34 digits
-using float256_t = boost::multiprecision::cpp_bin_float_oct;                                                                 // 237 bits / ~71 digits
-using float512_t = boost::multiprecision::number<cpp_bin_float<489, digit_base_2, void, std::int32_t, -4194302, 4194303>>;   // IEEE 754 : 489 bits / ~147 digits / up to 2^23
-using float1024_t= boost::multiprecision::number<cpp_bin_float<997, digit_base_2, void, std::int64_t, -67108862, 67108863>>; // IEEE 754 : 997 bits / ~300 digits / up to 2^27
+using float128_t = boost::multiprecision::float128; // 113 bits / ~34 digits
+
+using float256_t = boost::multiprecision::cpp_bin_float_oct; // 237 bits / ~71 digits
+
+using float512_t = boost::multiprecision::number< // IEEE 754 : 489 bits / ~147 digits / up to 2^23
+    boost::multiprecision::backends::cpp_bin_float<
+        489, 
+        boost::multiprecision::backends::digit_base_2, 
+        void, 
+        std::int32_t, 
+        -4194302, 
+        4194303
+    >
+>;
+
+using float1024_t = boost::multiprecision::number< // IEEE 754 : 997 bits / ~300 digits / up to 2^27
+    boost::multiprecision::backends::cpp_bin_float<
+        997, 
+        boost::multiprecision::backends::digit_base_2, 
+        void, 
+        std::int64_t, 
+        -67108862, 
+        67108863
+    >
+>;
 
 #ifndef DEFAULT_CPP_TYPE
 #define DEFAULT_CPP_TYPE "_"
