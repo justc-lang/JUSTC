@@ -36,6 +36,7 @@ SOFTWARE.
 #include <stdexcept>
 #include <algorithm>
 #include <cstdint>
+#include <limits>
 #include "../../parser.h"
 
 class Math {
@@ -46,7 +47,7 @@ private:
 public:
     template<typename... Args>
     static double Min(Args... args) {
-        static_assert(sizeof...(args) > 0, "Math::Min requires at least one argument");
+        static_assert(sizeof...(args) > 0, "math.min requires at least one argument");
         return minRecursive(args...);
     }
 
@@ -54,7 +55,7 @@ public:
 
     template<typename... Args>
     static double Max(Args... args) {
-        static_assert(sizeof...(args) > 0, "Math::Max requires at least one argument");
+        static_assert(sizeof...(args) > 0, "math.max requires at least one argument");
         return maxRecursive(args...);
     }
 
@@ -79,12 +80,32 @@ public:
                 case NumericType::INT64:
                     return Value::createNumberWithType(static_cast<int64_t>(std::abs(x.getNumericValue<int64_t>())), NumericType::INT64);
                 #if JUSTC_HAS_INT128
-                case NumericType::INT128:
-                    return Value::createNumberWithType(static_cast<__int128>(std::abs(x.getNumericValue<__int128>())), NumericType::INT128);
+                    case NumericType::INT128: {
+                        const __int128 value = x.getNumericValue<__int128>();
+
+                        if (value == std::numeric_limits<__int128>::min()) {
+                            throw std::runtime_error("math.abs: integer overflow");
+                        }
+
+                        return Value::createNumberWithType(
+                            value < 0 ? -value : value,
+                            NumericType::INT128
+                        );
+                    }
                 #endif
                 #if JUSTC_HAS_FLOAT128
-                case NumericType::FLOAT128:
-                    return Value::createNumberWithType(static_cast<__float128>(std::abs(x.getNumericValue<__float128>())), NumericType::FLOAT128);
+                    case NumericType::FLOAT128: {
+                        const __float128 value = x.getNumericValue<__float128>();
+
+                        if (value == std::numeric_limits<__float128>::min()) {
+                            throw std::runtime_error("math.abs: float overflow");
+                        }
+
+                        return Value::createNumberWithType(
+                            value < 0.0Q ? -value : value, 
+                            NumericType::FLOAT128
+                        );
+                    }
                 #endif
                 default:
                     return x; // uint, cuint
@@ -95,221 +116,53 @@ public:
     }
 
     #ifndef MATH_UNARY_FUNC
-        #ifdef JUSTC_HAS_INT128
-            #ifdef JUSTC_HAS_FLOAT128
-                #define MATH_UNARY_FUNC(NAME, OP) \
-                static Value NAME(const Value& x) { \
-                    if (static_cast<bool>(x.numeric_data)) { \
-                        NumericType t = x.getNumericType(); \
-                        switch (t) { \
-                            case NumericType::FLOAT32: \
-                                return Value::createNumberWithType( \
-                                    static_cast<float>(OP(x.getNumericValue<float>())), t); \
-                            case NumericType::BIGNUM: \
-                                return Value::createNumberWithType( \
-                                    OP(x.getNumericValue<long double>()), t); \
-                            case NumericType::INT8: \
-                                return Value::createNumberWithType( \
-                                    static_cast<int8_t>(OP(x.getNumericValue<int8_t>())), t); \
-                            case NumericType::INT16: \
-                                return Value::createNumberWithType( \
-                                    static_cast<int16_t>(OP(x.getNumericValue<int16_t>())), t); \
-                            case NumericType::INT32: \
-                                return Value::createNumberWithType( \
-                                    static_cast<int32_t>(OP(x.getNumericValue<int32_t>())), t); \
-                            case NumericType::INT64: \
-                                return Value::createNumberWithType( \
-                                    static_cast<int64_t>(OP(x.getNumericValue<int64_t>())), t); \
-                            case NumericType::UINT8: \
-                            case NumericType::CUINT8: \
-                                return Value::createNumberWithType( \
-                                    static_cast<uint8_t>(OP(x.getNumericValue<uint8_t>())), t); \
-                            case NumericType::UINT16: \
-                            case NumericType::CUINT16: \
-                                return Value::createNumberWithType( \
-                                    static_cast<uint16_t>(OP(x.getNumericValue<uint16_t>())), t); \
-                            case NumericType::UINT32: \
-                            case NumericType::CUINT32: \
-                                return Value::createNumberWithType( \
-                                    static_cast<uint32_t>(OP(x.getNumericValue<uint32_t>())), t); \
-                            case NumericType::UINT64: \
-                            case NumericType::CUINT64: \
-                                return Value::createNumberWithType( \
-                                    static_cast<uint64_t>(OP(x.getNumericValue<uint64_t>())), t); \
-                            case NumericType::INT128: \
-                                return Value::createNumberWithType( \
-                                    static_cast<__int128>(OP(x.getNumericValue<__int128>())), t); \
-                            case NumericType::UINT128: \
-                                return Value::createNumberWithType( \
-                                    static_cast<unsigned __int128>(OP(x.getNumericValue<unsigned __int128>())), t); \
-                            case NumericType::FLOAT128: \
-                                return Value::createNumberWithType( \
-                                    static_cast<__float128>(OP(x.getNumericValue<__float128>())), t); \
-                            default: \
-                                return Value::createNumberWithType( \
-                                    OP(x.getNumericValue<double>()), NumericType::FLOAT64); \
-                        } \
-                    } else { \
-                        return Value::createNumber(OP(x.number_value)); \
-                    } \
-                }
-            #else
-                #define MATH_UNARY_FUNC(NAME, OP) \
-                static Value NAME(const Value& x) { \
-                    if (static_cast<bool>(x.numeric_data)) { \
-                        NumericType t = x.getNumericType(); \
-                        switch (t) { \
-                            case NumericType::FLOAT32: \
-                                return Value::createNumberWithType( \
-                                    static_cast<float>(OP(x.getNumericValue<float>())), t); \
-                            case NumericType::BIGNUM: \
-                                return Value::createNumberWithType( \
-                                    OP(x.getNumericValue<long double>()), t); \
-                            case NumericType::INT8: \
-                                return Value::createNumberWithType( \
-                                    static_cast<int8_t>(OP(x.getNumericValue<int8_t>())), t); \
-                            case NumericType::INT16: \
-                                return Value::createNumberWithType( \
-                                    static_cast<int16_t>(OP(x.getNumericValue<int16_t>())), t); \
-                            case NumericType::INT32: \
-                                return Value::createNumberWithType( \
-                                    static_cast<int32_t>(OP(x.getNumericValue<int32_t>())), t); \
-                            case NumericType::INT64: \
-                                return Value::createNumberWithType( \
-                                    static_cast<int64_t>(OP(x.getNumericValue<int64_t>())), t); \
-                            case NumericType::UINT8: \
-                            case NumericType::CUINT8: \
-                                return Value::createNumberWithType( \
-                                    static_cast<uint8_t>(OP(x.getNumericValue<uint8_t>())), t); \
-                            case NumericType::UINT16: \
-                            case NumericType::CUINT16: \
-                                return Value::createNumberWithType( \
-                                    static_cast<uint16_t>(OP(x.getNumericValue<uint16_t>())), t); \
-                            case NumericType::UINT32: \
-                            case NumericType::CUINT32: \
-                                return Value::createNumberWithType( \
-                                    static_cast<uint32_t>(OP(x.getNumericValue<uint32_t>())), t); \
-                            case NumericType::UINT64: \
-                            case NumericType::CUINT64: \
-                                return Value::createNumberWithType( \
-                                    static_cast<uint64_t>(OP(x.getNumericValue<uint64_t>())), t); \
-                            case NumericType::INT128: \
-                                return Value::createNumberWithType( \
-                                    static_cast<__int128>(OP(x.getNumericValue<__int128>())), t); \
-                            case NumericType::UINT128: \
-                                return Value::createNumberWithType( \
-                                    static_cast<unsigned __int128>(OP(x.getNumericValue<unsigned __int128>())), t); \
-                            default: \
-                                return Value::createNumberWithType( \
-                                    OP(x.getNumericValue<double>()), NumericType::FLOAT64); \
-                        } \
-                    } else { \
-                        return Value::createNumber(OP(x.number_value)); \
-                    } \
-                }
-            #endif
-        #else
-            #ifdef JUSTC_HAS_FLOAT128
-                #define MATH_UNARY_FUNC(NAME, OP) \
-                static Value NAME(const Value& x) { \
-                    if (static_cast<bool>(x.numeric_data)) { \
-                        NumericType t = x.getNumericType(); \
-                        switch (t) { \
-                            case NumericType::FLOAT32: \
-                                return Value::createNumberWithType( \
-                                    static_cast<float>(OP(x.getNumericValue<float>())), t); \
-                            case NumericType::BIGNUM: \
-                                return Value::createNumberWithType( \
-                                    OP(x.getNumericValue<long double>()), t); \
-                            case NumericType::INT8: \
-                                return Value::createNumberWithType( \
-                                    static_cast<int8_t>(OP(x.getNumericValue<int8_t>())), t); \
-                            case NumericType::INT16: \
-                                return Value::createNumberWithType( \
-                                    static_cast<int16_t>(OP(x.getNumericValue<int16_t>())), t); \
-                            case NumericType::INT32: \
-                                return Value::createNumberWithType( \
-                                    static_cast<int32_t>(OP(x.getNumericValue<int32_t>())), t); \
-                            case NumericType::INT64: \
-                                return Value::createNumberWithType( \
-                                    static_cast<int64_t>(OP(x.getNumericValue<int64_t>())), t); \
-                            case NumericType::UINT8: \
-                            case NumericType::CUINT8: \
-                                return Value::createNumberWithType( \
-                                    static_cast<uint8_t>(OP(x.getNumericValue<uint8_t>())), t); \
-                            case NumericType::UINT16: \
-                            case NumericType::CUINT16: \
-                                return Value::createNumberWithType( \
-                                    static_cast<uint16_t>(OP(x.getNumericValue<uint16_t>())), t); \
-                            case NumericType::UINT32: \
-                            case NumericType::CUINT32: \
-                                return Value::createNumberWithType( \
-                                    static_cast<uint32_t>(OP(x.getNumericValue<uint32_t>())), t); \
-                            case NumericType::UINT64: \
-                            case NumericType::CUINT64: \
-                                return Value::createNumberWithType( \
-                                    static_cast<uint64_t>(OP(x.getNumericValue<uint64_t>())), t); \
-                            case NumericType::FLOAT128: \
-                                return Value::createNumberWithType( \
-                                    static_cast<__float128>(OP(x.getNumericValue<__float128>())), t); \
-                            default: \
-                                return Value::createNumberWithType( \
-                                    OP(x.getNumericValue<double>()), NumericType::FLOAT64); \
-                        } \
-                    } else { \
-                        return Value::createNumber(OP(x.number_value)); \
-                    } \
-                }
-            #else
-                #define MATH_UNARY_FUNC(NAME, OP) \
-                static Value NAME(const Value& x) { \
-                    if (static_cast<bool>(x.numeric_data)) { \
-                        NumericType t = x.getNumericType(); \
-                        switch (t) { \
-                            case NumericType::FLOAT32: \
-                                return Value::createNumberWithType( \
-                                    static_cast<float>(OP(x.getNumericValue<float>())), t); \
-                            case NumericType::BIGNUM: \
-                                return Value::createNumberWithType( \
-                                    OP(x.getNumericValue<long double>()), t); \
-                            case NumericType::INT8: \
-                                return Value::createNumberWithType( \
-                                    static_cast<int8_t>(OP(x.getNumericValue<int8_t>())), t); \
-                            case NumericType::INT16: \
-                                return Value::createNumberWithType( \
-                                    static_cast<int16_t>(OP(x.getNumericValue<int16_t>())), t); \
-                            case NumericType::INT32: \
-                                return Value::createNumberWithType( \
-                                    static_cast<int32_t>(OP(x.getNumericValue<int32_t>())), t); \
-                            case NumericType::INT64: \
-                                return Value::createNumberWithType( \
-                                    static_cast<int64_t>(OP(x.getNumericValue<int64_t>())), t); \
-                            case NumericType::UINT8: \
-                            case NumericType::CUINT8: \
-                                return Value::createNumberWithType( \
-                                    static_cast<uint8_t>(OP(x.getNumericValue<uint8_t>())), t); \
-                            case NumericType::UINT16: \
-                            case NumericType::CUINT16: \
-                                return Value::createNumberWithType( \
-                                    static_cast<uint16_t>(OP(x.getNumericValue<uint16_t>())), t); \
-                            case NumericType::UINT32: \
-                            case NumericType::CUINT32: \
-                                return Value::createNumberWithType( \
-                                    static_cast<uint32_t>(OP(x.getNumericValue<uint32_t>())), t); \
-                            case NumericType::UINT64: \
-                            case NumericType::CUINT64: \
-                                return Value::createNumberWithType( \
-                                    static_cast<uint64_t>(OP(x.getNumericValue<uint64_t>())), t); \
-                            default: \
-                                return Value::createNumberWithType( \
-                                    OP(x.getNumericValue<double>()), NumericType::FLOAT64); \
-                        } \
-                    } else { \
-                        return Value::createNumber(OP(x.number_value)); \
-                    } \
-                }
-            #endif
-        #endif
+        #define MATH_UNARY_FUNC(NAME, OP) \
+        static Value NAME(const Value& x) { \
+            if (static_cast<bool>(x.numeric_data)) { \
+                NumericType t = x.getNumericType(); \
+                switch (t) { \
+                    case NumericType::FLOAT32: \
+                        return Value::createNumberWithType( \
+                            static_cast<float>(OP(x.getNumericValue<float>())), t); \
+                    case NumericType::BIGNUM: \
+                        return Value::createNumberWithType( \
+                            OP(x.getNumericValue<long double>()), t); \
+                    case NumericType::INT8: \
+                        return Value::createNumberWithType( \
+                            static_cast<int8_t>(OP(x.getNumericValue<int8_t>())), t); \
+                    case NumericType::INT16: \
+                        return Value::createNumberWithType( \
+                            static_cast<int16_t>(OP(x.getNumericValue<int16_t>())), t); \
+                    case NumericType::INT32: \
+                        return Value::createNumberWithType( \
+                            static_cast<int32_t>(OP(x.getNumericValue<int32_t>())), t); \
+                    case NumericType::INT64: \
+                        return Value::createNumberWithType( \
+                            static_cast<int64_t>(OP(x.getNumericValue<int64_t>())), t); \
+                    case NumericType::UINT8: \
+                    case NumericType::CUINT8: \
+                        return Value::createNumberWithType( \
+                            static_cast<uint8_t>(OP(x.getNumericValue<uint8_t>())), t); \
+                    case NumericType::UINT16: \
+                    case NumericType::CUINT16: \
+                        return Value::createNumberWithType( \
+                            static_cast<uint16_t>(OP(x.getNumericValue<uint16_t>())), t); \
+                    case NumericType::UINT32: \
+                    case NumericType::CUINT32: \
+                        return Value::createNumberWithType( \
+                            static_cast<uint32_t>(OP(x.getNumericValue<uint32_t>())), t); \
+                    case NumericType::UINT64: \
+                    case NumericType::CUINT64: \
+                        return Value::createNumberWithType( \
+                            static_cast<uint64_t>(OP(x.getNumericValue<uint64_t>())), t); \
+                    default: \
+                        return Value::createNumberWithType( \
+                            OP(x.getNumericValue<double>()), NumericType::FLOAT64); \
+                } \
+            } else { \
+                return Value::createNumber(OP(x.number_value)); \
+            } \
+        }
     #endif
 
     MATH_UNARY_FUNC(Sin, std::sin)
