@@ -190,15 +190,15 @@ public:
     static constexpr double LOG2E = 1.4426950408889634;
     static constexpr double LOG10E = 0.4342944819032518;
 
-    static constexpr float128_t PI128 = boost::math::constants::pi<float128_t>();
-    static constexpr float256_t PI256 = boost::math::constants::pi<float256_t>();
-    static constexpr float512_t PI512 = boost::math::constants::pi<float512_t>();
-    static constexpr float1024_t PI1024 = boost::math::constants::pi<float1024_t>();
+    inline const float128_t PI128 = boost::math::constants::pi<float128_t>();
+    inline const float256_t PI256 = boost::math::constants::pi<float256_t>();
+    inline const float512_t PI512 = boost::math::constants::pi<float512_t>();
+    inline const float1024_t PI1024 = boost::math::constants::pi<float1024_t>();
 
-    static constexpr float128_t E128 = boost::math::constants::e<float128_t>();
-    static constexpr float256_t E256 = boost::math::constants::e<float256_t>();
-    static constexpr float512_t E512 = boost::math::constants::e<float512_t>();
-    static constexpr float1024_t E1024 = boost::math::constants::e<float1024_t>();
+    inline const float128_t E128 = boost::math::constants::e<float128_t>();
+    inline const float256_t E256 = boost::math::constants::e<float256_t>();
+    inline const float512_t E512 = boost::math::constants::e<float512_t>();
+    inline const float1024_t E1024 = boost::math::constants::e<float1024_t>();
 
     static double ParseNum(const std::string& str, int radix) {
         if (radix < 2 || radix > 64) {
