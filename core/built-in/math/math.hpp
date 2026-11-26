@@ -34,6 +34,9 @@ SOFTWARE.
 #include <type_traits>
 #include <initializer_list>
 #include <stdexcept>
+#include <algorithm>
+#include <cstdint>
+#include "../../parser.h"
 
 class Math {
 private:
@@ -57,20 +60,112 @@ public:
 
     static double Max(const std::vector<double>& values);
 
-    static double Abs(double x);
+    static Value Abs(Value x) {
+        if (static_cast<bool>(x.numeric_data)) {
+            switch (x.getNumericType()) {
+                case NumericType::FLOAT32:
+                    return Value::createNumberWithType(static_cast<float>(std::abs(x.getNumericValue<float>())), NumericType::FLOAT32);
+                case NumericType::NONE:
+                case NumericType::FLOAT64:
+                    return Value::createNumberWithType(std::abs(x.getNumericValue<double>()), NumericType::FLOAT64);
+                case NumericType::BIGNUM:
+                    return Value::createNumberWithType(std::abs(x.getNumericValue<long double>()), NumericType::BIGNUM);
+                case NumericType::INT8:
+                    return Value::createNumberWithType(static_cast<int8_t>(std::abs(x.getNumericValue<int8_t>())), NumericType::INT8);
+                case NumericType::INT16:
+                    return Value::createNumberWithType(static_cast<int16_t>(std::abs(x.getNumericValue<int16_t>())), NumericType::INT16);
+                case NumericType::INT32:
+                    return Value::createNumberWithType(static_cast<int32_t>(std::abs(x.getNumericValue<int32_t>())), NumericType::INT32);
+                case NumericType::INT64:
+                    return Value::createNumberWithType(static_cast<int64_t>(std::abs(x.getNumericValue<int64_t>())), NumericType::INT64);
+                #if JUSTC_HAS_INT128
+                case NumericType::INT128:
+                    return Value::createNumberWithType(static_cast<__int128>(std::abs(x.getNumericValue<__int128>())), NumericType::INT128);
+                #endif
+                #if JUSTC_HAS_FLOAT128
+                case NumericType::FLOAT128:
+                    return Value::createNumberWithType(static_cast<__float128>(std::abs(x.getNumericValue<__float128>())), NumericType::FLOAT128);
+                #endif
+                default:
+                    return x; // uint, cuint
+            }
+        } else {
+            return Value::createNumber(std::abs(x.number_value));
+        }
+    }
 
-    static double Sin(double x);
-    static double Cos(double x);
-    static double Tan(double x);
+    #define MATH_UNARY_FUNC(NAME, OP) \
+    static Value NAME(const Value& x) { \
+        if (static_cast<bool>(x.numeric_data)) { \
+            NumericType t = x.getNumericType(); \
+            switch (t) { \
+                case NumericType::FLOAT32: \
+                    return Value::createNumberWithType( \
+                        static_cast<float>(OP(x.getNumericValue<float>())), t); \
+                case NumericType::BIGNUM: \
+                    return Value::createNumberWithType( \
+                        OP(x.getNumericValue<long double>()), t); \
+                case NumericType::INT8: \
+                    return Value::createNumberWithType( \
+                        static_cast<int8_t>(OP(x.getNumericValue<int8_t>())), t); \
+                case NumericType::INT16: \
+                    return Value::createNumberWithType( \
+                        static_cast<int16_t>(OP(x.getNumericValue<int16_t>())), t); \
+                case NumericType::INT32: \
+                    return Value::createNumberWithType( \
+                        static_cast<int32_t>(OP(x.getNumericValue<int32_t>())), t); \
+                case NumericType::INT64: \
+                    return Value::createNumberWithType( \
+                        static_cast<int64_t>(OP(x.getNumericValue<int64_t>())), t); \
+                case NumericType::UINT8: \
+                case NumericType::CUINT8: \
+                    return Value::createNumberWithType( \
+                        static_cast<uint8_t>(OP(x.getNumericValue<uint8_t>())), t); \
+                case NumericType::UINT16: \
+                case NumericType::CUINT16: \
+                    return Value::createNumberWithType( \
+                        static_cast<uint16_t>(OP(x.getNumericValue<uint16_t>())), t); \
+                case NumericType::UINT32: \
+                case NumericType::CUINT32: \
+                    return Value::createNumberWithType( \
+                        static_cast<uint32_t>(OP(x.getNumericValue<uint32_t>())), t); \
+                case NumericType::UINT64: \
+                case NumericType::CUINT64: \
+                    return Value::createNumberWithType( \
+                        static_cast<uint64_t>(OP(x.getNumericValue<uint64_t>())), t); \
+                #if JUSTC_HAS_INT128 \
+                case NumericType::INT128: \
+                    return Value::createNumberWithType( \
+                        static_cast<__int128>(OP(x.getNumericValue<__int128>())), t); \
+                case NumericType::UINT128: \
+                    return Value::createNumberWithType( \
+                        static_cast<unsigned __int128>(OP(x.getNumericValue<unsigned __int128>())), t); \
+                #endif \
+                #if JUSTC_HAS_FLOAT128 \
+                case NumericType::FLOAT128: \
+                    return Value::createNumberWithType( \
+                        static_cast<__float128>(OP(x.getNumericValue<__float128>())), t); \
+                #endif \
+                default: \
+                    return Value::createNumberWithType( \
+                        OP(x.getNumericValue<double>()), NumericType::FLOAT64); \
+            } \
+        } else { \
+            return Value::createNumber(OP(x.number_value)); \
+        } \
+    }
 
-    static double Asin(double x);
-    static double Acos(double x);
-    static double Atan(double x);
+    MATH_UNARY_FUNC(Sin, std::sin)
+    MATH_UNARY_FUNC(Cos, std::cos)
+    MATH_UNARY_FUNC(Tan, std::tan)
+    MATH_UNARY_FUNC(Asin, std::asin)
+    MATH_UNARY_FUNC(Acos, std::acos)
+    MATH_UNARY_FUNC(Atan, std::atan)
+    MATH_UNARY_FUNC(Ceil, std::ceil)
+    MATH_UNARY_FUNC(Floor, std::floor)
+    MATH_UNARY_FUNC(Round, std::round)
+
     static double Atan2(double y, double x);
-
-    static double Ceil(double x);
-    static double Floor(double x);
-    static double Round(double x);
 
     static double Random();
     static double Random(double min, double max);

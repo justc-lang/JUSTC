@@ -46,50 +46,9 @@ double Math::Max(const std::vector<double>& values) {
     return *std::max_element(values.begin(), values.end());
 }
 
-double Math::Abs(double x) {
-    return std::abs(x);
-}
-
-double Math::Sin(double x) {
-    return std::sin(x);
-}
-
-double Math::Cos(double x) {
-    return std::cos(x);
-}
-
-double Math::Tan(double x) {
-    return std::tan(x);
-}
-
-double Math::Asin(double x) {
-    return std::asin(x);
-}
-
-double Math::Acos(double x) {
-    return std::acos(x);
-}
-
-double Math::Atan(double x) {
-    return std::atan(x);
-}
-
 double Math::Atan2(double y, double x) {
     return std::atan2(y, x);
 }
-
-double Math::Ceil(double x) {
-    return std::ceil(x);
-}
-
-double Math::Floor(double x) {
-    return std::floor(x);
-}
-
-double Math::Round(double x) {
-    return std::round(x);
-}
-
 double Math::Random() {
     std::uniform_real_distribution<double> dis(0.0, 1.0);
     return dis(gen);
