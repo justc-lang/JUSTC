@@ -2766,7 +2766,7 @@ Value Parser::parseExpression(bool doExecute, bool identifierMode, bool doFuncti
     if (match("--") || match("++") || match("#") || match("!") || match("~") || match("$") || match("##") || match(".#")) { // unary assignment
         Value val = result;
         if (match("--") || match("++")) {
-            if (!static_cast<bool>(var.numeric_data)) {
+            if (!static_cast<bool>(result.numeric_data)) {
                 val = Value::createNumber(result.toNumber() + (
                     match("++") ? 1 : -1
                 ));
