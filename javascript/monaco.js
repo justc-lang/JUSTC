@@ -32,14 +32,15 @@ const monacoJUSTClang = {
         ],
 
         typeKeywords: [
-            'number', 'string', 'boolean', 'null', 'link', 'path', 'binary', 'octal', 'hexadecimal', 'object', 'json', 'array', 'nan', 'infinity', 'data', 'auto',
-            'num', 'str', 'bool', 'nil', 'bin', 'oct', 'hex', 'obj', 'inf',
+            'number', 'string', 'boolean', 'null', 'link', 'path', 'binary', 'octal', 'hexadecimal', 'object', 'json', 'array', 'nan', 'infinity', 'data', 'bignum', 'auto',
+            'num', 'str', 'bool', 'nil', 'bin', 'oct', 'hex', 'obj', 'inf', 'big',
 
             "int8", "int16", "int32", "int64", "int128",
             "uint8", "uint16", "uint32", "uint64",
             "uint128", "float32", "float64", "float128",
             "cuint8", "cuint16", "cuint32", "cuint64",
-            "float256", "float512", "float1024",
+            "float256", "float512", "float1024", "float16", 
+            "bfloat16",
 
             "Window", "Promise", "Error",
         ],
